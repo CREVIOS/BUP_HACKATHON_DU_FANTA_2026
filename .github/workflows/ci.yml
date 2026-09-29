@@ -30,10 +30,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.13.5 }
+        with: { terraform_version: 1.13.5, terraform_wrapper: false }
       - run: terraform -chdir=infra fmt -check -recursive
       - run: terraform -chdir=infra init -backend=false -input=false -lockfile=readonly && terraform -chdir=infra validate
       - run: terraform -chdir=infra test
       - uses: azure/setup-helm@v4
         with: { version: v3.19.0 }
       - run: python3 scripts/check_bootstrap_charts.py
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python3 -m pip install -r scripts/requirements-infra.txt
+      - run: python3 scripts/check_observability.py

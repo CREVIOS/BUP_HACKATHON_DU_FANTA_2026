@@ -87,7 +87,15 @@ resource "helm_release" "monitoring" {
         "auth.anonymous" = { enabled = false }
         users            = { allow_sign_up = false }
       }
-      sidecar = { dashboards = { enabled = true, searchNamespace = "ALL" } }
+      sidecar = {
+        dashboards = { enabled = true, searchNamespace = "ALL" }
+        # Prometheus/Alertmanager datasources live in monitoring; Tempo's lives in fuelops.
+        datasources = {
+          enabled         = true
+          searchNamespace = ["monitoring", "fuelops"]
+          resource        = "configmap"
+        }
+      }
     }
   })]
   depends_on = [module.eks]
@@ -95,14 +103,20 @@ resource "helm_release" "monitoring" {
 
 # Grafana Tempo (single-binary) as the trace backend. The fuelops OTel collector forwards
 # spans here over OTLP; Grafana (from kube-prometheus-stack) queries it via the Tempo datasource
-# our chart ships. Storage is the chart's default local filesystem: fine for the event, ephemeral.
+# our chart ships. Keep local, ephemeral storage explicit for the event.
 resource "helm_release" "tempo" {
   name       = "tempo"
-  repository = "https://grafana.github.io/helm-charts"
+  repository = "https://grafana-community.github.io/helm-charts"
   chart      = "tempo"
-  namespace  = "monitoring"
+  version    = "2.4.0" # Tempo 2.10.8; moving to Tempo 3 is a separate upgrade.
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
   values = [yamlencode({
+    fullnameOverride = "tempo"
+    replicas         = 1
+    persistence      = { enabled = false }
+    service          = { type = "ClusterIP" }
     tempo = {
+      retention = "24h"
       receivers = {
         otlp = {
           protocols = {
@@ -222,5 +236,5 @@ resource "helm_release" "argocd_apps" {
       }
     } : {}
   })]
-  depends_on = [helm_release.platform, helm_release.metrics_server, kubernetes_secret.fuelops_env]
+  depends_on = [helm_release.platform, helm_release.metrics_server, helm_release.tempo, kubernetes_secret.fuelops_env]
 }

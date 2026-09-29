@@ -56,6 +56,7 @@ spec:
           args: ["--config=/etc/otel/collector.yaml"]
           ports:
             - { name: grpc-otlp, containerPort: 4317 }
+            - { name: http-otlp, containerPort: 4318 }
             - { name: metrics, containerPort: 8889 }
           volumeMounts:
             - { name: config, mountPath: /etc/otel }
@@ -77,6 +78,7 @@ spec:
   selector: { app: otel-collector }
   ports:
     - { name: grpc-otlp, port: 4317, targetPort: grpc-otlp }
+    - { name: http-otlp, port: 4318, targetPort: http-otlp }
     - { name: metrics, port: 8889, targetPort: metrics }
 ---
 # Scrape the OTel metrics the collector re-exposes (fuelops_* and otelhttp/otel client metrics).
@@ -88,8 +90,8 @@ spec:
   selector: { matchLabels: { app: otel-collector } }
   podMetricsEndpoints: [{ port: metrics, path: /metrics, interval: 15s }]
 ---
-# Grafana Tempo datasource so judges open a trace straight from Grafana (/grafana).
-# The kube-prometheus-stack Grafana sidecar imports any ConfigMap with this label.
+# Grafana Tempo datasource, viewed through localhost port-forward access.
+# Terraform configures the datasource sidecar to watch monitoring and fuelops.
 apiVersion: v1
 kind: ConfigMap
 metadata:

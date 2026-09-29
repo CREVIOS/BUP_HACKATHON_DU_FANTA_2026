@@ -1,0 +1,14 @@
+{
+  "monitoring": {
+    "repository": "https://prometheus-community.github.io/helm-charts",
+    "chart": "kube-prometheus-stack",
+    "version": "91.8.1",
+    "sha256": "a93f90d2aec2eff51360f879289138eb1c69f021fc74eb8c344f840a1deaad1b"
+  },
+  "tempo": {
+    "repository": "https://grafana-community.github.io/helm-charts",
+    "chart": "tempo",
+    "version": "2.4.0",
+    "sha256": "fad57f9ddd7d65f46158ee3455d32b7de6b3c1e4a3ce35757d2a8c5b2eb4481b"
+  }
+}

@@ -20,6 +20,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -60,8 +61,10 @@ type Client struct {
 
 func New(baseURL string, maxInflight int, timeout time.Duration) *Client {
 	return &Client{
-		base:        baseURL,
-		http:        &http.Client{Timeout: timeout},
+		base: baseURL,
+		// otelhttp.NewTransport injects W3C traceparent so the simulator call joins the
+		// ingestor's trace, and emits a client span. No-op until obs.Setup runs.
+		http:        &http.Client{Timeout: timeout, Transport: otelhttp.NewTransport(http.DefaultTransport)},
 		sem:         make(chan struct{}, maxInflight),
 		maxAttempts: 3,
 		backoff:     100 * time.Millisecond,

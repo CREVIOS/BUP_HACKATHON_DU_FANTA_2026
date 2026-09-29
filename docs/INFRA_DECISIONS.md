@@ -38,7 +38,7 @@ Both run the same images.
 | Metrics | **OpenTelemetry Go SDK, two exporters**: Prometheus `/metrics` (local → Prometheus + Grafana) and **OTLP/HTTP → CloudWatch** (native OTLP + PromQL, SigV4 via task role) on AWS | ADOT sidecars + AMP + Grafana-on-ECS (one workspace, 7 sidecars, and an ALB sub-path we no longer need) |
 | Dashboards | Local: Grafana (JSON in repo). AWS: CloudWatch dashboards (PromQL) | |
 | Logs | `log/slog` JSON → CloudWatch Logs (awslogs); local: `docker compose logs` | Loki/ELK |
-| Traces | **Dropped** (optional in the brief) | |
+| Traces | **OpenTelemetry OTLP** from every process (`internal/obs`): `otelhttp` server + client spans, `otelpgx` DB spans, W3C context across api→intel and ingestor→sim. Exported to **Jaeger** locally (`http://localhost:16686`) and **Grafana Tempo** in k8s (via an in-namespace OTel Collector), viewable from Grafana. No-op when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset. | Direct-to-Tempo without a collector (no fan-out/batching); auto-instrumentation eBPF (heavier) |
 | Rollback signals | CloudWatch **metric-math %** alarms: 5xx rate > 2 %, p95 > 800 ms; `treat_missing_data = notBreaching` | Raw 5xx count (INSUFFICIENT_DATA at low traffic, so it never fires) |
 | IaC | **Terraform ≥ 1.11**, AWS provider **≥ 6.4**, S3 backend `use_lockfile = true` | DynamoDB lock table (deprecated); CDK/Pulumi |
 | CI/CD | **GitHub Actions**, OIDC → IAM role, ECR immutable tags = git SHA | Jenkins, CodePipeline |

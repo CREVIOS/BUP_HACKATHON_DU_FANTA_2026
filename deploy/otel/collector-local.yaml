@@ -1,0 +1,38 @@
+# OpenTelemetry Collector config for the local `docker compose` stack.
+# The fuelops processes export OTLP to this collector, which fans out:
+#   traces  -> Jaeger (UI at http://localhost:16686)
+#   metrics -> a Prometheus-format endpoint on :8889 (scrape or just curl it)
+# `debug` also logs a sample to the collector's stdout so judges can see data flowing.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  # Jaeger all-in-one accepts OTLP natively (COLLECTOR_OTLP_ENABLED).
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  # OTel metrics re-exposed in Prometheus text format at http://localhost:8889/metrics.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  debug:
+    verbosity: normal
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/jaeger, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus, debug]

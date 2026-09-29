@@ -166,3 +166,63 @@
     font-size: 106.25%;
   }
 }
+/* ---------- Live view motion (components/live). Colour stays reserved for status. ---------- */
+@keyframes live-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+@keyframes live-ring {
+  from {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+@keyframes live-packet {
+  from {
+    left: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    left: 100%;
+    opacity: 0;
+  }
+}
+@keyframes live-glow {
+  50% {
+    opacity: 0.35;
+  }
+}
+.live-flow {
+  stroke-dasharray: 6 6;
+  animation: live-flow 1.2s linear infinite;
+}
+.live-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: live-ring 1.6s ease-out infinite;
+}
+.live-packet {
+  animation: live-packet 1.4s ease-in-out forwards;
+}
+.live-glow {
+  animation: live-glow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-flow,
+  .live-ring,
+  .live-packet,
+  .live-glow {
+    animation: none;
+  }
+}

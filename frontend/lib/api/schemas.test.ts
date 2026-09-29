@@ -111,3 +111,14 @@ describe("request schemas", () => {
     expect(schemas.simulateBodySchema.safeParse({ ...ok, fuel_type: "KEROSENE" }).success).toBe(false);
   });
 });
+
+describe("rl schemas", () => {
+  it("parse the captured /api/rl and /api/rl/shadow responses", async () => {
+    const rl = (await import("@/lib/api/__fixtures__/rl.json")).default;
+    const shadow = (await import("@/lib/api/__fixtures__/rl-shadow.json")).default;
+    expect(schemas.rlSchema.safeParse(rl).success).toBe(true);
+    const parsed = schemas.rlShadowSchema.safeParse(shadow);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.decisions[0].logits).toHaveLength(13);
+  });
+});

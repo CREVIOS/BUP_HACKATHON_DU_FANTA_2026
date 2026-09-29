@@ -46,6 +46,8 @@ export const overviewSchema = z.object({
   review_queue: z.number(),
   disruptions: z.object({ active: z.number(), scheduled: z.number() }),
   decision_source: z.string(),
+  decision_policy: z.optional(z.string()), // rl | greedy (absent on older backends)
+  rl_fallback: z.optional(z.boolean()), // true while greedy stands in for the RL policy
   auto_execute: z.boolean(),
   inventory_liters: z.object({
     depots: z.record(z.string(), liters),
@@ -230,7 +232,18 @@ export const alertsSchema = z.object({ alerts: list(alertSchema) });
 
 // brief section 9: why, signals, constraints, impact, confidence, alternatives. Manual allocations
 // carry {manual, reason, what_if} instead, so every field is optional.
+const rlOptionSchema = z.object({
+  action: z.number(),
+  strategy: z.string(),
+  valid: z.boolean(),
+  probability: z.number(),
+  liters: liters,
+  shipments: z.number(),
+});
+
 const explanationSchema = z.object({
+  shortfall_before: z.optional(z.number()), // expected unserved liters over 12 h without / with the shipment
+  shortfall_after: z.optional(z.number()),
   arrival_tick: z.optional(z.number()),
   transit_ticks: z.optional(z.number()),
   time_to_stockout: z.optional(z.number()),
@@ -242,6 +255,20 @@ const explanationSchema = z.object({
   review_reasons: z.optional(list(z.string())),
   rule_reasons: z.optional(list(z.string())),
   features: maybe(z.record(z.string(), z.string())),
+  rl: maybe(
+    z.object({
+      model: z.string(),
+      action: z.number(),
+      strategy: z.string(),
+      confidence: z.number(),
+      baseline_action: z.number(),
+      baseline_strategy: z.string(),
+      agrees_with_baseline: z.boolean(),
+      plan_shipments: z.number(),
+      plan_liters: liters,
+      options: list(rlOptionSchema),
+    }),
+  ),
   manual: z.optional(z.boolean()),
   reason: maybe(z.string()),
 });
@@ -279,6 +306,52 @@ export const recommendationSchema = z.object({
   outbox: maybe(outboxSchema),
 });
 export const recommendationsSchema = z.object({ tick: z.number(), recommendations: list(recommendationSchema) });
+
+// ---------- the trained RL policy (docs/API.md 5.24) ----------
+
+const rlShipmentSchema = z.object({
+  station_id: z.string(),
+  fuel_type: fuelSchema,
+  depot_id: z.string(),
+  route_id: z.string(),
+  quantity: liters,
+});
+
+export const rlSchema = z.object({
+  mode: z.string(), // active | comparison-only
+  decision_policy: z.string(),
+  model: z.object({
+    repo: z.string(),
+    revision: z.string(),
+    seed: z.number(),
+    promotion: z.boolean(),
+    actor_sha256: z.string(),
+  }),
+  architecture: z.object({ algorithm: z.string(), actor: z.string(), parameters: z.number(), actions: z.string() }),
+  live: z.object({
+    ticks_decided: z.number(),
+    errors: z.number(),
+    ticks_rl_ships: z.number(),
+    ticks_baseline_ships: z.number(),
+    agrees_with_planner_baseline: z.number(),
+    avg_latency_us: maybe(z.number()),
+  }),
+});
+
+export const rlDecisionSchema = z.object({
+  tick: z.number(),
+  action: maybe(z.number()),
+  strategy: maybe(z.string()),
+  baseline_action: maybe(z.number()),
+  baseline_strategy: maybe(z.string()),
+  shipments: list(rlShipmentSchema),
+  greedy: list(z.object({ station_id: z.string(), fuel_type: fuelSchema, route_id: z.string(), quantity: liters })),
+  mask: maybe(z.array(z.boolean())), // 13 flags: which plans were valid this tick
+  logits: maybe(z.array(z.number())), // the actor's 13 outputs; softmax over the valid ones = its probabilities
+  error: maybe(z.string()),
+  latency_us: maybe(z.number()),
+});
+export const rlShadowSchema = z.object({ tick: z.number(), decisions: list(rlDecisionSchema) });
 
 export const allocationSchema = z.object({
   id: z.number(),
@@ -511,6 +584,8 @@ export type Recommendation = z.infer<typeof recommendationSchema>;
 export type Recommendations = z.infer<typeof recommendationsSchema>;
 export type RecommendationDetail = z.infer<typeof recommendationDetailSchema>;
 export type Allocation = z.infer<typeof allocationSchema>;
+export type RL = z.infer<typeof rlSchema>;
+export type RLDecision = z.infer<typeof rlDecisionSchema>;
 export type Allocations = z.infer<typeof allocationsSchema>;
 export type Decisions = z.infer<typeof decisionsSchema>;
 export type SimulateResult = z.infer<typeof simulateResultSchema>;

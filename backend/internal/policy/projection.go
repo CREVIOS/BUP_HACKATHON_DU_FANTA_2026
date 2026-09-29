@@ -16,7 +16,10 @@ type Projection struct {
 	DemandHorizon  float64 `json:"demand_horizon"`   // expected demand over the horizon
 	TimeToStockout int     `json:"time_to_stockout"` // ticks until expected shortfall on the mean path; -1 = none in horizon
 	StockoutProb   float64 `json:"stockout_prob"`    // P(any unmet demand within horizon), uniform-noise ensemble
-	arrivals       map[int]float64
+	// ExpectedShortfall is the demand left unserved over the horizon on the mean path (liters). Unlike the
+	// probability it still moves when a shortage is certain: a shipment that cannot prevent it still shrinks it.
+	ExpectedShortfall float64 `json:"expected_shortfall"`
+	arrivals          map[int]float64
 }
 
 // Position is on-hand plus everything already on its way.
@@ -108,9 +111,11 @@ func project(f *Forecaster, s sim.Station, fuel string, arrivals map[int]float64
 	}
 	inv := p.OnHand
 	for k, d := range demand {
-		if inv = step(inv, k, d); inv < 0 && p.TimeToStockout < 0 {
-			p.TimeToStockout = k
-			inv = 0
+		if inv = step(inv, k, d); inv < 0 {
+			if p.TimeToStockout < 0 {
+				p.TimeToStockout = k
+			}
+			p.ExpectedShortfall -= inv
 		}
 		inv = max(inv, 0)
 	}

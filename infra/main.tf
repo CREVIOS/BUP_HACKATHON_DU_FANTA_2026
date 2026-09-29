@@ -42,8 +42,22 @@ module "eks" {
   kubernetes_version     = var.kubernetes_version
   endpoint_public_access = true
 
-  enable_cluster_creator_admin_permissions = true
-  enable_irsa                              = false # Auto Mode uses EKS Pod Identity
+  enable_cluster_creator_admin_permissions = false
+  access_entries = {
+    for k, arn in {
+      root      = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+      terraform = aws_iam_role.terraform.arn
+      } : k => {
+      principal_arn = arn
+      policy_associations = {
+        admin = {
+          policy_arn   = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = { type = "cluster" }
+        }
+      }
+    }
+  }
+  enable_irsa = false # Auto Mode uses EKS Pod Identity
 
   compute_config = {
     enabled    = true

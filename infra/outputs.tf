@@ -30,3 +30,11 @@ output "grafana_admin_password" {
 output "alb_hostname_command" {
   value = "kubectl -n fuelops get ingress -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'"
 }
+
+output "terraform_role_arn" {
+  value = aws_iam_role.terraform.arn
+}
+
+output "argocd_deploy_public_key" {
+  value = tls_private_key.argocd.public_key_openssh
+}

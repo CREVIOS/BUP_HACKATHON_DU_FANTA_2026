@@ -1,0 +1,36 @@
+# Terraform in CI: plan on PRs touching infra/, plan/apply/destroy on demand from main.
+name: infra
+on:
+  pull_request: { paths: [infra/**, deploy/platform/**] }
+  workflow_dispatch:
+    inputs:
+      action: { type: choice, options: [plan, apply, destroy], default: plan }
+      region: { type: string, default: ap-southeast-1 }
+      state_key: { type: string, default: fuelops-sg/terraform.tfstate }
+
+concurrency: { group: "infra-${{ inputs.state_key || 'pr' }}", cancel-in-progress: false }
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    defaults: { run: { working-directory: infra } }
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_region: ${{ inputs.region || 'ap-southeast-1' }}
+      TF_VAR_typesafe_api_key: ${{ secrets.TYPESAFE_API_KEY }}
+      ACTION: ${{ inputs.action || 'plan' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TF_ROLE_ARN }}
+          aws-region: ${{ inputs.region || 'ap-southeast-1' }}
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_wrapper: false }
+      - run: terraform init -input=false -backend-config="key=${{ inputs.state_key || 'fuelops-sg/terraform.tfstate' }}"
+      - run: terraform plan -input=false -out=tfplan ${{ env.ACTION == 'destroy' && '-destroy' || '' }}
+      - if: env.ACTION != 'plan'
+        run: terraform apply -input=false tfplan
+      - if: env.ACTION == 'apply'
+        run: terraform output

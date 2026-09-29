@@ -112,7 +112,7 @@ resource "helm_release" "argocd" {
       }
     }
   })]
-  depends_on = [module.eks, github_repository_deploy_key.argocd]
+  depends_on = [module.eks]
 }
 
 # App secrets. ponytail: values sit in (encrypted) TF state; use External Secrets if this outlives the event.

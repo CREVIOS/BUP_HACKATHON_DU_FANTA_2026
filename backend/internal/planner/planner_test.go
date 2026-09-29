@@ -118,3 +118,21 @@ func TestWaitAndFeatures(t *testing.T) {
 		t.Fatal("departure boundary not blocked")
 	}
 }
+
+func TestBaselineBatchesAndPrepositions(t *testing.T) {
+	s := fixture()
+	for i := range 4 {
+		s.Stock[i] = s.Capacity[i]
+	}
+	in, _ := Prepare(s, nil, nil)
+	p, m, _ := Candidates(in)
+	if Baseline(in, p, m, 8) != 0 {
+		t.Fatal("baseline should wait when stocked")
+	}
+	s.Stock[0][0] = 100
+	in, _ = Prepare(s, nil, nil)
+	p, m, _ = Candidates(in)
+	if Baseline(in, p, m, 8) == 0 {
+		t.Fatal("baseline ignored imminent shortage")
+	}
+}

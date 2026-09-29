@@ -20,6 +20,7 @@ type result struct {
 	Plans    [13]planner.Plan `json:"plans"`
 	Mask     [13]bool         `json:"mask"`
 	Error    string           `json:"error,omitempty"`
+	Baseline int              `json:"baseline_action"`
 }
 
 func main() {
@@ -55,6 +56,7 @@ func main() {
 			}
 			if e == nil {
 				r.Features, e = planner.Features(in, r.Plans, r.Mask)
+				r.Baseline = planner.Baseline(in, r.Plans, r.Mask, 8)
 			}
 			if e != nil {
 				r.Error = e.Error()

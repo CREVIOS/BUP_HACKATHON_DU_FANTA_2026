@@ -3,6 +3,7 @@ import copy
 import hashlib
 import math
 import random
+from training.scenarios import load_manifest, import_manifest
 
 STATIONS=['station-mirpur','station-tongi','station-karnaphuli','station-coxsbazar']
 DEPOTS=['depot-gazipur','depot-patiya']
@@ -29,6 +30,12 @@ def hour_factor(hour,s):
 
 def scenario(seed, family=None, synthetic=True):
     rng=random.Random(seed);cfg=baseline()
+    if family in ('baseline','demand_spike','supply_disruption','final_combined'):
+        return load_manifest(family)
+    if family is None and rng.random()<.5:
+        cfg=load_manifest(rng.choice(['baseline','demand_spike','supply_disruption','final_combined']))
+        return cfg
+    if rng.random()<.5:cfg['supplies']=cfg['supplies'][:4]
     family=family or rng.choices(['normal','spike','route','supply','combined','outage'],[20,20,20,15,15,10])[0]
     if synthetic and rng.random()<.7:
         cfg['stock']=[[round(c*rng.uniform(.1,.9),3) for c in row] for row in cfg['capacity']]

@@ -16,7 +16,7 @@ class FuelEnv(gym.Env):
     def reset(self,seed=None,options=None):
         super().reset(seed=seed)
         chosen=int(seed) if options and options.get('fixed') and seed is not None else int(self.np_random.integers(0,1_000_000_000))
-        self.manifest_seed=chosen;cfg=scenario(chosen,self.family,self.synthetic);self.world=World(cfg,chosen);self.steps=0
+        self.manifest_seed=chosen;cfg=(options or {}).get('config') or scenario(chosen,self.family,self.synthetic);self.world=World(cfg,chosen,reference_noise=(options or {}).get('reference_noise',False));self.steps=0
         return self._observe(),{'manifest_seed':chosen,'family':cfg['family']}
     def action_masks(self):return np.asarray(self.result['mask'],dtype=bool)
     def step(self,action):

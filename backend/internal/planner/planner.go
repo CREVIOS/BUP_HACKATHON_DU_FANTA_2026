@@ -309,6 +309,11 @@ func Candidates(in Input) ([13]Plan, [13]bool, error) {
 		p := Plan{ActionID: action}
 		avail := in.Available
 		dispatch := in.DispatchLeft
+		// The official API compares float sums strictly; reserve one milliliter
+		// so SQL SUM rounding cannot reject a nominally full-capacity batch.
+		for d := range 2 {
+			dispatch[d] = math.Max(0, dispatch[d]-.001)
+		}
 		pairs := make([][2]int, 0, 12)
 		for s := range 4 {
 			for f := range 3 {
@@ -526,4 +531,55 @@ func Features(in Input, plans [13]Plan, mask [13]bool) ([]float64, error) {
 		}
 	}
 	return x, nil
+}
+
+// Baseline uses reorder hysteresis and the same public lookahead as RL.
+func Baseline(in Input, plans [13]Plan, mask [13]bool, reorder float64) int {
+	need, headroom, scarce := false, false, false
+	for s := range 4 {
+		for f := range 3 {
+			if in.StationOpen[s] && cover(in, s, f) <= reorder {
+				need = true
+			}
+		}
+	}
+	for _, e := range in.Events {
+		if e.Kind != "route_disruption" || e.Status != "SCHEDULED" || e.Start > in.Tick+8 || e.End < in.Tick {
+			continue
+		}
+		for _, r := range e.Routes {
+			s := Destination[r]
+			for f := range 3 {
+				if cover(in, s, f) < float64(e.End-in.Tick+Lead[r]+2) {
+					need = true
+				}
+			}
+		}
+	}
+	for d := range 2 {
+		for f := range 3 {
+			if excess(in, d, f) > 0 {
+				headroom = true
+			}
+			if in.Available[d][f] < 2*reserve(in, d, f, 48) {
+				scarce = true
+			}
+		}
+	}
+	if !need && !headroom {
+		return 0
+	}
+	preferred := 9
+	if scarce {
+		preferred = 10
+	}
+	if headroom {
+		preferred = 11
+	}
+	for _, a := range []int{preferred, 10, 9, 12, 11, 6, 5, 8, 7, 2, 1, 4, 3} {
+		if mask[a] {
+			return a
+		}
+	}
+	return 0
 }

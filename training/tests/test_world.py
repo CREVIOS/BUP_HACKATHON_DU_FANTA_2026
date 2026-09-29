@@ -3,6 +3,20 @@ from training.world import World, baseline, event
 
 
 class WorldTests(unittest.TestCase):
+    def test_plans_fit_strict_official_float_dispatch(self):
+        from training.planner_bridge import PlannerBridge
+        w=World(baseline(),reference_noise=True);bridge=PlannerBridge()
+        try:
+            for _ in range(84):
+                result=bridge.evaluate(w.snapshot(),w.history)
+                for plan in result['plans']:
+                    sent=[0.,0.]
+                    for a in plan['Shipments'] or []:
+                        sent[a['Depot']]+=a['Quantity']
+                        self.assertLessEqual(sent[a['Depot']],w.dispatch[a['Depot']],(w.tick,plan))
+                w.advance(result['plans'][result['baseline_action']]['Shipments'] or [])
+        finally:bridge.close()
+
     def test_departure_arrival_and_conservation(self):
         w = World(baseline(), seed=1)
         old = w.stock[0][0]

@@ -4,6 +4,7 @@ import json
 import os
 import platform
 import time
+import hashlib
 from collections import deque
 from pathlib import Path
 
@@ -26,21 +27,39 @@ def choose(model,obs,mask):
     valid=np.flatnonzero(mask)
     return int(valid[logits[valid]>=logits[valid].max()-1e-4][0])
 
-def evaluate(model,count=8,horizon=192,baseline_policy=None,seed_offset=1_100_000_000):
-    env=FuelEnv(horizon=horizon);rows=[]
+def evaluate(model,count=8,horizon=576,baseline_policy=None,seed_offset=1_100_000_000):
+    from training.evaluate import make_cases, rollout, means
+    if seed_offset!=1_100_000_000:raise ValueError('use frozen evaluation splits')
+    policy='greedy' if baseline_policy is None else ('fixed:'+str(baseline_policy) if isinstance(baseline_policy,int) else baseline_policy)
+    rows=rollout(make_cases(count,'validation',horizon),model if baseline_policy is None else None,policy)
+    return means(rows),rows
+
+def warm_start(model,episodes=64,horizon=576,epochs=10):
+    """Balanced imitation pretraining; all trajectories are in the training split."""
+    env=FuelEnv(horizon=horizon);observations=[];masks=[];actions=[]
     try:
-        for i in range(count):
-            obs,_=env.reset(seed=seed_offset+37*i,options={'fixed':True})
+        for i in range(episodes):
+            obs,_=env.reset(seed=700_000_000+37*i,options={'fixed':True})
             for _ in range(horizon):
-                mask=env.action_masks()
-                if baseline_policy=='noop':a=0
-                elif baseline_policy=='greedy':a=next((j for j in (9,10,11,12,5,6,7,8,1,2,3,4) if mask[j]),0)
-                elif isinstance(baseline_policy,int):a=baseline_policy if mask[baseline_policy] else 0
-                else:a=choose(model,obs,mask)
-                obs,_,_,_,_=env.step(a)
-            rows.append(env.world.metrics())
+                action=env.result['baseline_action']
+                observations.append(obs);masks.append(env.action_masks());actions.append(action)
+                obs,_,_,_,_=env.step(action)
     finally:env.close()
-    return {k:float(np.mean([row[k] for row in rows])) for k in rows[0]},rows
+    x=torch.as_tensor(np.asarray(observations),device=model.device)
+    mask=torch.as_tensor(np.asarray(masks),device=model.device)
+    y=torch.as_tensor(actions,device=model.device,dtype=torch.long)
+    counts=torch.bincount(y,minlength=13).clamp_min(1).float()
+    weights=counts.rsqrt();weights=weights/weights.mean()
+    def loss(indices):
+        distribution=model.policy.get_distribution(x[indices],action_masks=mask[indices])
+        return torch.nn.functional.cross_entropy(distribution.distribution.logits,y[indices],weight=weights)
+    indices=torch.arange(len(y),device=model.device)
+    with torch.no_grad():before=float(loss(indices).item())
+    for _ in range(epochs):
+        for batch in torch.randperm(len(y),device=model.device).split(256):
+            objective=loss(batch);model.policy.optimizer.zero_grad();objective.backward();torch.nn.utils.clip_grad_norm_(model.policy.parameters(),.5);model.policy.optimizer.step()
+    with torch.no_grad():after=float(loss(indices).item())
+    return dict(loss_before=before,loss_after=after,examples=len(actions),expert_ship_decisions=sum(a!=0 for a in actions))
 
 class Track(BaseCallback):
     def __init__(self,path,run=None,max_seconds=20*3600,eval_every=65536):
@@ -61,17 +80,18 @@ class Track(BaseCallback):
                 for key in self.episodes[0]:metrics['train_episode/'+key]=float(np.mean([e[key] for e in self.episodes]))
             self.record(metrics);self.model.save(self.path/'latest')
         if self.eval_every and self.num_timesteps-self.last_eval>=self.eval_every:
-            self.last_eval=self.num_timesteps;metrics,_=evaluate(self.model)
+            self.last_eval=self.num_timesteps;metrics,_=evaluate(self.model,count=20)
             self.record({'validation/'+k:v for k,v in metrics.items()})
             score=metrics['unmet']+metrics['lost']+2*metrics['requests']+.002*metrics['liter_transit']
             if score<self.best:self.best=score;self.model.save(self.path/'best')
         return time.monotonic()-self.started<self.max_seconds
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('--seed',type=int,default=11);p.add_argument('--steps',type=int,default=200000);p.add_argument('--envs',type=int,default=8);p.add_argument('--device',default='cuda');p.add_argument('--run-dir',required=True);p.add_argument('--wandb',action='store_true');p.add_argument('--max-hours',type=float,default=4);p.add_argument('--gamma',type=float,default=.997);p.add_argument('--entropy',type=float,default=.01);p.add_argument('--horizon',type=int,default=576);p.add_argument('--eval-every',type=int,default=65536);args=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('--seed',type=int,default=11);p.add_argument('--steps',type=int,default=200000);p.add_argument('--envs',type=int,default=8);p.add_argument('--device',default='cuda');p.add_argument('--run-dir',required=True);p.add_argument('--wandb',action='store_true');p.add_argument('--warmstart',action='store_true');p.add_argument('--max-hours',type=float,default=4);p.add_argument('--gamma',type=float,default=.997);p.add_argument('--entropy',type=float,default=.01);p.add_argument('--horizon',type=int,default=576);p.add_argument('--eval-every',type=int,default=65536);args=p.parse_args()
     torch.set_num_threads(1)
     path=Path(args.run_dir);path.mkdir(parents=True,exist_ok=True)
-    config=vars(args)|dict(architecture='masked-plan-ppo-128x128',action_count=13,training_distribution='bup-synthetic-v1',torch=torch.__version__,python=platform.python_version(),gpu=torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
+    code_hash=hashlib.sha256(b''.join(p.read_bytes() for p in sorted(Path('training').glob('*.py')))).hexdigest()
+    config=vars(args)|dict(architecture='masked-plan-ppo-128x128',action_count=13,training_distribution='bup-mixed-manifests-v2',source_sha256=code_hash,manifests_sha256=hashlib.sha256((Path(__file__).parent/'scenarios/official.json').read_bytes()).hexdigest(),torch=torch.__version__,python=platform.python_version(),gpu=torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
     (path/'config.json').write_text(json.dumps(config,indent=2))
     run=None
     if args.wandb:
@@ -83,17 +103,26 @@ def main():
     callback=Track(path,run,max_seconds=args.max_hours*3600,eval_every=args.eval_every)
     try:
         model=build_model(env,args.seed,args.device,gamma=args.gamma,ent_coef=args.entropy)
+        if args.warmstart:
+            warm=warm_start(model);print(json.dumps({'warmstart':warm}),flush=True)
+            if run:run.log({'warmstart/'+k:v for k,v in warm.items()},step=0)
+            metrics,_=evaluate(model,count=20)
+            callback.record({'warmstart_validation/'+k:v for k,v in metrics.items()})
+            callback.best=metrics['unmet']+metrics['lost']+2*metrics['requests']+.002*metrics['liter_transit']
+            model.save(path/'best');model.save(path/'warmstart')
         print(json.dumps({'status':'training','observations':env.observation_space.shape,'device':str(model.device),'steps':args.steps}),flush=True)
         model.learn(args.steps,callback=callback)
         model.save(path/'final')
-        result,_=evaluate(model,count=16,horizon=384)
+        selected=MaskablePPO.load(path/'best',device=args.device) if (path/'best.zip').exists() else model
+        selected.save(path/'selected')
+        result,_=evaluate(selected,count=40,horizon=576)
         (path/'validation.json').write_text(json.dumps(result,indent=2))
         callback.record({'final_validation/'+k:v for k,v in result.items()})
         if run:
             run.summary.update(result)
             import wandb
             artifact=wandb.Artifact(path.name+'-policy',type='model',metadata={'promotion':'unvalidated','seed':args.seed})
-            artifact.add_file(str(path/'final.zip'));artifact.add_file(str(path/'config.json'));run.log_artifact(artifact)
+            artifact.add_file(str(path/'selected.zip'));artifact.add_file(str(path/'config.json'));run.log_artifact(artifact)
     finally:
         env.close();callback.file.close()
         if run:run.finish()

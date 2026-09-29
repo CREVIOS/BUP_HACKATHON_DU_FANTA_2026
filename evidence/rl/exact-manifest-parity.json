@@ -1,0 +1,12 @@
+{
+  "source": "original image engine and allocation handlers, read-only source, private in-memory SQLite",
+  "image": "sha256:7067050693f49d377d91ca91f2faa6e63f673f69a69429d4693e78e9c0598e92",
+  "checks": ["station and depot inventories", "per-tick demand", "demand multipliers", "supply times quantities statuses", "active allocation quantities statuses ETA"],
+  "policy": "shared feasible hysteresis baseline",
+  "scenarios": [
+    {"name":"baseline","ticks":576,"passed":true,"max_inventory_difference":0,"served":540056.292,"unmet":18520.720,"service_level":0.9668430322,"requests":1372,"lost":0,"failures":0},
+    {"name":"demand_spike","ticks":576,"passed":true,"max_inventory_difference":0,"served":394900,"unmet":166557.796,"service_level":0.7033476119,"requests":988,"lost":0,"failures":0},
+    {"name":"supply_disruption","ticks":576,"passed":true,"max_inventory_difference":0,"served":384900,"unmet":173677.012,"service_level":0.6890723960,"requests":749,"lost":0,"failures":0},
+    {"name":"final_combined","ticks":576,"passed":true,"max_inventory_difference":0,"served":394900,"unmet":167306.533,"service_level":0.7024109056,"requests":899,"lost":0,"failures":0}
+  ]
+}

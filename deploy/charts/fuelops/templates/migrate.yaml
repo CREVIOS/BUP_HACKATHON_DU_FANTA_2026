@@ -13,7 +13,7 @@ spec:
     spec:
       restartPolicy: Never
       nodeSelector: { kubernetes.io/arch: amd64 }
-      securityContext: { runAsNonRoot: true }
+      securityContext: { runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532 }
       containers:
         - name: migrate
           image: {{ include "fuelops.image" . }}

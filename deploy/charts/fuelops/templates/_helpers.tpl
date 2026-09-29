@@ -17,7 +17,7 @@ livenessProbe:
 {{- end -}}
 {{- define "fuelops.pod" -}}
 {{- $root := .root -}}
-securityContext: { runAsNonRoot: true }
+securityContext: { runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532 }
 nodeSelector: { kubernetes.io/arch: amd64 }
 containers:
   - name: {{ .name }}

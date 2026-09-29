@@ -1,0 +1,92 @@
+"use client";
+
+import { Flask, GasPump } from "@phosphor-icons/react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { AskAssistant } from "@/components/ai/ask-assistant";
+import { DegradedBanner } from "@/components/degraded-banner";
+import { ICON } from "@/components/icon-props";
+import { StreamIndicator } from "@/components/stream-indicator";
+import { ControlTab } from "@/components/tabs/control-tab";
+import { DecisionsTab } from "@/components/tabs/decisions-tab";
+import { NetworkTab } from "@/components/tabs/network-tab";
+import { OverviewTab } from "@/components/tabs/overview-tab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useNetwork, useOverview, useStatus } from "@/lib/api/hooks";
+import type { Scenario } from "@/lib/mock/scenarios";
+import { deriveNetworkView } from "@/lib/view";
+
+type Tab = "overview" | "decisions" | "network" | "control";
+
+export function Dashboard({ scenario }: { scenario?: Scenario }) {
+  const [tab, setTab] = useState<Tab>("overview");
+  const overview = useOverview();
+  const network = useNetwork();
+  const status = useStatus();
+  const view = useMemo(() => (network.data ? deriveNetworkView(network.data) : undefined), [network.data]);
+  const names = view?.names ?? new Map<string, string>();
+  const queue = overview.data?.review_queue ?? 0;
+  const critical = overview.data?.open_alerts.critical ?? 0;
+
+  return (
+    <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 sm:px-6">
+      <header className="flex items-center justify-between gap-4 py-5">
+        <h1 className="flex items-center gap-2 text-base font-medium tracking-tight">
+          <GasPump {...ICON} weight="fill" aria-hidden />
+          FuelOps
+          {scenario ? (
+            <span className="rounded-full bg-info-bg px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wider text-info-fg">
+              Mock data
+            </span>
+          ) : null}
+        </h1>
+        <div className="flex items-center gap-3">
+          <StreamIndicator updatedAt={overview.dataUpdatedAt} />
+          <Link
+            href={scenario ? "/" : "/?mock=demo"}
+            title={scenario ? "Back to live data" : "Preview with mock data"}
+            aria-label={scenario ? "Back to live data" : "Preview with mock data"}
+            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Flask {...ICON} weight={scenario ? "fill" : "bold"} />
+          </Link>
+        </div>
+      </header>
+
+      <DegradedBanner overview={overview.data} status={status.data} error={overview.error ?? network.error} updatedAt={overview.dataUpdatedAt} />
+
+      <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
+        <TabsList variant="line" className="mb-2 w-full justify-start gap-4 overflow-x-auto">
+          <TabsTrigger value="overview" className="flex-none px-0">
+            Overview
+            {critical > 0 ? <span className="rounded-full bg-bad-bg px-1.5 text-[0.6875rem] text-bad-fg">{critical}</span> : null}
+          </TabsTrigger>
+          <TabsTrigger value="decisions" className="flex-none px-0">
+            Decisions
+            {queue > 0 ? <span className="rounded-full bg-warn-bg px-1.5 text-[0.6875rem] text-warn-fg">{queue}</span> : null}
+          </TabsTrigger>
+          <TabsTrigger value="network" className="flex-none px-0">
+            Network
+          </TabsTrigger>
+          <TabsTrigger value="control" className="flex-none px-0">
+            Control
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <OverviewTab scenario={scenario} names={names} />
+        </TabsContent>
+        <TabsContent value="decisions">
+          <DecisionsTab names={names} />
+        </TabsContent>
+        <TabsContent value="network">
+          <NetworkTab view={view} />
+        </TabsContent>
+        <TabsContent value="control">
+          <ControlTab />
+        </TabsContent>
+      </Tabs>
+
+      <AskAssistant key={scenario ?? "live"} scenario={scenario} tick={overview.data?.tick} />
+    </main>
+  );
+}

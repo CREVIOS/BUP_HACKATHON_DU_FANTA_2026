@@ -1,0 +1,11 @@
+{
+    "backend_api": "healthy",
+    "database": "healthy",
+    "decision_engine": "healthy",
+    "error_rate": 0,
+    "fuel_simulator": "healthy",
+    "jev": "disabled: fixed review rule only",
+    "p95_latency_ms": 18.229,
+    "prediction_service": "healthy",
+    "requests_5m": 148
+}

@@ -1,0 +1,134 @@
+{
+    "commands": [
+        {
+            "id": 6,
+            "kind": "step",
+            "payload": {
+                "count": 3
+            },
+            "status": "DONE",
+            "result": {
+                "tick": 51,
+                "stepped": 3
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:52.381913Z",
+            "done_at": "2026-09-29T07:01:52.774143Z"
+        },
+        {
+            "id": 5,
+            "kind": "step",
+            "payload": {
+                "count": 4
+            },
+            "status": "DONE",
+            "result": {
+                "tick": 48,
+                "stepped": 4
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:25.646173Z",
+            "done_at": "2026-09-29T07:01:26.071444Z"
+        },
+        {
+            "id": 4,
+            "kind": "event",
+            "payload": {
+                "type": "route_disruption",
+                "start_in": 2,
+                "parameters": {
+                    "route_ids": [
+                        "route-gazipur-mirpur"
+                    ]
+                },
+                "start_tick": null,
+                "duration_ticks": 6
+            },
+            "status": "DONE",
+            "result": {
+                "id": 2,
+                "type": "route_disruption",
+                "status": "SCHEDULED",
+                "end_tick": 52,
+                "parameters": {
+                    "route_ids": [
+                        "route-gazipur-mirpur"
+                    ]
+                },
+                "start_tick": 46
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:25.418187Z",
+            "done_at": "2026-09-29T07:01:25.614692Z"
+        },
+        {
+            "id": 3,
+            "kind": "step",
+            "payload": {
+                "count": 20
+            },
+            "status": "DONE",
+            "result": {
+                "tick": 44,
+                "stepped": 20
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:23.96706Z",
+            "done_at": "2026-09-29T07:01:25.308825Z"
+        },
+        {
+            "id": 2,
+            "kind": "event",
+            "payload": {
+                "type": "demand_spike",
+                "start_in": 0,
+                "parameters": {
+                    "multiplier": 1.8,
+                    "region_ids": [
+                        "region-dhaka"
+                    ]
+                },
+                "start_tick": null,
+                "duration_ticks": 24
+            },
+            "status": "DONE",
+            "result": {
+                "id": 1,
+                "type": "demand_spike",
+                "status": "SCHEDULED",
+                "end_tick": 48,
+                "parameters": {
+                    "multiplier": 1.8,
+                    "region_ids": [
+                        "region-dhaka"
+                    ]
+                },
+                "start_tick": 24
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:23.730539Z",
+            "done_at": "2026-09-29T07:01:23.856066Z"
+        },
+        {
+            "id": 1,
+            "kind": "step",
+            "payload": {
+                "count": 24
+            },
+            "status": "DONE",
+            "result": {
+                "tick": 24,
+                "stepped": 24
+            },
+            "error": null,
+            "requested_by": "admin",
+            "created_at": "2026-09-29T07:01:21.845142Z",
+            "done_at": "2026-09-29T07:01:23.687611Z"
+        }
+    ]
+}

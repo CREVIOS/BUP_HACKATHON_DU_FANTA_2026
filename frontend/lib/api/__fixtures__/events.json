@@ -1,0 +1,38 @@
+{
+    "events": [
+        {
+            "description": "routes [route-gazipur-mirpur] unusable, ticks 46\u201352: new shipments rejected, PENDING ones fail at departure",
+            "effective": true,
+            "end_tick": 52,
+            "ends_in_ticks": 1,
+            "id": 2,
+            "parameters": {
+                "route_ids": [
+                    "route-gazipur-mirpur"
+                ]
+            },
+            "start_tick": 46,
+            "starts_in_ticks": -5,
+            "status": "ACTIVE",
+            "type": "route_disruption"
+        },
+        {
+            "description": "demand \u00d71.80 [region-dhaka], ticks 24\u201348",
+            "effective": true,
+            "end_tick": 48,
+            "ends_in_ticks": -3,
+            "id": 1,
+            "parameters": {
+                "multiplier": 1.8,
+                "region_ids": [
+                    "region-dhaka"
+                ]
+            },
+            "start_tick": 24,
+            "starts_in_ticks": -27,
+            "status": "RESOLVED",
+            "type": "demand_spike"
+        }
+    ],
+    "tick": 51
+}

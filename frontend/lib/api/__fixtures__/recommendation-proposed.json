@@ -1,0 +1,76 @@
+{
+    "decisions": [],
+    "recommendation": {
+        "id": 68,
+        "epoch_id": 2,
+        "tick": 51,
+        "station_id": "station-karnaphuli",
+        "fuel_type": "OCTANE",
+        "depot_id": "depot-gazipur",
+        "route_id": "route-gazipur-karnaphuli",
+        "quantity": 5000,
+        "policy_version": "greedy-v1",
+        "source": "intel",
+        "risk_before": 1,
+        "risk_after": 0,
+        "rule_verdict": "review",
+        "jev_p_auto": null,
+        "jev_model": null,
+        "verdict": "review",
+        "status": "PROPOSED",
+        "created_at": "2026-09-29T07:01:52.767751Z",
+        "explanation": {
+            "signals": {
+                "on_hand": 1871.014,
+                "capacity": 9000,
+                "in_transit": 0,
+                "horizon_ticks": 48,
+                "reorder_point": 1904,
+                "demand_multiplier": 1,
+                "demand_next_horizon": 3348
+            },
+            "verdict": "review",
+            "depot_id": "depot-gazipur",
+            "features": {
+                "fuel": "OCTANE",
+                "route": "cross-region (slower, draws on the other region's depot)",
+                "margin": "moderate: stockout expected within 12 hours",
+                "active_crises": "route_disruption",
+                "demand_signal": "normal",
+                "shipment_size": "normal (under one day's demand)",
+                "data_freshness": "fresh",
+                "stockout_risk_now": "high",
+                "depot_stock_after_shipment": "healthy",
+                "stockout_risk_after_shipment": "low"
+            },
+            "quantity": 5000,
+            "route_id": "route-gazipur-karnaphuli",
+            "fuel_type": "OCTANE",
+            "jev_p_auto": null,
+            "risk_after": 0,
+            "station_id": "station-karnaphuli",
+            "risk_before": 1,
+            "alternatives": [
+                {
+                    "depot_id": "depot-patiya",
+                    "rejected": "only 0 L possible (depot dispatch capacity this tick)",
+                    "route_id": "route-patiya-karnaphuli",
+                    "transit_ticks": 2
+                }
+            ],
+            "arrival_tick": 55,
+            "rule_reasons": [
+                "crisis active: route_disruption"
+            ],
+            "rule_verdict": "review",
+            "transit_ticks": 4,
+            "review_reasons": null,
+            "review_required": false,
+            "time_to_stockout": 25,
+            "binding_constraint": "route max_shipment"
+        },
+        "outbox": null
+    },
+    "still_valid": true,
+    "violations": []
+}

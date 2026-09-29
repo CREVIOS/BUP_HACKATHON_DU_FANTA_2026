@@ -79,8 +79,12 @@ services:
       context: ./frontend
     image: fuelops-frontend:local
     restart: unless-stopped
-    environment:
+    environment:                                # only what the /ai routes need, never the whole .env
       API_PROXY_TARGET: http://api:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-6-luna}
+      AI_MOCK: ${AI_MOCK:-}
     ports: ["3000:3000"]
     depends_on: [api]
 

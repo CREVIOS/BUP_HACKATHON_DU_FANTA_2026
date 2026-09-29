@@ -1,0 +1,46 @@
+{
+    "auto_execute": true,
+    "data_age_seconds": 131.937332785,
+    "decision_source": "intel",
+    "degraded": false,
+    "disruptions": {
+        "active": 1,
+        "scheduled": 0
+    },
+    "epoch_id": 2,
+    "inventory_liters": {
+        "depots": {
+            "DIESEL": 148000,
+            "OCTANE": 59000,
+            "PETROL": 101000
+        },
+        "in_transit": {
+            "DIESEL": 1000
+        },
+        "stations": {
+            "DIESEL": 9780.64,
+            "OCTANE": 6945.942999999999,
+            "PETROL": 10957.573
+        }
+    },
+    "open_alerts": {
+        "critical": 2,
+        "info": 0,
+        "warn": 14
+    },
+    "review_queue": 5,
+    "scenario_id": "baseline",
+    "sim_metrics": {
+        "served_demand_liters": 55647.401,
+        "unmet_demand_liters": 342.498,
+        "service_level": 0.993883,
+        "allocation_liters": 0,
+        "allocation_failures": 0
+    },
+    "sim_status": "PAUSED",
+    "sim_time": "2026-01-01T12:45:00",
+    "simulation_only": true,
+    "stale": false,
+    "tick": 51,
+    "tick_minutes": 15
+}

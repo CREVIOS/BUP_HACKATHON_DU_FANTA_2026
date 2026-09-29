@@ -1,0 +1,661 @@
+{
+  "recommendations": [
+    {
+      "id": 68,
+      "epoch_id": 2,
+      "tick": 51,
+      "station_id": "station-karnaphuli",
+      "fuel_type": "OCTANE",
+      "depot_id": "depot-gazipur",
+      "route_id": "route-gazipur-karnaphuli",
+      "quantity": 5000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 0,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "PROPOSED",
+      "created_at": "2026-09-29T07:01:52.767751Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 1871.014,
+          "capacity": 9000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 1904,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 3348
+        },
+        "verdict": "review",
+        "depot_id": "depot-gazipur",
+        "features": {
+          "fuel": "OCTANE",
+          "route": "cross-region (slower, draws on the other region's depot)",
+          "margin": "moderate: stockout expected within 12 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "normal",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "low"
+        },
+        "quantity": 5000,
+        "route_id": "route-gazipur-karnaphuli",
+        "fuel_type": "OCTANE",
+        "jev_p_auto": null,
+        "risk_after": 0,
+        "station_id": "station-karnaphuli",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-patiya",
+            "rejected": "only 0 L possible (depot dispatch capacity this tick)",
+            "route_id": "route-patiya-karnaphuli",
+            "transit_ticks": 2
+          }
+        ],
+        "arrival_tick": 55,
+        "rule_reasons": [
+          "crisis active: route_disruption"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 4,
+        "review_reasons": null,
+        "review_required": false,
+        "time_to_stockout": 25,
+        "binding_constraint": "route max_shipment"
+      },
+      "outbox": null
+    },
+    {
+      "id": 67,
+      "epoch_id": 2,
+      "tick": 51,
+      "station_id": "station-karnaphuli",
+      "fuel_type": "DIESEL",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-karnaphuli",
+      "quantity": 1000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 1,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "PROPOSED",
+      "created_at": "2026-09-29T07:01:52.767751Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 2842.164,
+          "capacity": 14000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 3225,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 5670
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "DIESEL",
+          "route": "direct (depot in the station's own region)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "normal",
+          "shipment_size": "small (under a third of a day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "high"
+        },
+        "quantity": 1000,
+        "route_id": "route-patiya-karnaphuli",
+        "fuel_type": "DIESEL",
+        "jev_p_auto": null,
+        "risk_after": 1,
+        "station_id": "station-karnaphuli",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "slower or already covered (chosen route-patiya-karnaphuli)",
+            "route_id": "route-gazipur-karnaphuli",
+            "transit_ticks": 4
+          }
+        ],
+        "arrival_tick": 53,
+        "rule_reasons": [
+          "crisis active: route_disruption",
+          "low confidence: 100% stockout risk remains after this shipment"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 2,
+        "review_reasons": null,
+        "review_required": false,
+        "time_to_stockout": 23,
+        "binding_constraint": "depot dispatch capacity this tick"
+      },
+      "outbox": null
+    },
+    {
+      "id": 66,
+      "epoch_id": 2,
+      "tick": 51,
+      "station_id": "station-mirpur",
+      "fuel_type": "OCTANE",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-mirpur",
+      "quantity": 5000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 0,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "PROPOSED",
+      "created_at": "2026-09-29T07:01:52.767751Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 1178.881,
+          "capacity": 9000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 1630,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 2835
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "OCTANE",
+          "route": "cross-region (slower, draws on the other region's depot)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "abnormal spike, no visible cause",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "low"
+        },
+        "quantity": 5000,
+        "route_id": "route-patiya-mirpur",
+        "fuel_type": "OCTANE",
+        "jev_p_auto": null,
+        "risk_after": 0,
+        "station_id": "station-mirpur",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "route disrupted at departure tick 51",
+            "route_id": "route-gazipur-mirpur",
+            "transit_ticks": 2
+          }
+        ],
+        "arrival_tick": 55,
+        "rule_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur",
+          "crisis active: route_disruption",
+          "unexplained demand spike (\u00d71.45 of normal)"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 4,
+        "review_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur"
+        ],
+        "review_required": true,
+        "time_to_stockout": 20,
+        "binding_constraint": "route max_shipment"
+      },
+      "outbox": null
+    },
+    {
+      "id": 65,
+      "epoch_id": 2,
+      "tick": 51,
+      "station_id": "station-mirpur",
+      "fuel_type": "PETROL",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-mirpur",
+      "quantity": 5000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 0,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "PROPOSED",
+      "created_at": "2026-09-29T07:01:52.767751Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 1766.904,
+          "capacity": 14000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 3057,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 5316
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "PETROL",
+          "route": "cross-region (slower, draws on the other region's depot)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "abnormal spike, no visible cause",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "low"
+        },
+        "quantity": 5000,
+        "route_id": "route-patiya-mirpur",
+        "fuel_type": "PETROL",
+        "jev_p_auto": null,
+        "risk_after": 0,
+        "station_id": "station-mirpur",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "route disrupted at departure tick 51",
+            "route_id": "route-gazipur-mirpur",
+            "transit_ticks": 2
+          }
+        ],
+        "arrival_tick": 55,
+        "rule_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur",
+          "crisis active: route_disruption",
+          "unexplained demand spike (\u00d71.38 of normal)"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 4,
+        "review_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur"
+        ],
+        "review_required": true,
+        "time_to_stockout": 17,
+        "binding_constraint": "route max_shipment"
+      },
+      "outbox": null
+    },
+    {
+      "id": 64,
+      "epoch_id": 2,
+      "tick": 51,
+      "station_id": "station-tongi",
+      "fuel_type": "DIESEL",
+      "depot_id": "depot-gazipur",
+      "route_id": "route-gazipur-tongi",
+      "quantity": 6500,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 1,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "PROPOSED",
+      "created_at": "2026-09-29T07:01:52.767751Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 0,
+          "capacity": 18000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 5075,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 6519
+        },
+        "verdict": "review",
+        "depot_id": "depot-gazipur",
+        "features": {
+          "fuel": "DIESEL",
+          "route": "direct (depot in the station's own region)",
+          "margin": "critical: stockout expected before or right after this shipment arrives",
+          "active_crises": "route_disruption",
+          "demand_signal": "abnormal spike, no visible cause",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "high"
+        },
+        "quantity": 6500,
+        "route_id": "route-gazipur-tongi",
+        "fuel_type": "DIESEL",
+        "jev_p_auto": null,
+        "risk_after": 1,
+        "station_id": "station-tongi",
+        "risk_before": 1,
+        "alternatives": null,
+        "arrival_tick": 53,
+        "rule_reasons": [
+          "large shipment (6500 L > 5000 L)",
+          "crisis active: route_disruption",
+          "low confidence: 100% stockout risk remains after this shipment",
+          "unexplained demand spike (\u00d71.43 of normal)"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 2,
+        "review_reasons": [
+          "large shipment (6500 L > 5000 L)"
+        ],
+        "review_required": true,
+        "time_to_stockout": 0,
+        "binding_constraint": "route max_shipment"
+      },
+      "outbox": null
+    },
+    {
+      "id": 63,
+      "epoch_id": 2,
+      "tick": 50,
+      "station_id": "station-karnaphuli",
+      "fuel_type": "DIESEL",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-karnaphuli",
+      "quantity": 1000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 1,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "EXPIRED",
+      "created_at": "2026-09-29T07:01:52.709299Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 2926.369,
+          "capacity": 14000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 3154,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 5670
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "DIESEL",
+          "route": "direct (depot in the station's own region)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "normal",
+          "shipment_size": "small (under a third of a day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "high"
+        },
+        "quantity": 1000,
+        "route_id": "route-patiya-karnaphuli",
+        "fuel_type": "DIESEL",
+        "jev_p_auto": null,
+        "risk_after": 1,
+        "station_id": "station-karnaphuli",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "slower or already covered (chosen route-patiya-karnaphuli)",
+            "route_id": "route-gazipur-karnaphuli",
+            "transit_ticks": 4
+          }
+        ],
+        "arrival_tick": 52,
+        "rule_reasons": [
+          "crisis active: route_disruption",
+          "low confidence: 100% stockout risk remains after this shipment"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 2,
+        "review_reasons": null,
+        "review_required": false,
+        "time_to_stockout": 24,
+        "binding_constraint": "depot dispatch capacity this tick"
+      },
+      "outbox": null
+    },
+    {
+      "id": 62,
+      "epoch_id": 2,
+      "tick": 50,
+      "station_id": "station-mirpur",
+      "fuel_type": "OCTANE",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-mirpur",
+      "quantity": 5000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 0,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "EXPIRED",
+      "created_at": "2026-09-29T07:01:52.709299Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 1218.894,
+          "capacity": 9000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 1587,
+          "demand_multiplier": 1,
+          "demand_next_horizon": 2835
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "OCTANE",
+          "route": "cross-region (slower, draws on the other region's depot)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "route_disruption",
+          "demand_signal": "abnormal spike, no visible cause",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "low"
+        },
+        "quantity": 5000,
+        "route_id": "route-patiya-mirpur",
+        "fuel_type": "OCTANE",
+        "jev_p_auto": null,
+        "risk_after": 0,
+        "station_id": "station-mirpur",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "route disrupted at departure tick 50",
+            "route_id": "route-gazipur-mirpur",
+            "transit_ticks": 2
+          }
+        ],
+        "arrival_tick": 54,
+        "rule_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur",
+          "crisis active: route_disruption",
+          "unexplained demand spike (\u00d71.65 of normal)"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 4,
+        "review_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur"
+        ],
+        "review_required": true,
+        "time_to_stockout": 21,
+        "binding_constraint": "route max_shipment"
+      },
+      "outbox": null
+    },
+    {
+      "id": 55,
+      "epoch_id": 2,
+      "tick": 48,
+      "station_id": "station-mirpur",
+      "fuel_type": "DIESEL",
+      "depot_id": "depot-patiya",
+      "route_id": "route-patiya-mirpur",
+      "quantity": 1000,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 1,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "SUBMITTED",
+      "created_at": "2026-09-29T07:01:26.065286Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 3476.385,
+          "capacity": 15000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 4096,
+          "demand_multiplier": 1.8,
+          "demand_next_horizon": 7746
+        },
+        "verdict": "review",
+        "depot_id": "depot-patiya",
+        "features": {
+          "fuel": "DIESEL",
+          "route": "cross-region (slower, draws on the other region's depot)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "demand_spike, route_disruption",
+          "demand_signal": "abnormal spike, explained by an active demand spike",
+          "shipment_size": "small (under a third of a day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "high"
+        },
+        "quantity": 1000,
+        "route_id": "route-patiya-mirpur",
+        "fuel_type": "DIESEL",
+        "jev_p_auto": null,
+        "risk_after": 1,
+        "station_id": "station-mirpur",
+        "risk_before": 1,
+        "alternatives": [
+          {
+            "depot_id": "depot-gazipur",
+            "rejected": "route disrupted at departure tick 48",
+            "route_id": "route-gazipur-mirpur",
+            "transit_ticks": 2
+          }
+        ],
+        "arrival_tick": 52,
+        "rule_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur",
+          "crisis active: demand_spike, route_disruption",
+          "low confidence: 100% stockout risk remains after this shipment"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 4,
+        "review_reasons": [
+          "rerouted around disrupted route-gazipur-mirpur"
+        ],
+        "review_required": true,
+        "time_to_stockout": 23,
+        "binding_constraint": "depot dispatch capacity this tick"
+      },
+      "outbox": {
+        "status": "SENT",
+        "attempts": 1,
+        "last_error": null,
+        "sim_allocation_id": 1
+      }
+    },
+    {
+      "id": 54,
+      "epoch_id": 2,
+      "tick": 48,
+      "station_id": "station-tongi",
+      "fuel_type": "PETROL",
+      "depot_id": "depot-gazipur",
+      "route_id": "route-gazipur-tongi",
+      "quantity": 5500,
+      "policy_version": "greedy-v1",
+      "source": "intel",
+      "risk_before": 1,
+      "risk_after": 0,
+      "rule_verdict": "review",
+      "jev_p_auto": null,
+      "jev_model": null,
+      "verdict": "review",
+      "status": "REJECTED",
+      "created_at": "2026-09-29T07:01:26.065286Z",
+      "explanation": {
+        "signals": {
+          "on_hand": 2359.203,
+          "capacity": 9000,
+          "in_transit": 0,
+          "horizon_ticks": 48,
+          "reorder_point": 3215,
+          "demand_multiplier": 1.8,
+          "demand_next_horizon": 4050
+        },
+        "verdict": "review",
+        "depot_id": "depot-gazipur",
+        "features": {
+          "fuel": "PETROL",
+          "route": "direct (depot in the station's own region)",
+          "margin": "tight: stockout expected within 6 hours",
+          "active_crises": "demand_spike, route_disruption",
+          "demand_signal": "abnormal spike, explained by an active demand spike",
+          "shipment_size": "normal (under one day's demand)",
+          "data_freshness": "fresh",
+          "stockout_risk_now": "high",
+          "depot_stock_after_shipment": "healthy",
+          "stockout_risk_after_shipment": "low"
+        },
+        "quantity": 5500,
+        "route_id": "route-gazipur-tongi",
+        "fuel_type": "PETROL",
+        "jev_p_auto": null,
+        "risk_after": 0,
+        "station_id": "station-tongi",
+        "risk_before": 1,
+        "alternatives": null,
+        "arrival_tick": 50,
+        "rule_reasons": [
+          "large shipment (5500 L > 5000 L)",
+          "crisis active: demand_spike, route_disruption"
+        ],
+        "rule_verdict": "review",
+        "transit_ticks": 2,
+        "review_reasons": [
+          "large shipment (5500 L > 5000 L)"
+        ],
+        "review_required": true,
+        "time_to_stockout": 18,
+        "binding_constraint": "depot dispatch capacity this tick"
+      },
+      "outbox": null
+    }
+  ],
+  "tick": 51
+}

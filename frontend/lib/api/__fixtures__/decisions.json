@@ -1,0 +1,57 @@
+{
+    "decisions": [
+        {
+            "action": "REJECT",
+            "actor": "admin",
+            "created_at": "2026-09-29T07:01:52.345264Z",
+            "id": 2,
+            "outcome": {
+                "error": null,
+                "sim_allocation_id": null,
+                "submission": null
+            },
+            "reason": "fixture capture",
+            "recommendation": {
+                "epoch_id": 2,
+                "fuel_type": "PETROL",
+                "id": 54,
+                "quantity": 5500,
+                "risk_after": 0,
+                "risk_before": 1,
+                "route_id": "route-gazipur-tongi",
+                "source": "intel",
+                "station_id": "station-tongi",
+                "status": "REJECTED",
+                "tick": 48,
+                "verdict": "review"
+            }
+        },
+        {
+            "action": "APPROVE",
+            "actor": "admin:demo",
+            "created_at": "2026-09-29T07:01:52.289154Z",
+            "id": 1,
+            "outcome": {
+                "error": null,
+                "sim_allocation_id": 1,
+                "sim_status": "IN_TRANSIT",
+                "submission": "SENT"
+            },
+            "reason": "fixture capture",
+            "recommendation": {
+                "epoch_id": 2,
+                "fuel_type": "DIESEL",
+                "id": 55,
+                "quantity": 1000,
+                "risk_after": 1,
+                "risk_before": 1,
+                "route_id": "route-patiya-mirpur",
+                "source": "intel",
+                "station_id": "station-mirpur",
+                "status": "SUBMITTED",
+                "tick": 48,
+                "verdict": "review"
+            }
+        }
+    ]
+}

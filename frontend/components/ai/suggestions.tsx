@@ -1,9 +1,10 @@
 const SUGGESTIONS = [
+  "What is happening right now?",
+  "What events are active, and what are they affecting?",
   "Which stations are running low?",
   "Any disrupted routes?",
   "Explain the latest recommendation",
   "Which recommendations need human review, and why?",
-  "What is happening right now?",
 ] as const;
 
 // Command-list rows rather than chips: one question per line, hairline dividers.

@@ -1,0 +1,100 @@
+"""Reproducible Maskable PPO runs; W&B receives metrics/config, never credentials."""
+import argparse
+import json
+import os
+import platform
+import time
+from collections import deque
+from pathlib import Path
+
+import numpy as np
+import torch
+from sb3_contrib import MaskablePPO
+from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
+from training.env import FuelEnv
+
+def build_model(env,seed=11,device='cpu',**overrides):
+    cfg=dict(n_steps=256,batch_size=256,n_epochs=4,learning_rate=3e-4,gamma=.997,gae_lambda=.98,clip_range=.2,max_grad_norm=.5,ent_coef=.01,vf_coef=.5,target_kl=.02)
+    cfg.update(overrides)
+    return MaskablePPO('MlpPolicy',env,seed=seed,device=device,policy_kwargs=dict(net_arch=dict(pi=[128,128],vf=[128,128]),activation_fn=torch.nn.Tanh),verbose=0,**cfg)
+
+def choose(model,obs,mask):
+    with torch.no_grad():
+        tensor,_=model.policy.obs_to_tensor(obs)
+        logits=model.policy.get_distribution(tensor,action_masks=mask).distribution.logits.detach().cpu().numpy()[0]
+    valid=np.flatnonzero(mask)
+    return int(valid[logits[valid]>=logits[valid].max()-1e-4][0])
+
+def evaluate(model,count=8,horizon=192,baseline_policy=None,seed_offset=1_100_000_000):
+    env=FuelEnv(horizon=horizon);rows=[]
+    try:
+        for i in range(count):
+            obs,_=env.reset(seed=seed_offset+37*i,options={'fixed':True})
+            for _ in range(horizon):
+                mask=env.action_masks()
+                if baseline_policy=='noop':a=0
+                elif baseline_policy=='greedy':a=next((j for j in (9,10,11,12,5,6,7,8,1,2,3,4) if mask[j]),0)
+                elif isinstance(baseline_policy,int):a=baseline_policy if mask[baseline_policy] else 0
+                else:a=choose(model,obs,mask)
+                obs,_,_,_,_=env.step(a)
+            rows.append(env.world.metrics())
+    finally:env.close()
+    return {k:float(np.mean([row[k] for row in rows])) for k in rows[0]},rows
+
+class Track(BaseCallback):
+    def __init__(self,path,run=None,max_seconds=20*3600,eval_every=65536):
+        super().__init__();self.path=Path(path);self.run=run;self.started=time.monotonic();self.episodes=deque(maxlen=64);self.last_log=0;self.last_eval=0;self.max_seconds=max_seconds;self.eval_every=eval_every;self.best=float('inf')
+        self.file=(self.path/'metrics.jsonl').open('a',buffering=1)
+    def record(self,metrics):
+        metrics=dict(metrics,steps=self.num_timesteps,elapsed_seconds=time.monotonic()-self.started)
+        self.file.write(json.dumps(metrics,allow_nan=False)+'\n');print(json.dumps(metrics),flush=True)
+        if self.run:self.run.log(metrics,step=self.num_timesteps)
+    def _on_step(self):
+        for info in self.locals['infos']:
+            if 'outcomes' in info:self.episodes.append(info['outcomes'])
+        if self.num_timesteps-self.last_log>=16384:
+            self.last_log=self.num_timesteps;metrics={'throughput/steps_per_second':self.num_timesteps/max(time.monotonic()-self.started,1)}
+            for key,val in self.model.logger.name_to_value.items():
+                if isinstance(val,(int,float,np.floating)) and np.isfinite(val):metrics[key]=float(val)
+            if self.episodes:
+                for key in self.episodes[0]:metrics['train_episode/'+key]=float(np.mean([e[key] for e in self.episodes]))
+            self.record(metrics);self.model.save(self.path/'latest')
+        if self.eval_every and self.num_timesteps-self.last_eval>=self.eval_every:
+            self.last_eval=self.num_timesteps;metrics,_=evaluate(self.model)
+            self.record({'validation/'+k:v for k,v in metrics.items()})
+            score=metrics['unmet']+metrics['lost']+2*metrics['requests']+.002*metrics['liter_transit']
+            if score<self.best:self.best=score;self.model.save(self.path/'best')
+        return time.monotonic()-self.started<self.max_seconds
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument('--seed',type=int,default=11);p.add_argument('--steps',type=int,default=200000);p.add_argument('--envs',type=int,default=8);p.add_argument('--device',default='cuda');p.add_argument('--run-dir',required=True);p.add_argument('--wandb',action='store_true');p.add_argument('--max-hours',type=float,default=4);p.add_argument('--gamma',type=float,default=.997);p.add_argument('--entropy',type=float,default=.01);p.add_argument('--horizon',type=int,default=576);p.add_argument('--eval-every',type=int,default=65536);args=p.parse_args()
+    torch.set_num_threads(1)
+    path=Path(args.run_dir);path.mkdir(parents=True,exist_ok=True)
+    config=vars(args)|dict(architecture='masked-plan-ppo-128x128',action_count=13,training_distribution='bup-synthetic-v1',torch=torch.__version__,python=platform.python_version(),gpu=torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
+    (path/'config.json').write_text(json.dumps(config,indent=2))
+    run=None
+    if args.wandb:
+        import wandb
+        run=wandb.init(entity='eenlp',project='BUP',name=path.name,group='fuelops-masked-ppo-v1',config=config,dir=str(path.resolve()),save_code=False,settings=wandb.Settings(init_timeout=90))
+        (path/'wandb_url.txt').write_text(run.url+'\n');print(json.dumps({'wandb_url':run.url}),flush=True)
+    make=lambda:FuelEnv(horizon=args.horizon)
+    env=SubprocVecEnv([make for _ in range(args.envs)],start_method='spawn') if args.envs>1 else DummyVecEnv([make])
+    callback=Track(path,run,max_seconds=args.max_hours*3600,eval_every=args.eval_every)
+    try:
+        model=build_model(env,args.seed,args.device,gamma=args.gamma,ent_coef=args.entropy)
+        print(json.dumps({'status':'training','observations':env.observation_space.shape,'device':str(model.device),'steps':args.steps}),flush=True)
+        model.learn(args.steps,callback=callback)
+        model.save(path/'final')
+        result,_=evaluate(model,count=16,horizon=384)
+        (path/'validation.json').write_text(json.dumps(result,indent=2))
+        callback.record({'final_validation/'+k:v for k,v in result.items()})
+        if run:
+            run.summary.update(result)
+            import wandb
+            artifact=wandb.Artifact(path.name+'-policy',type='model',metadata={'promotion':'unvalidated','seed':args.seed})
+            artifact.add_file(str(path/'final.zip'));artifact.add_file(str(path/'config.json'));run.log_artifact(artifact)
+    finally:
+        env.close();callback.file.close()
+        if run:run.finish()
+if __name__=='__main__':main()

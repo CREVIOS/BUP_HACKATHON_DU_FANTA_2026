@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "horizon": 128,
+  "policy": "greedy",
+  "crisis": true,
+  "max_inventory_delta": 0.0,
+  "official": {
+    "served_demand_liters": 120018.689,
+    "unmet_demand_liters": 2329.495,
+    "service_level": 0.98096,
+    "allocation_liters": 93993.325,
+    "allocation_failures": 0
+  },
+  "offline": {
+    "ticks": 128,
+    "served": 120018.68899999987,
+    "unmet": 2329.4950000000003,
+    "service_level": 0.9809601178878143,
+    "lost": 0.0,
+    "requests": 1004.0,
+    "liter_transit": 204632.81000000003,
+    "failures": 0.0,
+    "conservation_error": 1.3096723705530167e-10,
+    "stranded": 258584.769
+  }
+}

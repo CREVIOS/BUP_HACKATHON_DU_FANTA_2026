@@ -9,3 +9,9 @@ dist/
 *.tfstate.*
 .terraform/
 loadtest/results/
+training/bin/
+__pycache__/
+*.pyc
+.venv/
+runs/
+wandb/

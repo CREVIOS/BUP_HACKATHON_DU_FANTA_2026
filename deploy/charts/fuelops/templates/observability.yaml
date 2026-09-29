@@ -1,0 +1,62 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: api }
+spec:
+  scaleTargetRef: { apiVersion: argoproj.io/v1alpha1, kind: Rollout, name: api }
+  minReplicas: {{ .Values.api.hpa.min }}
+  maxReplicas: {{ .Values.api.hpa.max }}
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: {{ .Values.api.hpa.cpu }} } }
+---
+# Scrape every fuelops pod; carry the rollout hash so canary analysis can isolate canary pods.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata: { name: fuelops }
+spec:
+  selector: { matchExpressions: [{ key: app, operator: In, values: [api, intel, ingestor] }] }
+  podTargetLabels: [app, rollouts-pod-template-hash]
+  podMetricsEndpoints: [{ port: http, path: /metrics, interval: 15s }]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata: { name: fuelops }
+spec:
+  groups:
+    - name: fuelops
+      rules:
+        - alert: FuelopsComponentDown
+          expr: up{namespace="fuelops"} == 0
+          for: 1m
+          labels: { severity: critical }
+          annotations: { summary: "{{ "{{" }} $labels.app {{ "}}" }} pod {{ "{{" }} $labels.pod {{ "}}" }} is down" }
+        - alert: SimulatorNotReady
+          expr: kube_deployment_status_replicas_available{namespace="fuelops",deployment="simulator"} < 1
+          for: 1m
+          labels: { severity: critical }
+          annotations: { summary: "Fuel simulator has no ready replica" }
+        - alert: ApiHighErrorRate
+          expr: sum(rate(http_requests_total{app="api",code=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total{app="api"}[5m])), 1e-9) > 0.02
+          for: 2m
+          labels: { severity: warning }
+          annotations: { summary: "API 5xx ratio above 2%" }
+        - alert: ApiHighLatency
+          expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app="api"}[5m]))) > 0.8
+          for: 5m
+          labels: { severity: warning }
+          annotations: { summary: "API p95 above 800ms" }
+        - alert: RolloutAborted
+          expr: rollout_info{namespace="fuelops",phase="Degraded"} == 1
+          labels: { severity: warning }
+          annotations: { summary: "Rollout {{ "{{" }} $labels.name {{ "}}" }} aborted: automatic rollback to stable" }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fuelops-dashboards
+  labels: { grafana_dashboard: "1" }
+data:
+{{- range $path, $_ := .Files.Glob "dashboards/*.json" }}
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

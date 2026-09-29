@@ -1,5 +1,6 @@
 name: ci
-on: { push: { branches: [main] }, pull_request: {} }
+# PRs run this directly; pushes to main run it via deploy.yml (workflow_call) before releasing.
+on: { pull_request: {}, workflow_call: {}, workflow_dispatch: {} }
 jobs:
   backend:
     runs-on: ubuntu-latest
@@ -11,3 +12,23 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
       - run: docker build --build-arg VERSION=${GITHUB_SHA::7} -t fuelops-backend:ci .
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: terraform -chdir=infra fmt -check -recursive
+      - run: terraform -chdir=infra init -backend=false -input=false && terraform -chdir=infra validate
+      - uses: azure/setup-helm@v4
+      - run: helm lint deploy/charts/fuelops deploy/platform

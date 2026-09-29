@@ -1,0 +1,22 @@
+# Runs before every sync. Migrations must be expand/contract so a rollback to the previous image stays safe.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-{{ .Values.image.tag | trunc 12 }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      nodeSelector: { kubernetes.io/arch: amd64 }
+      securityContext: { runAsNonRoot: true }
+      containers:
+        - name: migrate
+          image: {{ include "fuelops.image" . }}
+          args: ["migrate"]
+          envFrom: [{ secretRef: { name: fuelops-env } }]
+          resources: { requests: { cpu: 50m, memory: 64Mi } }

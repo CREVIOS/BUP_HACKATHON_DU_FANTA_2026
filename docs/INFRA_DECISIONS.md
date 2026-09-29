@@ -9,6 +9,15 @@ must show up in the demo or protect the demo. The judges run the submission loca
 simulator image. That makes `docker compose up` the **primary** deliverable, and AWS is the live-ops showcase.
 Both run the same images.
 
+
+> **Update 2026-09-29 (supersedes the compute/deploy rows below): EKS, not ECS.** The team chose Kubernetes.
+> Region **ap-southeast-1 (Singapore)**. EKS Auto Mode (managed nodes, ALB, EBS, pod identity) · Argo CD (GitOps from
+> `deploy/charts/fuelops`) · **Argo Rollouts canaries** for `api`/`intel`, with automatic rollback when the smoke Job against canary pods
+> fails or the Prometheus analysis sees canary 5xx > 2 % or p95 > 800 ms · kube-prometheus-stack (Prometheus, Grafana, alerts) ·
+> RDS PostgreSQL 17 · ECR · GitHub Actions via OIDC builds images and bumps tags in git. Terraform is in `infra/`, manifests in `deploy/`.
+> Simulator: 1 replica, `Recreate`, amd64 nodes; only the ingestor calls it (it wedges at ~15 concurrent requests).
+
+
 ---
 
 ## 1. Decisions at a glance

@@ -1,0 +1,19 @@
+# Sole simulator client + outbox writer. Recreate => never two writers during a deploy
+# (the backend also holds a Postgres advisory lock).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestor
+  labels:
+    {{- include "fuelops.labels" "ingestor" | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: ingestor } }
+  template:
+    metadata:
+      labels:
+        {{- include "fuelops.labels" "ingestor" | nindent 8 }}
+    spec:
+      {{- include "fuelops.pod" (dict "root" . "name" "ingestor" "port" 8081 "env" .Values.ingestor.env
+            "extraEnv" (list (dict "name" "SIM_BASE_URL" "value" "http://simulator:8000") (dict "name" "SIM_MAX_INFLIGHT" "value" "4"))) | nindent 6 }}

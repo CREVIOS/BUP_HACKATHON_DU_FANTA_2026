@@ -1,0 +1,36 @@
+# Organizer image, unchanged. Stateful (SQLite on ephemeral disk) and wedges at ~15 concurrent requests:
+# exactly one replica, Recreate (never two worlds), and only the ingestor talks to it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simulator
+  labels:
+    {{- include "fuelops.labels" "simulator" | nindent 4 }}
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector: { matchLabels: { app: simulator } }
+  template:
+    metadata:
+      labels:
+        {{- include "fuelops.labels" "simulator" | nindent 8 }}
+    spec:
+      nodeSelector: { kubernetes.io/arch: amd64 }
+      containers:
+        - name: simulator
+          image: {{ .Values.simulator.image }}
+          ports: [{ name: http, containerPort: 8000 }]
+          env:
+            - { name: SIMULATION_SPEED, value: {{ .Values.simulator.speed | quote }} }
+            - { name: TICK_MINUTES, value: {{ .Values.simulator.tickMinutes | quote }} }
+            - { name: SIMULATOR_START_MODE, value: {{ .Values.simulator.startMode | quote }} }
+          readinessProbe: { httpGet: { path: /v1/health, port: http }, periodSeconds: 5 }
+          livenessProbe: { httpGet: { path: /v1/health, port: http }, initialDelaySeconds: 20, periodSeconds: 15, timeoutSeconds: 5, failureThreshold: 4 }
+          resources: { requests: { cpu: 250m, memory: 256Mi }, limits: { memory: 1Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: simulator }
+spec:
+  selector: { app: simulator }
+  ports: [{ name: http, port: 8000, targetPort: http }]

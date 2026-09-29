@@ -65,5 +65,10 @@ services:
     ports: ["8080:8080"]
     depends_on: { migrate: { condition: service_completed_successfully } }
 
+  frontend:                                     # nginx: / -> SPA, /api -> api:8080
+    build: ./frontend
+    ports: ["3000:8080"]
+    depends_on: [api]
+
 volumes:
   pgdata:

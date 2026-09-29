@@ -1,0 +1,67 @@
+# GitOps delivery: build + push images (OIDC, no AWS keys), then bump the tags in the Helm values.
+# Argo CD syncs the commit; Argo Rollouts canaries api/intel and auto-rolls back on failed analysis.
+name: deploy
+on:
+  push:
+    branches: [main]
+    paths: [backend/**, frontend/**, deploy/charts/**, .github/workflows/deploy.yml]
+  workflow_dispatch: {}
+
+concurrency: { group: deploy, cancel-in-progress: false }
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: write }
+    env:
+      TAG: ${{ github.sha }}
+      REGISTRY: ${{ vars.ECR_REGISTRY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build + push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64
+          build-args: VERSION=${{ github.sha }}
+          push: true
+          tags: ${{ env.REGISTRY }}/fuelops:${{ env.TAG }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build + push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/fuelops-web:${{ env.TAG }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      - name: Scan backend image (fail on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/fuelops:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Bump image tags (Argo CD picks this up)
+        run: |
+          yq -i '.image.tag = strenv(TAG) | .web.tag = strenv(TAG)' deploy/charts/fuelops/values.yaml
+          git config user.name "fuelops-deploy"
+          git config user.email "fuelops-deploy@users.noreply.github.com"
+          git commit -am "deploy: ${TAG::7} [skip ci]"
+          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done; exit 1

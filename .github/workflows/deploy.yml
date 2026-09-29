@@ -13,15 +13,20 @@ jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  release:
-    needs: ci
-    # Keep manual dispatches aligned with the IAM role's exact main-branch trust.
-    if: github.ref == 'refs/heads/main'
+  # Images build in parallel with CI (and with each other); they are pushed under the commit SHA but only deployed
+  # (tag bump below) once CI passes.
+  images:
+    if: github.ref == 'refs/heads/main' # keep manual dispatches aligned with the IAM role's exact main-branch trust
     runs-on: ubuntu-latest
-    permissions: { id-token: write, contents: write }
+    permissions: { id-token: write, contents: read }
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { name: backend, context: backend, repo: fuelops }
+          - { name: frontend, context: frontend, repo: fuelops-web }
     env:
-      TAG: ${{ github.sha }}
-      REGISTRY: ${{ vars.ECR_REGISTRY }}
+      IMAGE: ${{ vars.ECR_REGISTRY }}/${{ matrix.repo }}:${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -30,40 +35,45 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - uses: aws-actions/amazon-ecr-login@v2
       - uses: docker/setup-buildx-action@v3
-
-      - name: Build + push backend
+      - name: Build + push ${{ matrix.name }}
         uses: docker/build-push-action@v6
         with:
-          context: backend
+          context: ${{ matrix.context }}
           platforms: linux/amd64
           build-args: VERSION=${{ github.sha }}
           push: true
-          tags: ${{ env.REGISTRY }}/fuelops:${{ env.TAG }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
-
-      - name: Build + push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: frontend
-          platforms: linux/amd64
-          push: true
-          tags: ${{ env.REGISTRY }}/fuelops-web:${{ env.TAG }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
-
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
       - name: Scan backend image (fail on fixable HIGH/CRITICAL)
+        if: matrix.name == 'backend'
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/fuelops:${{ env.TAG }}
+          image-ref: ${{ env.IMAGE }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
 
+  release:
+    needs: [ci, images]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    env:
+      TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
       - name: Bump image tags (Argo CD picks this up)
+        # Re-apply the edit on the latest main every attempt instead of rebasing a commit: two deploys racing on the
+        # same tag lines can then never conflict (runs are serialized by the concurrency group, oldest first).
         run: |
-          yq -i '.image.tag = strenv(TAG) | .web.tag = strenv(TAG)' deploy/charts/fuelops/values.yaml
           git config user.name "fuelops-deploy"
           git config user.email "fuelops-deploy@users.noreply.github.com"
-          git commit -am "deploy: ${TAG::7} [skip ci]"
-          for i in 1 2 3; do git pull --rebase && git push && exit 0; sleep 5; done; exit 1
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main && git reset -q --hard origin/main
+            yq -i '.image.tag = strenv(TAG) | .web.tag = strenv(TAG)' deploy/charts/fuelops/values.yaml
+            git commit -qam "deploy: ${TAG::7} [skip ci]" || { echo "already at ${TAG::7}"; exit 0; }
+            git push -q origin HEAD:main && exit 0
+            sleep 3
+          done
+          exit 1

@@ -1,6 +1,6 @@
 "use client";
 
-import { NetworkMap } from "@/components/live/network-map";
+import { NetworkMap } from "@/components/map/network-map";
 import { PipelineBus } from "@/components/live/pipeline-bus";
 import { RLPanel } from "@/components/live/rl-panel";
 import { Section } from "@/components/section";
@@ -34,9 +34,9 @@ export function LiveTab({ names }: { names: ReadonlyMap<string, string> }) {
         <PipelineBus />
       </Section>
       <section className="grid gap-8 border-t py-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div>
+        <div className="min-w-0">
           <h2 className="mb-4 text-sm font-medium">Network, live</h2>
-          <NetworkMap />
+          <NetworkMap names={names} />
         </div>
         <RLPanel />
       </section>

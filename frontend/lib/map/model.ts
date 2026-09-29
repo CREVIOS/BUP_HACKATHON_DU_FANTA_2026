@@ -24,6 +24,7 @@ export interface MapSite {
   alerts: Alert[]; // open alerts about this site
   pending: Recommendation[]; // waiting for review, stations only
   dispatchLeft?: number; // depots: litres that can still leave this tick
+  spike?: number; // stations: demand multiplier while a demand spike is active
 }
 
 export interface MapRoute {
@@ -88,6 +89,7 @@ export function buildMapModel(network: Network, alerts: Alert[], pending: Recomm
       fuels,
       alerts: alertsBySite.get(s.id) ?? [],
       pending: pending.filter((r) => r.station_id === s.id),
+      spike: s.demand_multiplier > 1.001 ? s.demand_multiplier : undefined,
     };
   });
 
@@ -130,3 +132,23 @@ export function buildMapModel(network: Network, alerts: Alert[], pending: Recomm
 }
 
 export type MapModel = ReturnType<typeof buildMapModel>;
+
+// Cross-region routes bend (quadratic curve) so they do not lie on top of the direct ones.
+export function routeCurve({ from, to, route }: MapRoute) {
+  const bend = route.cross_region ? 0.18 : 0;
+  const control = { x: (from.x + to.x) / 2 - (to.y - from.y) * bend, y: (from.y + to.y) / 2 + (to.x - from.x) * bend };
+  return { from, control, to };
+}
+
+export function pointOnRoute(route: MapRoute, t: number): { x: number; y: number } {
+  const { from, control, to } = routeCurve(route);
+  const u = 1 - t;
+  return { x: u * u * from.x + 2 * u * t * control.x + t * t * to.x, y: u * u * from.y + 2 * u * t * control.y + t * t * to.y };
+}
+
+// How far along its route a shipment is: 0 while PENDING at the depot, then departure -> arrival.
+export function shipmentProgress(a: Allocation, tick: number): number {
+  if (a.status === "PENDING" || a.departure_tick == null || a.expected_arrival_tick == null) return 0;
+  const span = Math.max(a.expected_arrival_tick - a.departure_tick, 1);
+  return Math.min(Math.max((tick - a.departure_tick) / span, 0), 1);
+}

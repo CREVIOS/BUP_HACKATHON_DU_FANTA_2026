@@ -1,7 +1,6 @@
 "use client";
 
 import { Briefing } from "@/components/ai/briefing";
-import { NetworkMap } from "@/components/map/network-map";
 import { AlertsPanel } from "@/components/overview/alerts-panel";
 import { RiskTable } from "@/components/overview/risk-table";
 import { QueryBlock } from "@/components/query-block";
@@ -15,16 +14,11 @@ export function OverviewTab({ names }: { names: ReadonlyMap<string, string> }) {
   const status = useStatus();
   return (
     <>
-      <section id="map" className="grid scroll-mt-4 gap-10 border-t py-8 lg:grid-cols-2">
-        <div className="min-w-0">
-          <h2 className="mb-4 text-sm font-medium">Network map</h2>
-          <NetworkMap names={names} />
-        </div>
-        <div className="min-w-0">
-          <h2 className="mb-4 text-sm font-medium">Briefing</h2>
-          {overview.data ? <Briefing tick={overview.data.tick} /> : null}
-        </div>
-      </section>
+      {overview.data ? (
+        <Section title="Briefing">
+          <Briefing tick={overview.data.tick} />
+        </Section>
+      ) : null}
       <Section title="Simulation">
         <QueryBlock query={overview}>{(data) => <SimulationPanel overview={data} />}</QueryBlock>
       </Section>

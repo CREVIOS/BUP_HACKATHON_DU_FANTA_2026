@@ -118,6 +118,10 @@ func (i *ingestor) poll(ctx context.Context) error {
 			"stale", w.Stale, "sse", i.stream.Connected())
 	}
 	i.last, i.lastStale = w.Instance, w.Stale
+	if _, err := i.db.Exec(ctx, `INSERT INTO ingestor_heartbeat (id, last_ok_at, tick, status) VALUES (1, now(), $1, $2)
+		ON CONFLICT (id) DO UPDATE SET last_ok_at = now(), tick = $1, status = $2`, w.Instance.Tick, w.Instance.Status); err != nil {
+		return fmt.Errorf("heartbeat: %w", err)
+	}
 	simTick.Set(float64(w.Instance.Tick))
 	i.lastOKAt.Store(time.Now().UnixNano())
 	return nil

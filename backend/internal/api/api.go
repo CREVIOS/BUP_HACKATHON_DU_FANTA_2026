@@ -69,10 +69,13 @@ func (s *server) status(w http.ResponseWriter, r *http.Request) {
 
 	out["database"] = health(s.db.Ping(ctx))
 
+	// Judged by the ingestor's last successful poll, not the last new tick: a PAUSED simulator is healthy.
 	var age float64
-	err := s.db.QueryRow(ctx, `SELECT EXTRACT(EPOCH FROM now() - max(captured_at)) FROM snapshots`).Scan(&age)
-	if err == nil && age > 10 {
-		err = fmt.Errorf("last snapshot %.0fs ago", age)
+	err := s.db.QueryRow(ctx, `SELECT EXTRACT(EPOCH FROM now() - last_ok_at) FROM ingestor_heartbeat WHERE id = 1`).Scan(&age)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = errors.New("ingestor has not polled the simulator yet")
+	} else if err == nil && age > 10 {
+		err = fmt.Errorf("no successful simulator poll for %.0fs", age)
 	}
 	out["fuel_simulator"] = health(err)
 

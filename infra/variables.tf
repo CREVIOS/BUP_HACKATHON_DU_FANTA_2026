@@ -3,6 +3,22 @@ variable "region" {
   default = "ap-southeast-1"
 }
 
+variable "monitoring_operator_principal_arns" {
+  description = "Explicit IAM users/roles granted Edit access only in monitoring. Import existing entries/associations before applying; persist this set in every later plan."
+  type        = set(string)
+  default     = []
+  nullable    = false
+
+  validation {
+    condition = alltrue([
+      for arn in var.monitoring_operator_principal_arns : can(regex(
+        "^arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:(user|role)/[A-Za-z0-9+=,.@_/-]+$", arn
+      ))
+    ])
+    error_message = "Use explicit IAM user or role ARNs from this AWS account and partition. Root, STS sessions, and wildcards are not operator principals."
+  }
+}
+
 variable "alb_certificate_arns" {
   description = "Existing, DNS-validated ACM certificates for the public hostnames. The first is the ALB default; SNI selects the matching certificate. Terraform does not own these certificates."
   type        = list(string)
@@ -24,6 +40,12 @@ variable "alb_certificate_arns" {
 
 variable "argocd_ingress_enabled" {
   description = "Publish Argo CD through the shared HTTPS ALB with Argo CD login required. False retains only private access."
+  type        = bool
+  default     = true
+}
+
+variable "grafana_ingress_enabled" {
+  description = "Publish authenticated Grafana at https://fuelops.hemal.me/grafana/ using the existing FuelOps certificate. False restores localhost-only configuration."
   type        = bool
   default     = true
 }

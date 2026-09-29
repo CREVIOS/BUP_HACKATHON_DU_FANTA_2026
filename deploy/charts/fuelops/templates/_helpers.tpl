@@ -24,12 +24,20 @@ containers:
     image: {{ include "fuelops.image" $root }}
     args: [{{ .name | quote }}]
     ports: [{ name: http, containerPort: {{ .port }} }]
-    # fuelops-env: Terraform-managed (DB, JWT, Jev). fuelops-auth: OPERATOR_TOKEN/ADMIN_TOKEN for the operator API,
-    # created with kubectl (docs/API.md §2); optional so pods start without it (auth is then off).
-    envFrom: [{ secretRef: { name: fuelops-env } }, { secretRef: { name: fuelops-auth, optional: true } }]
+    # Shared infrastructure settings; bearer tokens are injected only into api below.
+    envFrom: [{ secretRef: { name: fuelops-env } }]
     env:
       - { name: HTTP_ADDR, value: ":{{ .port }}" }
       - { name: INTEL_URL, value: "http://intel:8082" }
+      {{- if eq .name "api" }}
+      - { name: REQUIRE_AUTH, value: "true" }
+      - name: OPERATOR_TOKEN
+        valueFrom:
+          secretKeyRef: { name: fuelops-auth, key: OPERATOR_TOKEN, optional: false }
+      - name: ADMIN_TOKEN
+        valueFrom:
+          secretKeyRef: { name: fuelops-auth, key: ADMIN_TOKEN, optional: false }
+      {{- end }}
       {{- with $root.Values.otel }}{{- if .endpoint }}
       - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: {{ .endpoint | quote }} }
       - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "grpc" }

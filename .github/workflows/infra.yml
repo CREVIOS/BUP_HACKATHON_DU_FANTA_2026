@@ -31,6 +31,7 @@ jobs:
       TF_VAR_enable_application: ${{ inputs.enable_application }}
       TF_VAR_git_revision: ${{ inputs.git_revision }}
       TF_VAR_existing_github_oidc_provider_arn: ${{ vars.AWS_GITHUB_OIDC_PROVIDER_ARN }}
+      TF_VAR_monitoring_operator_principal_arns: ${{ vars.MONITORING_OPERATOR_PRINCIPAL_ARNS || '[]' }}
       STATE_KEY: ${{ inputs.state_key }}
       ACTION: ${{ inputs.action || 'plan' }}
     steps:

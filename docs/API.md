@@ -67,7 +67,7 @@ so exactly one careful process talks to it; everything the UI needs is served fr
 
 - Optional `X-Actor: <name>` (1–64 chars `[A-Za-z0-9 ._@-]`) is recorded with the role in audit fields, e.g. `"operator:asif"`. Tokens are per role, so the name is informational, not authenticated.
 - If **neither** token is set, auth is off and every caller is admin (local dev; the api logs a warning). `GET /api/me` reports it.
-- On EKS the tokens live in the kubectl-created secret `fuelops-auth` (`OPERATOR_TOKEN`, `ADMIN_TOKEN`), loaded by the backend pods as an optional `envFrom`; `fuelops-env` is Terraform-owned. Rotate: `kubectl create secret generic fuelops-auth -n fuelops --from-literal=OPERATOR_TOKEN=… --from-literal=ADMIN_TOKEN=… --dry-run=client -o yaml | kubectl apply -f -`, then restart the api.
+- On EKS the tokens live in the operator-owned Secret `fuelops-auth`. Only the API receives its required `OPERATOR_TOKEN` and `ADMIN_TOKEN` keys through explicit `secretKeyRef` entries. The chart sets `REQUIRE_AUTH=true`: empty/whitespace tokens fail API startup before database/listener setup, and missing Secret keys prevent the pod from starting. Local development may omit `REQUIRE_AUTH`. `fuelops-env` remains Terraform-owned. See [the access/auth runbook](OPERATOR_ACCESS_AUTH.md) for preflight and rollout order. Secret rotation requires a controlled API restart/rollout; keep tokens out of Git, CLI arguments, and CI output.
 - Missing or insufficient role → **401** `UNAUTHORIZED`.
 
 ### Errors

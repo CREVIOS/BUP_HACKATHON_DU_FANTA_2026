@@ -5,3 +5,6 @@ argocd:
   ingress:
     enabled: false
     hostname: argocd.hemal.me
+grafana:
+  ingress:
+    enabled: false

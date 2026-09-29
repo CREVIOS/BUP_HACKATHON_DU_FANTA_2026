@@ -1,4 +1,4 @@
-# HTTPS for FuelOps and Argo CD
+# HTTPS for FuelOps, Grafana, and Argo CD
 
 The chosen deployment exposes `fuelops.hemal.me` and `argocd.hemal.me` through the
 existing EKS Auto Mode ALB. Cloudflare manages DNS. Argo CD uses its own login;
@@ -8,6 +8,7 @@ Cloudflare Access and Tunnel are not part of this configuration.
 |---|---|---|
 | `fuelops.hemal.me` | `/api` → `api:8000`; `/` → `web:80` in `fuelops` | `91b36eaf-9f79-4250-aac4-ae8401d5c892` |
 | `argocd.hemal.me` | `/` → `argocd-server:443` in `argocd` | `97327450-e8d7-404a-8b48-dc7e5fef6039` |
+| `fuelops.hemal.me/grafana/` | `/grafana` → `kps-grafana:80` in `monitoring` | Existing FuelOps certificate above |
 
 Both certificate ARNs use the prefix
 `arn:aws:acm:ap-southeast-1:373220260649:certificate/`. They are configured in
@@ -39,7 +40,17 @@ hostname coverage, expiry, and live attachment still require verification.
   the shared HTTP listener, so deploy these settings together in a controlled
   window. A transition from an old hostless/HTTP chart can temporarily affect
   access; retaining old image tags alone does not retain the old ingress behavior.
-- Grafana and the Rollouts dashboard retain private port-forward access.
+- Grafana is published at `https://fuelops.hemal.me/grafana/`, with its own login
+  required, anonymous access/signup disabled, and secure session cookies. The
+  platform chart owns a separate ingress in `monitoring`, ordered before the
+  FuelOps catch-all rule. It forwards `/grafana` unchanged; Grafana's root URL,
+  subpath serving, health probes, and local sidecar reload URLs all match it.
+  No new ACM certificate or Cloudflare DNS record is needed.
+- `grafana_ingress_enabled=false` persistently restores private-only Grafana,
+  `http://localhost:3000/`, and cookies usable over the local HTTP tunnel. In
+  public mode, use the HTTPS URL for login; the HTTP port-forward is useful for
+  health checks but cannot carry the Secure session cookie.
+- The Rollouts dashboard retains private port-forward access.
 
 This follows the [EKS Auto Mode ALB configuration](https://docs.aws.amazon.com/eks/latest/userguide/auto-configure-alb.html).
 The ALB supports [HTTPS targets with self-signed server certificates](https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-target-groups.html#target-group-routing-configuration).
@@ -69,9 +80,10 @@ argocd login argocd.hemal.me --grpc-web
    may shorten `_token.fuelops.hemal.me.` to `_token.fuelops` in the Name field;
    it still belongs to the `hemal.me` zone. Copy the complete AWS-provided Target.
    These validation records are separate from the application CNAMEs below.
-3. Wire FuelOps `OPERATOR_TOKEN` and `ADMIN_TOKEN` before public application
-   activation. HTTPS does not fix the backend's current auth-off behavior when
-   both tokens are missing. That secret-wiring increment remains pending.
+3. Verify the operator-owned `fuelops-auth` Secret contains nonempty
+   `OPERATOR_TOKEN` and `ADMIN_TOKEN` keys. The chart requires these only for the
+   API and the new backend image enforces `REQUIRE_AUTH=true`. Follow the
+   [access/auth rollout procedure](OPERATOR_ACCESS_AUTH.md) to deploy both together.
 4. Verify Argo's current administrator credentials through its private port-forward
    before exposing its login. Keep operator Kubernetes access during the change.
 5. Pin the existing healthy Argo Application revision and pause automatic sync
@@ -95,6 +107,7 @@ argocd login argocd.hemal.me --grpc-web
    ```bash
    kubectl -n fuelops get ingress fuelops
    kubectl -n argocd get ingress argocd
+   kubectl -n monitoring get ingress grafana
    kubectl -n fuelops get ingress fuelops \
      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}{"\n"}'
    ```
@@ -118,6 +131,9 @@ curl -I http://fuelops.hemal.me
 curl -I https://fuelops.hemal.me
 curl -I http://argocd.hemal.me
 curl -I https://argocd.hemal.me
+curl -I http://fuelops.hemal.me/grafana/
+curl -I https://fuelops.hemal.me/grafana/login
+curl -fsS https://fuelops.hemal.me/grafana/api/health
 curl -fsS https://fuelops.hemal.me/api/me
 ```
 
@@ -127,6 +143,13 @@ Argo's login requirement and post-login application view, and healthy ALB target
 groups. After token wiring, unauthenticated `/api/me` must report `auth_enabled:
 true` and `role: viewer`. Check real data and telemetry as described in the
 infrastructure runbook; an HTTP success alone does not prove deployment health.
+
+Confirm Grafana redirects to `/grafana/login`, loads its CSS/JavaScript below
+`/grafana/`, and requires credentials for dashboards/datasource APIs. Use the
+existing Grafana login. Verify public root `/` still serves FuelOps and `/api`
+still reaches its API. Dashboard/datasource sidecar logs must show successful
+local reloads, and `/grafana/api/health` must report a healthy database. The
+health endpoint is intentionally available without login for the ALB probe.
 
 If connectivity fails, inspect `kubectl describe ingress` in each namespace and
 the ALB listeners/target health. A wrong region, pending certificate, incorrect

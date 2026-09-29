@@ -68,6 +68,11 @@ run "bootstrap_keeps_application_disabled" {
   command = plan
 
   assert {
+    condition     = length(aws_eks_access_entry.monitoring_operator) == 0 && length(aws_eks_access_policy_association.monitoring_operator) == 0
+    error_message = "An empty operator set must not create human access grants."
+  }
+
+  assert {
     condition     = length(yamldecode(helm_release.argocd_apps.values[0]).applications) == 0
     error_message = "A default bootstrap must not create an Argo Application or run migrations."
   }
@@ -82,6 +87,58 @@ run "bootstrap_keeps_application_disabled" {
     ])
     error_message = "Each namespaced platform release must use an explicitly managed namespace."
   }
+}
+
+run "monitoring_operators_keep_namespace_scope" {
+  command = plan
+  variables {
+    monitoring_operator_principal_arns = [
+      "arn:aws:iam::123456789012:user/talentforge-admin",
+      "arn:aws:iam::123456789012:role/operators/monitoring",
+    ]
+  }
+  assert {
+    condition = (
+      toset(keys(aws_eks_access_entry.monitoring_operator)) == var.monitoring_operator_principal_arns &&
+      alltrue([for entry in aws_eks_access_entry.monitoring_operator : entry.type == "STANDARD" && entry.cluster_name == "fuelops-test"]) &&
+      alltrue([for arn, binding in aws_eks_access_policy_association.monitoring_operator :
+        binding.principal_arn == arn && binding.cluster_name == "fuelops-test" &&
+        binding.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" &&
+        binding.access_scope[0].type == "namespace" && binding.access_scope[0].namespaces == toset(["monitoring"])
+      ])
+    )
+    error_message = "Operator grants must preserve STANDARD identities and Edit permissions only in monitoring."
+  }
+}
+
+run "reject_cross_account_operator" {
+  command = plan
+  variables { monitoring_operator_principal_arns = ["arn:aws:iam::999999999999:user/operator"] }
+  expect_failures = [var.monitoring_operator_principal_arns]
+}
+
+run "reject_cross_partition_operator" {
+  command = plan
+  variables { monitoring_operator_principal_arns = ["arn:aws-us-gov:iam::123456789012:user/operator"] }
+  expect_failures = [var.monitoring_operator_principal_arns]
+}
+
+run "reject_wildcard_operator" {
+  command = plan
+  variables { monitoring_operator_principal_arns = ["arn:aws:iam::123456789012:user/*"] }
+  expect_failures = [var.monitoring_operator_principal_arns]
+}
+
+run "reject_root_operator" {
+  command = plan
+  variables { monitoring_operator_principal_arns = ["arn:aws:iam::123456789012:root"] }
+  expect_failures = [var.monitoring_operator_principal_arns]
+}
+
+run "reject_session_operator" {
+  command = plan
+  variables { monitoring_operator_principal_arns = ["arn:aws:sts::123456789012:assumed-role/operator/session"] }
+  expect_failures = [var.monitoring_operator_principal_arns]
 }
 
 run "application_enable_preserves_git_image_ownership" {
@@ -132,12 +189,14 @@ run "operator_access_and_release_trust" {
     condition = (
       yamldecode(helm_release.monitoring.values[0]).grafana.service.type == "ClusterIP" &&
       !yamldecode(helm_release.monitoring.values[0]).grafana.ingress.enabled &&
-      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.root_url == "http://localhost:3000/" &&
-      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.serve_from_sub_path &&
+      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.root_url == "https://fuelops.hemal.me/grafana/" &&
+      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.serve_from_sub_path &&
+      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].security.cookie_secure &&
+      yamldecode(helm_release.platform.values[0]).grafana.ingress.enabled &&
       !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"]["auth.anonymous"].enabled &&
       !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].users.allow_sign_up
     )
-    error_message = "Grafana must use localhost port-forward access with anonymous access and signup disabled."
+    error_message = "Grafana must serve authenticated HTTPS under /grafana with secure cookies, using only the platform ingress."
   }
   assert {
     condition = (
@@ -172,6 +231,25 @@ run "private_argocd_access" {
       !yamldecode(helm_release.argocd.values[0]).configs.cm["users.anonymous.enabled"]
     )
     error_message = "Disabling public Argo ingress must retain private authenticated HTTPS access."
+  }
+}
+
+run "private_grafana_access" {
+  command = plan
+  variables { grafana_ingress_enabled = false }
+  assert {
+    condition = (
+      !yamldecode(helm_release.platform.values[0]).grafana.ingress.enabled &&
+      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.root_url == "http://localhost:3000/" &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.serve_from_sub_path &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].security.cookie_secure &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"]["auth.anonymous"].enabled &&
+      yamldecode(helm_release.monitoring.values[0]).grafana.readinessProbe.httpGet.path == "/api/health" &&
+      yamldecode(helm_release.monitoring.values[0]).grafana.livenessProbe.httpGet.path == "/api/health" &&
+      yamldecode(helm_release.monitoring.values[0]).grafana.sidecar.dashboards.reloadURL == "http://localhost:3000/api/admin/provisioning/dashboards/reload" &&
+      yamldecode(helm_release.monitoring.values[0]).grafana.sidecar.datasources.reloadURL == "http://localhost:3000/api/admin/provisioning/datasources/reload"
+    )
+    error_message = "Disabling public Grafana must restore authenticated localhost access, probes, and sidecar reload URLs."
   }
 }
 

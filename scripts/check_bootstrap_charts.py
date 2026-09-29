@@ -38,7 +38,36 @@ def documents(output):
     return [doc for doc in yaml.load_all(output, Loader=yaml.BaseLoader) if doc]
 
 
-def check_https(platform, app, certificates, argocd_hostname=None):
+def check_api_auth(app):
+    api_found = False
+    for workload in app:
+        if workload["kind"] not in ("Rollout", "Deployment", "StatefulSet", "DaemonSet", "Job"):
+            continue
+        pod = workload["spec"]["template"]["spec"]
+        for container in pod.get("containers", []) + pod.get("initContainers", []):
+            env_list = container.get("env", [])
+            env = {item["name"]: item for item in env_list}
+            if any(item.get("secretRef", {}).get("name") == "fuelops-auth" for item in container.get("envFrom", [])):
+                raise AssertionError("Bearer tokens must use explicit required keys, never bulk envFrom")
+            if workload["kind"] == "Rollout" and workload["metadata"]["name"] == "api" and container["name"] == "api":
+                api_found = True
+                if len(env) != len(env_list) or env.get("REQUIRE_AUTH") != {"name": "REQUIRE_AUTH", "value": "true"}:
+                    raise AssertionError("API authentication must be required without duplicate environment overrides")
+                for key in ("OPERATOR_TOKEN", "ADMIN_TOKEN"):
+                    if env.get(key) != {"name": key, "valueFrom": {"secretKeyRef": {
+                        "name": "fuelops-auth", "key": key, "optional": "false",
+                    }}}:
+                        raise AssertionError(f"API must require fuelops-auth/{key}")
+            elif any(key in env for key in ("OPERATOR_TOKEN", "ADMIN_TOKEN", "REQUIRE_AUTH")) or any(
+                item.get("valueFrom", {}).get("secretKeyRef", {}).get("name") == "fuelops-auth" for item in env_list
+            ):
+                raise AssertionError("Only the API may receive bearer tokens")
+    if not api_found:
+        raise AssertionError("API workload missing from authentication check")
+
+
+def check_https(platform, app, certificates, argocd_hostname=None, grafana_enabled=False):
+    check_api_auth(app)
     def require(condition, message):
         if not condition:
             raise AssertionError(message)
@@ -57,8 +86,10 @@ def check_https(platform, app, certificates, argocd_hostname=None):
     require(not any(doc["kind"] in ("HTTPRoute", "Gateway") for doc in platform + app),
             "Unexpected alternative public route")
     platform_ingresses = [doc for doc in platform if doc["kind"] == "Ingress"]
-    require(len(platform_ingresses) == (1 if argocd_hostname else 0),
-            "Only explicitly enabled Argo CD may have a platform ingress")
+    expected_ingresses = ({"argocd"} if argocd_hostname else set()) | ({"grafana"} if grafana_enabled else set())
+    require(len(platform_ingresses) == len(expected_ingresses) and
+            {doc["metadata"]["name"] for doc in platform_ingresses} == expected_ingresses,
+            "Only explicitly enabled operator UIs may have platform ingresses")
     app_ingresses = [doc for doc in app if doc["kind"] == "Ingress"]
     require(len(app_ingresses) == 1, "The application must publish exactly one ingress")
     for ingress in platform_ingresses + app_ingresses:
@@ -90,7 +121,7 @@ def check_https(platform, app, certificates, argocd_hostname=None):
             api_env.get("HTTP_ADDR") == ":8000",
             "The API must listen on the port selected by its Services")
     if argocd_hostname:
-        ingress = platform_ingresses[0]
+        ingress = next(doc for doc in platform_ingresses if doc["metadata"]["name"] == "argocd")
         annotations = ingress["metadata"]["annotations"]
         rule = ingress["spec"]["rules"][0]
         require(ingress["metadata"]["namespace"] == "argocd" and rule["host"] == argocd_hostname,
@@ -102,6 +133,22 @@ def check_https(platform, app, certificates, argocd_hostname=None):
         require(rule["http"]["paths"] == [{"path": "/", "pathType": "Prefix", "backend": {
             "service": {"name": "argocd-server", "port": {"number": "443"}},
         }}], "Argo CD ingress must use the TLS Service port")
+    if grafana_enabled:
+        ingress = next(doc for doc in platform_ingresses if doc["metadata"]["name"] == "grafana")
+        annotations = ingress["metadata"]["annotations"]
+        rule = ingress["spec"]["rules"][0]
+        require(ingress["metadata"]["namespace"] == "monitoring" and rule["host"] == fuelops_rule["host"],
+                "Grafana must share the FuelOps hostname/certificate and target its monitoring namespace")
+        require(rule["http"]["paths"] == [{"path": "/grafana", "pathType": "Prefix", "backend": {
+            "service": {"name": "kps-grafana", "port": {"number": "80"}},
+        }}], "Grafana must preserve its subpath and target the correct Service")
+        require(int(annotations["alb.ingress.kubernetes.io/group.order"]) <
+                int(app_ingresses[0]["metadata"]["annotations"]["alb.ingress.kubernetes.io/group.order"]),
+                "Grafana's route must precede the application's catch-all")
+        require(annotations["alb.ingress.kubernetes.io/backend-protocol"] == "HTTP" and
+                annotations["alb.ingress.kubernetes.io/healthcheck-protocol"] == "HTTP" and
+                annotations["alb.ingress.kubernetes.io/healthcheck-path"] == "/grafana/api/health",
+                "Grafana health checks must use its subpath over the in-cluster HTTP Service")
 
 
 def main():
@@ -115,6 +162,11 @@ def main():
     public_platform = documents(helm("template", "platform", "deploy/platform", "--namespace", "kube-system",
                                      *certs, "--set", "argocd.ingress.enabled=true"))
     check_https(public_platform, app, CERTIFICATES, "argocd.hemal.me")
+    for argocd_enabled in (False, True):
+        public_platform = documents(helm("template", "platform", "deploy/platform", "--namespace", "kube-system",
+                                         *certs, "--set", "grafana.ingress.enabled=true",
+                                         "--set", f"argocd.ingress.enabled={str(argocd_enabled).lower()}"))
+        check_https(public_platform, app, CERTIFICATES, "argocd.hemal.me" if argocd_enabled else None, True)
     helm("template", "platform", "deploy/platform", expected_error="/alb/certificateARNs")
     for invalid in (["not-an-arn"], [CERTIFICATES[0], CERTIFICATES[0]]):
         helm("template", "platform", "deploy/platform", "--set-json", f"alb.certificateARNs={json.dumps(invalid)}",
@@ -124,6 +176,10 @@ def main():
              expected_error="/ingress/hostname")
         helm("template", "platform", "deploy/platform", *certs,
              "--set-string", f"argocd.ingress.hostname={hostname}", expected_error="/argocd/ingress/hostname")
+
+    for key in ("REQUIRE_AUTH", "OPERATOR_TOKEN", "ADMIN_TOKEN"):
+        helm("template", "fuelops", APP, *valid_tags, "--set-string", f"api.env.{key}=false",
+             expected_error=f"invalid propertyName '{key}'")
 
     # Exercise each image independently so updating only one tag cannot unblock sync.
     for image in ("image", "web"):
@@ -138,7 +194,7 @@ def main():
             "--set-string", f"{image}.repository=", expected_error=f"/{image}/repository",
         )
 
-    print("Bootstrap chart checks passed: SNI certificates, HTTPS host routing/redirects, public/private Argo CD, invalid certificates/hostnames/images rejected.")
+    print("Bootstrap chart checks passed: required API-only tokens, protected auth settings, SNI certificates, HTTPS routing/redirects, public/private Argo CD and Grafana, invalid certificates/hostnames/images rejected.")
 
 
 if __name__ == "__main__":

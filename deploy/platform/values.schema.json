@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["alb", "argocd"],
+  "required": ["alb", "argocd", "grafana"],
   "properties": {
     "alb": {
       "type": "object",
@@ -14,6 +14,19 @@
           "items": {
             "type": "string",
             "pattern": "^arn:[a-z0-9-]+:acm:[a-z0-9-]+:[0-9]{12}:certificate/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          }
+        }
+      }
+    },
+    "grafana": {
+      "type": "object",
+      "required": ["ingress"],
+      "properties": {
+        "ingress": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": { "type": "boolean" }
           }
         }
       }

@@ -1,4 +1,4 @@
 apiVersion: v2
 name: fuelops
 description: Fuel Supply Intelligence Platform (simulator, ingestor, intel, api, web) with canary + auto-rollback
-version: 0.2.0
+version: 0.3.0

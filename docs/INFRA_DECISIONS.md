@@ -11,8 +11,12 @@ Status: v2.1 · 2026-09-29 · includes the independent review (fact-check with s
 > HTTPS update: the selected deployment uses `fuelops.hemal.me` and authenticated
 > `argocd.hemal.me` on the shared EKS Auto Mode ALB, with two existing Singapore ACM
 > certificates and Cloudflare DNS. This supersedes private-only Argo access and the
-> historical HTTP fallback below. See [HTTPS_SETUP.md](HTTPS_SETUP.md). Grafana and
-> Rollouts retain private access; FuelOps bearer-token wiring remains pending.
+> historical HTTP fallback below. Grafana is now selected for authenticated public
+> access at `https://fuelops.hemal.me/grafana/`, reusing the FuelOps certificate;
+> Rollouts stays private. See [HTTPS_SETUP.md](HTTPS_SETUP.md) and
+> [OPERATOR_ACCESS_AUTH.md](OPERATOR_ACCESS_AUTH.md) for the API token requirement,
+> operator access adoption, and controlled rollout. These code changes still need
+> platform application and live verification.
 
 Runtime on AWS: **≤ 8 hours** (spin up before the demo, destroy after).
 Fixed by the team: Go backend · AWS · RDS for the database · Terraform · CI/CD · automated rollback.

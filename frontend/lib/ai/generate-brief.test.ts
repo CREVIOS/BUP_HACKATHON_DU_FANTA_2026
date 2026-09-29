@@ -82,7 +82,13 @@ describe("mock model streaming", () => {
     const result = streamText({
       model: createMockModel(),
       messages: [{ role: "user", content: "Which stations are running low?" }],
-      tools: createTools(async () => ({ snapshot: crisis, quality: HEALTHY_DATA })),
+      tools: createTools({
+        load: async () => ({ snapshot: crisis, quality: HEALTHY_DATA }),
+        listRecommendations: async () => [],
+        explainRecommendation: async () => {
+          throw new Error("not used in this test");
+        },
+      }),
       stopWhen: isStepCount(4),
     });
     const text = await result.text;

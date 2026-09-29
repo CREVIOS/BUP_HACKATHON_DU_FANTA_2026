@@ -1,15 +1,25 @@
 import { isStepCount, streamText } from "ai";
 import { describe, expect, it } from "vitest";
 import { createMockModel } from "@/lib/ai/mock-model";
-import { HEALTHY_DATA } from "@/lib/ai/quality";
-import { createTools } from "@/lib/ai/tools";
+import { HEALTHY_DATA, type LoadedState } from "@/lib/ai/quality";
+import { type ChatContext, createTools } from "@/lib/ai/tools";
 import { mockSnapshot } from "@/lib/mock/scenarios";
 
-const ask = (question: string, load: Parameters<typeof createTools>[0]) =>
+// These tests exercise the snapshot-backed tools only; the recommendation tools
+// are stubbed since the mock model never calls them here.
+const ctxFor = (load: () => Promise<LoadedState>): ChatContext => ({
+  load,
+  listRecommendations: async () => [],
+  explainRecommendation: async () => {
+    throw new Error("not used in this test");
+  },
+});
+
+const ask = (question: string, load: () => Promise<LoadedState>) =>
   streamText({
     model: createMockModel({ chunkDelayMs: 0 }),
     messages: [{ role: "user", content: question }],
-    tools: createTools(load),
+    tools: createTools(ctxFor(load)),
     stopWhen: isStepCount(4),
   });
 

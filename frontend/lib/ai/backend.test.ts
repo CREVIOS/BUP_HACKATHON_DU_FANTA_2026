@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { loadContext } from "@/lib/ai/backend";
+import { explainRecommendation, listRecommendations, loadContext } from "@/lib/ai/backend";
 import { BASELINE } from "@/lib/mock/baseline";
 
 const HEALTHY = { backend_api: "healthy", database: "healthy", fuel_simulator: "healthy", decision_engine: "healthy" };
@@ -54,5 +54,58 @@ describe("loadContext", () => {
     await expect(loadContext(undefined, api({ "/api/state": { status: 500 }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/500/);
     await expect(loadContext(undefined, api({ "/api/state": { body: { tick: null } }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/snapshot/i);
     await expect(loadContext(undefined, api({ "/api/state": { throws: true } }))).rejects.toThrow(/fetch failed/);
+  });
+});
+
+describe("listRecommendations", () => {
+  it("maps the API list to summaries", async () => {
+    const fetchImpl = api({
+      "/api/recommendations?status=PROPOSED&limit=5": {
+        body: {
+          recommendations: [
+            { id: 12, station_id: "station-mirpur", fuel_type: "diesel", quantity: 5000, verdict: "review", status: "PROPOSED", risk_before: 0.72, risk_after: 0.31 },
+          ],
+        },
+      },
+    });
+    const out = await listRecommendations(undefined, { status: "PROPOSED", limit: 5 }, fetchImpl);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ id: 12, station_id: "station-mirpur", verdict: "review", risk_after: 0.31 });
+  });
+
+  it("returns [] in a scenario preview without any network call", async () => {
+    const fetchImpl = async () => {
+      throw new Error("must not be called");
+    };
+    expect(await listRecommendations("crisis", {}, fetchImpl)).toEqual([]);
+  });
+});
+
+describe("explainRecommendation", () => {
+  it("returns the backend explanation for an id", async () => {
+    const fetchImpl = api({
+      "/api/recommendations/12/explain": {
+        body: {
+          recommendation_id: 12,
+          explanation: { headline: "Ship 5,000 L", narrative: "why", factors: ["a"], confidence: "low", action: "Route to a human operator before dispatch", source: "llm" },
+        },
+      },
+    });
+    const ex = await explainRecommendation(undefined, 12, fetchImpl);
+    expect(ex.source).toBe("llm");
+    expect(ex.headline).toContain("5,000");
+    expect(ex.action).toMatch(/human operator/);
+  });
+
+  it("refuses in a scenario preview", async () => {
+    const fetchImpl = async () => {
+      throw new Error("must not be called");
+    };
+    await expect(explainRecommendation("crisis", 1, fetchImpl)).rejects.toThrow(/scenario preview/i);
+  });
+
+  it("propagates a backend error", async () => {
+    const fetchImpl = api({ "/api/recommendations/99/explain": { status: 404 } });
+    await expect(explainRecommendation(undefined, 99, fetchImpl)).rejects.toThrow(/404/);
   });
 });

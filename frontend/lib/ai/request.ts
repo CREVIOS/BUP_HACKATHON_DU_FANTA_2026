@@ -17,9 +17,17 @@ function textLength(message: UIMessage): number {
 
 // Only text is trusted from the browser. Tool calls and results are dropped: the server-side tools
 // produce the real ones, and a forged "tool result" must never look like our data to the model.
+//
+// We also rebuild each part and the message from scratch, dropping provider metadata. That metadata
+// carries OpenAI Responses item ids (msg_/rs_) for reasoning models; replaying an assistant message
+// item without its paired reasoning item makes the API 400 ("message ... without its required
+// 'reasoning' item"). Sending prior turns as plain text avoids that and is safer besides.
 function textOnly(message: UIMessage): UIMessage | undefined {
-  const parts = message.parts.filter((part) => part.type === "text");
-  return parts.length > 0 ? { ...message, parts } : undefined;
+  const parts = message.parts
+    .filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
+    .map((part) => ({ type: "text" as const, text: part.text }));
+  if (parts.length === 0) return undefined;
+  return { id: message.id, role: message.role, parts };
 }
 
 // Validate everything from the browser before it reaches the model.

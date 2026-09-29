@@ -2,10 +2,10 @@ import { keys, type QueryKey } from "@/lib/api/keys";
 
 // What each /api/stream event changes (docs/API.md section 6).
 const MAP: Record<string, readonly QueryKey[]> = {
-  tick: [keys.overview, keys.network, keys.risk, keys.demandAll, keys.supply, keys.events, keys.intelQuality],
+  tick: [keys.overview, keys.network, keys.risk, keys.demandAll, keys.supply, keys.events, keys.intelQuality, keys.rl, keys.rlShadowAll],
   alerts: [keys.alertsAll, keys.overview],
   recommendations: [keys.recommendationsAll, keys.decisions, keys.overview],
-  allocations: [keys.allocations],
+  allocations: [keys.allocations, keys.rlShadowAll],
   commands: [keys.commands],
 };
 

@@ -122,3 +122,19 @@ func TestRegionalSpikeForcesReview(t *testing.T) {
 		t.Fatal("a regional crisis touching the station must force review")
 	}
 }
+
+func TestShortfallShowsImpactWhenStockoutIsCertain(t *testing.T) {
+	w := baselineWorld()
+	w.Instance.Tick, w.Instance.SimTime = 28, "2026-01-01T07:00:00"
+	station(&w, "station-mirpur").Inventory["PETROL"] = 0 // dry: a stockout within 12 h is certain either way
+	before, after, err := Impact(w, Proposal{StationID: "station-mirpur", FuelType: "PETROL", RouteID: "route-gazipur-mirpur", Quantity: 500}, DefaultOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if before.StockoutProb != 1 || after.StockoutProb != 1 {
+		t.Fatalf("setup: expected a certain stockout, got %v -> %v", before.StockoutProb, after.StockoutProb)
+	}
+	if d := before.ExpectedShortfall - after.ExpectedShortfall; d < 499 || d > 501 {
+		t.Fatalf("500 L shipment should cut the expected shortfall by ~500 L, got %v -> %v", before.ExpectedShortfall, after.ExpectedShortfall)
+	}
+}

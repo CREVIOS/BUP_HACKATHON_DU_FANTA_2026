@@ -36,13 +36,26 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-// Risk before and after as two bars on one 0-100% scale: the impact is the visible drop.
-function Impact({ before, after }: { before?: number | null; after?: number | null }) {
+// Risk before and after as two bars on one 0-100% scale, plus the expected shortage in liters: when the network
+// is short of fuel a stockout can be certain either way, and the liters are the impact that still moves.
+function Impact({
+  before,
+  after,
+  shortBefore,
+  shortAfter,
+}: {
+  before?: number | null;
+  after?: number | null;
+  shortBefore?: number;
+  shortAfter?: number;
+}) {
   const bar = (value: number | null | undefined, className: string) => (
     <div className="h-2 flex-1 rounded-full bg-muted" aria-hidden>
       <div className={`h-full rounded-full ${className}`} style={{ width: `${Math.round((value ?? 0) * 100)}%` }} />
     </div>
   );
+  const hasShort = shortBefore !== undefined && shortAfter !== undefined;
+  const saved = hasShort ? shortBefore - shortAfter : 0;
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-3 text-sm">
@@ -56,6 +69,48 @@ function Impact({ before, after }: { before?: number | null; after?: number | nu
         <span className="w-12 text-right font-mono tabular-nums">{formatProbability(after)}</span>
       </div>
       <p className="text-xs text-muted-foreground">Probability of a stockout within 12 hours.</p>
+      {hasShort ? (
+        <p className="text-sm">
+          Expected shortage, next 12 h:{" "}
+          <span className="font-mono tabular-nums">
+            {formatNumber(shortBefore)} L → {formatNumber(shortAfter)} L
+          </span>
+          {saved > 0 ? <span className="text-ok-fg"> (−{formatNumber(saved)} L)</span> : null}
+          {before != null && after != null && before === after && saved > 0 ? (
+            <span className="block text-xs text-muted-foreground">
+              A stockout is {before >= 1 ? "certain" : "equally likely"} either way; this shipment shrinks it.
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+// The trained RL policy's own account of its choice (brief section 9): the plan it chose, its probability for it,
+// the other plans it weighed, and the rule baseline's choice.
+function RLBlock({ rl }: { rl: NonNullable<RecommendationDetail["recommendation"]["explanation"]["rl"]> }) {
+  return (
+    <div className="space-y-2 text-sm">
+      <p>
+        Chose <span className="font-medium">{rl.strategy}</span> with {Math.round(rl.confidence * 100)}% confidence; this shipment is 1 of{" "}
+        {rl.plan_shipments} in the plan ({formatNumber(Math.round(rl.plan_liters))} L). Rule baseline would {rl.baseline_strategy === "wait" ? "wait" : `choose ${rl.baseline_strategy}`}
+        {rl.agrees_with_baseline ? " (same)." : "."}
+      </p>
+      <ul className="space-y-1">
+        {rl.options.slice(0, 4).map((o) => (
+          <li key={o.action} className="text-xs">
+            <div className="flex justify-between gap-2">
+              <span className={o.action === rl.action ? "font-medium" : "text-muted-foreground"}>{o.strategy}</span>
+              <span className="font-mono tabular-nums text-muted-foreground">{Math.round(o.probability * 100)}%</span>
+            </div>
+            <div className="mt-0.5 h-1.5 rounded-full bg-muted" aria-hidden>
+              <div className={`h-full rounded-full ${o.action === rl.action ? "bg-foreground" : "bg-chart-2"}`} style={{ width: `${Math.max(o.probability * 100, 1)}%` }} />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="font-mono text-[0.6875rem] text-muted-foreground">{rl.model}</p>
     </div>
   );
 }
@@ -96,8 +151,14 @@ function Inspector({ rec, extras, waiting, names, formKey, onDecided }: Shared &
       </div>
 
       <Block title="Expected impact">
-        <Impact before={rec.risk_before} after={rec.risk_after} />
+        <Impact before={rec.risk_before} after={rec.risk_after} shortBefore={e.shortfall_before} shortAfter={e.shortfall_after} />
       </Block>
+
+      {e.rl ? (
+        <Block title="RL policy">
+          <RLBlock rl={e.rl} />
+        </Block>
+      ) : null}
 
       {waiting && extras?.still_valid === false ? (
         <div role="alert" className="rounded-md bg-bad-bg px-3 py-2 text-sm text-bad-fg">

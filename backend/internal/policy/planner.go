@@ -29,21 +29,25 @@ type Alternative struct {
 }
 
 type Recommendation struct {
-	StationID      string         `json:"station_id"`
-	FuelType       string         `json:"fuel_type"`
-	DepotID        string         `json:"depot_id"`
-	RouteID        string         `json:"route_id"`
-	Quantity       float64        `json:"quantity"`
-	TransitTicks   int            `json:"transit_ticks"`
-	ArrivalTick    int            `json:"arrival_tick"`
-	RiskBefore     float64        `json:"risk_before"`
-	RiskAfter      float64        `json:"risk_after"`
-	TimeToStockout int            `json:"time_to_stockout"` // -1 = none within horizon
-	Binding        string         `json:"binding_constraint"`
-	Signals        map[string]any `json:"signals"`
-	Alternatives   []Alternative  `json:"alternatives"`
-	ReviewRequired bool           `json:"review_required"`
-	ReviewReasons  []string       `json:"review_reasons"`
+	StationID    string  `json:"station_id"`
+	FuelType     string  `json:"fuel_type"`
+	DepotID      string  `json:"depot_id"`
+	RouteID      string  `json:"route_id"`
+	Quantity     float64 `json:"quantity"`
+	TransitTicks int     `json:"transit_ticks"`
+	ArrivalTick  int     `json:"arrival_tick"`
+	RiskBefore   float64 `json:"risk_before"`
+	RiskAfter    float64 `json:"risk_after"`
+	// Expected unserved demand over the horizon without / with this shipment (liters): the impact that still
+	// shows when a stockout is certain either way.
+	ShortfallBefore float64        `json:"shortfall_before"`
+	ShortfallAfter  float64        `json:"shortfall_after"`
+	TimeToStockout  int            `json:"time_to_stockout"` // -1 = none within horizon
+	Binding         string         `json:"binding_constraint"`
+	Signals         map[string]any `json:"signals"`
+	Alternatives    []Alternative  `json:"alternatives"`
+	ReviewRequired  bool           `json:"review_required"`
+	ReviewReasons   []string       `json:"review_reasons"`
 }
 
 type Plan struct {
@@ -155,6 +159,7 @@ func MakePlan(w sim.World, o Options) Plan {
 				StationID: s.ID, FuelType: p.FuelType, DepotID: r.SourceDepotID, RouteID: r.ID,
 				Quantity: q, TransitTicks: r.TransitTicks, ArrivalTick: arrive,
 				RiskBefore: p.StockoutProb, RiskAfter: after.StockoutProb, TimeToStockout: p.TimeToStockout,
+				ShortfallBefore: math.Round(p.ExpectedShortfall), ShortfallAfter: math.Round(after.ExpectedShortfall),
 				Binding: binding,
 				Signals: map[string]any{
 					"on_hand": p.OnHand, "in_transit": p.InTransit, "capacity": p.Capacity,

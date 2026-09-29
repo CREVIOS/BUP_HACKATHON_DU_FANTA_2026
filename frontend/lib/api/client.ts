@@ -58,6 +58,8 @@ export function createApi(http: AxiosInstance) {
       get("/api/demand/regions", s.demandRegionsSchema, signal, params),
     supply: (signal?: AbortSignal) => get("/api/supply", s.supplySchema, signal),
     events: (signal?: AbortSignal) => get("/api/events", s.eventsSchema, signal),
+    rl: (signal?: AbortSignal) => get("/api/rl", s.rlSchema, signal),
+    rlShadow: (params: { limit?: number }, signal?: AbortSignal) => get("/api/rl/shadow", s.rlShadowSchema, signal, params),
     alerts: (params: { state?: "open" | "all"; limit?: number }, signal?: AbortSignal) =>
       get("/api/alerts", s.alertsSchema, signal, params),
     recommendations: (params: { status?: string; limit?: number } = {}, signal?: AbortSignal) =>

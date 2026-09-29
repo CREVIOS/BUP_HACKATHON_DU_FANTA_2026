@@ -20,6 +20,9 @@ export const keys = {
   policy: ["policy"],
   me: ["me"],
   commands: ["commands"],
+  rl: ["rl"],
+  rlShadowAll: ["rl", "shadow"],
+  rlShadow: (params: object) => ["rl", "shadow", params],
 } as const;
 
 export type QueryKey = readonly unknown[];

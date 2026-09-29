@@ -60,7 +60,10 @@ func (s *server) overview(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	// Freshness = time since the ingestor last read the simulator successfully. A paused world does not change,
+	// so the snapshot itself can be old while the data is current.
 	age := time.Since(snap.CapturedAt).Seconds()
+	_ = s.db.QueryRow(ctx, `SELECT EXTRACT(EPOCH FROM now() - last_ok_at) FROM ingestor_heartbeat WHERE id = 1`).Scan(&age)
 	source := "intel"
 	if fallback {
 		source = "fallback"
@@ -69,7 +72,7 @@ func (s *server) overview(w http.ResponseWriter, r *http.Request) {
 		"simulation_only": true,
 		"epoch_id":        snap.EpochID, "tick": wd.Instance.Tick, "sim_time": wd.Instance.SimTime, "sim_status": wd.Instance.Status,
 		"tick_minutes": wd.Instance.TickMinutes, "scenario_id": wd.Instance.ScenarioID,
-		"stale": snap.Stale, "data_age_seconds": age, "degraded": snap.Stale || fallback,
+		"stale": snap.Stale, "data_age_seconds": age, "degraded": snap.Stale || fallback || age > 10,
 		"sim_metrics":     snap.Metrics,
 		"open_alerts":     map[string]int{"critical": crit, "warn": warn, "info": info},
 		"review_queue":    queue,

@@ -105,8 +105,10 @@ type ingestor struct {
 	epochID        int64
 	last           sim.Instance
 	lastStale      bool
-	lastWorld      [32]byte // hash of the last persisted world
-	lastEvents     [32]byte // hash of the events at the last decision
+	lastWorld      [32]byte  // hash of the last persisted world
+	lastEvents     [32]byte  // hash of the events at the last decision
+	fellBack       bool      // the last decision used the fallback (intel unreachable)
+	decidedAt      time.Time // when the last decision ran
 	lastDemandTick int
 	metrics        *sim.Metrics
 	metricsAt      time.Time
@@ -169,7 +171,10 @@ func (i *ingestor) cycle(ctx context.Context, force bool) {
 		}
 		return
 	}
-	if changed || force {
+	// While on the fallback, re-decide every 5 s even without a new tick, so a paused simulator does not keep
+	// the fallback (and its alert) after intel recovers, e.g. when the ingestor starts before intel is ready.
+	retry := i.fellBack && time.Since(i.decidedAt) >= 5*time.Second
+	if changed || force || retry {
 		if err := i.decide(ctx, w); err != nil && ctx.Err() == nil {
 			slog.ErrorContext(ctx, "decide failed", "tick", w.Instance.Tick, "err", err)
 		}

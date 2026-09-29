@@ -96,6 +96,10 @@ func (i *ingestor) poll(ctx context.Context) error {
 		return err
 	}
 	i.stream.ObserveTick(w.Instance.Tick)
+	if err := w.Validate(); err != nil {
+		// Reject a malformed simulator response instead of persisting it (brief §11).
+		return fmt.Errorf("invalid world snapshot: %w", err)
+	}
 	if err := i.ensureEpoch(ctx, w.Instance); err != nil {
 		return err
 	}

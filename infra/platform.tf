@@ -30,10 +30,11 @@ provider "helm" {
 
 # ALB IngressClass (Auto Mode), default gp3 StorageClass, shared ingresses for Argo CD + Grafana.
 resource "helm_release" "platform" {
-  name       = "platform"
-  chart      = "${path.module}/../deploy/platform"
-  namespace  = "kube-system"
-  depends_on = [module.eks]
+  name      = "platform"
+  chart     = "${path.module}/../deploy/platform"
+  namespace = "kube-system"
+  # Its ingresses live in the argocd / monitoring / argo-rollouts namespaces those releases create.
+  depends_on = [helm_release.argocd, helm_release.monitoring, helm_release.argo_rollouts]
 }
 
 resource "helm_release" "metrics_server" {

@@ -1,0 +1,13 @@
+name: ci
+on: { push: { branches: [main] }, pull_request: {} }
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: backend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: backend/go.mod, cache-dependency-path: backend/go.sum }
+      - run: go vet ./...
+      - run: go test -race ./...
+      - run: docker build --build-arg VERSION=${GITHUB_SHA::7} -t fuelops-backend:ci .

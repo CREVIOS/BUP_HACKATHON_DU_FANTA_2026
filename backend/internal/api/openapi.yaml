@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: FuelOps Operator API
+  version: "1.0"
+  description: |
+    Operator-facing REST API for the FuelOps Fuel Supply Intelligence & Resilience
+    Platform. This service reads only from Postgres (the ingestor is the sole
+    simulator client) and never calls the BUP Fuel Supply Simulator directly.
+servers:
+  - url: http://localhost:8000
+    description: Local (docker compose)
+paths:
+  /api/state:
+    get:
+      summary: Latest world snapshot
+      description: The most recent tick-fenced snapshot the ingestor persisted. Returns `{ "tick": null }` before the first snapshot exists.
+      operationId: getState
+      responses:
+        "200":
+          description: Latest snapshot, or an empty marker when none exists yet.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/State"
+                  - $ref: "#/components/schemas/EmptyState"
+        "500":
+          description: Database error.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /api/status:
+    get:
+      summary: Component health (brief §15 System Status)
+      description: Health of every component the operator dashboard surfaces.
+      operationId: getStatus
+      responses:
+        "200":
+          description: Per-component health. A component is either "healthy" or "unhealthy: <reason>".
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Status" }
+  /healthz:
+    get:
+      summary: Liveness / readiness probe
+      operationId: getHealthz
+      responses:
+        "200":
+          description: Service is ready.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: Service is not ready.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /version:
+    get:
+      summary: Build version
+      operationId: getVersion
+      responses:
+        "200":
+          description: Service name and build version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Version" }
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      operationId: getMetrics
+      responses:
+        "200":
+          description: Prometheus text exposition format.
+          content:
+            text/plain:
+              schema: { type: string }
+components:
+  schemas:
+    State:
+      type: object
+      properties:
+        tick: { type: integer, example: 12 }
+        stale: { type: boolean, description: "True if the snapshot was captured while a stale_data fault was active." }
+        captured_at: { type: string, format: date-time }
+        age_seconds: { type: number, format: double }
+        snapshot: { type: object, description: "Raw sim.Snapshot payload.", additionalProperties: true }
+      required: [tick, stale, captured_at, age_seconds, snapshot]
+    EmptyState:
+      type: object
+      properties:
+        tick: { type: "null" }
+    Status:
+      type: object
+      additionalProperties: { type: string }
+      example:
+        backend_api: healthy
+        database: healthy
+        fuel_simulator: healthy
+        decision_engine: healthy
+    Health:
+      type: object
+      properties:
+        status: { type: string, example: ok }
+        error: { type: string }
+      required: [status]
+    Version:
+      type: object
+      properties:
+        service: { type: string, example: api }
+        version: { type: string, example: dev }
+      required: [service, version]
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]

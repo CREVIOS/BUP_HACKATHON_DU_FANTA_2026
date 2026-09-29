@@ -28,6 +28,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	mux := httpx.NewMux("api", func(ctx context.Context) error { return db.Ping(ctx) })
 	mux.HandleFunc("GET /api/state", s.state)
 	mux.HandleFunc("GET /api/status", s.status)
+	registerDocs(mux) // /openapi.yaml, /docs (Swagger UI), /redoc
 	return httpx.Serve(ctx, cfg.HTTPAddr, mux)
 }
 

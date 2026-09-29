@@ -129,7 +129,11 @@ func Evaluate(ctx context.Context, req PlanRequest, jev *Jev, source string) Pla
 			t.RuleReasons = append(t.RuleReasons, "crisis active: "+strings.Join(crises, ", "))
 		}
 		if r.RiskAfter > residualRiskReview {
-			t.RuleReasons = append(t.RuleReasons, fmt.Sprintf("low confidence: %.0f%% stockout risk remains after this shipment", r.RiskAfter*100))
+			why := fmt.Sprintf("not enough on its own: %.0f%% stockout risk remains after this shipment", r.RiskAfter*100)
+			if r.ShortfallAfter > 0 {
+				why += fmt.Sprintf(" (still %.0f L short over 12 h)", r.ShortfallAfter)
+			}
+			t.RuleReasons = append(t.RuleReasons, why)
 		}
 		if a := anomalyFor(anomalies, r.StationID, r.FuelType); a != nil && a.ExplainedBy == "" {
 			t.RuleReasons = append(t.RuleReasons, fmt.Sprintf("unexplained demand %s (×%.2f of normal)", a.Direction, a.Ratio))

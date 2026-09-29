@@ -1,4 +1,5 @@
 {
+  "snapshot": "Historical verification at commit 41a9c8a, before the strengthened baseline; see exact-manifest-parity-v3.json for the current implementation.",
   "source": "original image engine and allocation handlers, read-only source, private in-memory SQLite",
   "image": "sha256:7067050693f49d377d91ca91f2faa6e63f673f69a69429d4693e78e9c0598e92",
   "checks": ["station and depot inventories", "per-tick demand", "demand multipliers", "supply times quantities statuses", "active allocation quantities statuses ETA"],

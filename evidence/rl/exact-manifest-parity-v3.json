@@ -1,0 +1,17 @@
+{
+  "verified_date": "2026-09-29",
+  "implementation_commit": "a81e90c9106d42389f384f24b552b323f4d3b589",
+  "source": "Official engine and allocation handlers with reverse source mounted read-only; isolated no-network container and private in-memory SQLite",
+  "image": "sha256:7067050693f49d377d91ca91f2faa6e63f673f69a69429d4693e78e9c0598e92",
+  "bridge_sha256": "6119fb498c28625fb6a390411a350434c5276ebc4bcf1b7a1cd768e8841e58a5",
+  "manifest_sha256": "97a82b768e489a943627be55bdeef8d965592e0506e5d8dd5a154f8fb918e63b",
+  "policy": "strengthened feasible event-aware baseline, not trained RL",
+  "checks": ["station and depot inventories every tick", "per-row demand", "demand multipliers", "supply times quantities statuses", "active allocation quantities statuses ETA"],
+  "scenarios": [
+    {"name":"baseline","ticks":576,"passed":true,"max_inventory_difference":0,"served":540127.028,"unmet":18449.984,"service_level":0.9669696682755718,"requests":218,"lost":0,"failures":0,"stranded":9937.854},
+    {"name":"demand_spike","ticks":576,"passed":true,"max_inventory_difference":0,"served":394900,"unmet":166557.796,"service_level":0.7033476119013586,"requests":147,"lost":0,"failures":0,"stranded":0},
+    {"name":"supply_disruption","ticks":576,"passed":true,"max_inventory_difference":0,"served":384899.999,"unmet":173677.013,"service_level":0.6890723941929786,"requests":137,"lost":0,"failures":0,"stranded":0.001},
+    {"name":"final_combined","ticks":576,"passed":true,"max_inventory_difference":0,"served":394900,"unmet":167306.533,"service_level":0.7024109056377692,"requests":160,"lost":0,"failures":0,"stranded":0}
+  ],
+  "limits": ["Not a trained-policy evaluation", "Not live HTTP partial-batch or deployment verification", "Not proof of global optimality"]
+}

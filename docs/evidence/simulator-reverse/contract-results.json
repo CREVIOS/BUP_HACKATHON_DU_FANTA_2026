@@ -1,0 +1,321 @@
+[
+  {
+    "name": "startup honors TICK_MINUTES=30",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG reset loses TICK_MINUTES=30",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /docs",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /redoc",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /openapi.json",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /admin",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /admin/stats",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /admin/audit",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /admin/faults",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /admin/events",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/health",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/instance",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/regions",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/depots",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/stations",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/routes",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/supply-arrivals",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/events",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/allocations",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/demand-history",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "GET /v1/metrics",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "topology",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "unknown entity 404",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "quantity zero rejected",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "route limit rejected",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "station headroom rejected",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "exact retry returns 201 same id",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "retry debits exactly once",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "key mismatch rejected",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "cancel refunds once",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "cancel retains idempotency key",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "departure tick and ETA",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "arrival tick",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "demand rows 12 per tick",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "demand limit minimum one",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "replay deterministic",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG inbound headroom is not reserved",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "dispatch capacity enforced",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "arrival overflow silently discarded",
+    "confirmed": true,
+    "detail": {
+      "sent": 12000,
+      "received": 6118.493
+    }
+  },
+  {
+    "name": "departure failure consumes fuel without refund",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "active route rejects new orders",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "duration 1 includes ticks 0 and 1",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG empty entity filters do not mean all",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "depot constraint label only",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG overlapping disruption clears early",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "outage demand wholly unmet",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "region scoped demand multiplier",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "delay then shortfall apply",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "already delayed supply not delayed again",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "unavailable and bypass",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "error rate one always rejects",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "latency injected",
+    "confirmed": true,
+    "detail": 0.15638683399999986
+  },
+  {
+    "name": "stale header exists",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG stale header also on SSE",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "SSE connected comment",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "SSE lacks departed and arrived notifications",
+    "confirmed": true,
+    "detail": [
+      "event: allocation.status_changed",
+      "event: inventory.updated",
+      "event: simulation.tick",
+      "event: simulation.tick",
+      "event: simulation.tick"
+    ]
+  },
+  {
+    "name": "existing SSE connection not disconnected",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "stream fault rejects new connections",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "BUG zero multiplier accepted then crashes resolve",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "background run progresses",
+    "confirmed": true,
+    "detail": null
+  },
+  {
+    "name": "toggle twice returns PAUSED",
+    "confirmed": true,
+    "detail": null
+  }
+]

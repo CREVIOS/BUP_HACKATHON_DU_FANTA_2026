@@ -8,7 +8,7 @@ const count = (s: string, sub: string) => s.split(sub).length - 1;
 describe("Markdown", () => {
   it("renders **bold** as <strong> and leaves the rest as text", () => {
     const out = html("**Ship 5,000 L** to STN-MIRPUR");
-    expect(out).toContain("<strong>Ship 5,000 L</strong>");
+    expect(out).toMatch(/<strong[^>]*>Ship 5,000 L<\/strong>/);
     expect(out).toContain("to STN-MIRPUR");
   });
 
@@ -29,6 +29,6 @@ describe("Markdown", () => {
     const out = html("<img src=x onerror=alert(1)> and **safe**");
     expect(out).not.toContain("<img");
     expect(out).toContain("&lt;img");
-    expect(out).toContain("<strong>safe</strong>");
+    expect(out).toMatch(/<strong[^>]*>safe<\/strong>/);
   });
 });

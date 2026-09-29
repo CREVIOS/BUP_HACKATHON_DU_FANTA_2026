@@ -1,0 +1,48 @@
+# PR validation uses ci.yml's credential-free checks; live Terraform runs only from main.
+name: infra
+on:
+  workflow_dispatch:
+    inputs:
+      action: { type: choice, options: [plan, apply, destroy], default: plan }
+      region: { type: string, default: ap-southeast-1 }
+      state_key: { type: string, default: fuelops-sg/terraform.tfstate }
+      enable_application:
+        description: "Keep true for an existing app; false only for a fresh platform bootstrap"
+        type: boolean
+        required: true
+        default: true
+      git_revision:
+        description: "Git branch or exact release commit for Argo CD"
+        type: string
+        default: main
+
+concurrency: { group: "infra-${{ inputs.state_key || 'pr' }}", cancel-in-progress: false }
+
+jobs:
+  terraform:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    defaults: { run: { working-directory: infra } }
+    env:
+      TF_IN_AUTOMATION: "1"
+      TF_VAR_region: ${{ inputs.region || 'ap-southeast-1' }}
+      TF_VAR_typesafe_api_key: ${{ secrets.TYPESAFE_API_KEY }}
+      TF_VAR_enable_application: ${{ inputs.enable_application }}
+      TF_VAR_git_revision: ${{ inputs.git_revision }}
+      STATE_KEY: ${{ inputs.state_key }}
+      ACTION: ${{ inputs.action || 'plan' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.TF_ROLE_ARN }}
+          aws-region: ${{ inputs.region || 'ap-southeast-1' }}
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.5, terraform_wrapper: false }
+      - run: terraform init -input=false -lockfile=readonly -backend-config="key=$STATE_KEY"
+      - run: terraform plan -input=false -out=tfplan ${{ env.ACTION == 'destroy' && '-destroy' || '' }}
+      - if: env.ACTION != 'plan'
+        run: terraform apply -input=false tfplan
+      - if: env.ACTION == 'apply'
+        run: terraform output

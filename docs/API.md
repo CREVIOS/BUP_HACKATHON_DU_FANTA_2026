@@ -9,7 +9,7 @@ Latest simulator snapshot.
 Before the first poll: `{ "tick": null }`. TODO(P1): stations, depots, routes, events, allocations, supply, risk.
 
 ## GET /api/status
-Brief §15 System Status. Each value is `"healthy"` or `"unhealthy: <reason>"`.
+Brief §15 System Status. Each value is `"healthy"` or `"unhealthy: <reason>"`. `fuel_simulator` is judged by the ingestor's last successful poll (a PAUSED sim is healthy); the run state is `snapshot.instance.status` in `/api/state`.
 ```json
 { "backend_api": "healthy", "database": "healthy", "fuel_simulator": "healthy", "decision_engine": "healthy" }
 ```

@@ -14,7 +14,6 @@ terraform {
     aws        = { source = "hashicorp/aws", version = "~> 6.0" }
     helm       = { source = "hashicorp/helm", version = "~> 3.0" }
     kubernetes = { source = "hashicorp/kubernetes", version = "~> 2.38" }
-    github     = { source = "integrations/github", version = "~> 6.0" }
     random     = { source = "hashicorp/random", version = "~> 3.6" }
     tls        = { source = "hashicorp/tls", version = "~> 4.0" }
   }

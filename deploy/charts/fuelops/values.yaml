@@ -3,32 +3,29 @@
 # supply full SHA tags; enable_application stays false until CI commits real releases.
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: bootstrap
+  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: bootstrap
+  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
   replicas: 2
-
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
-  speed: "1"          # ticks/s; default 8 outruns the pipeline (docs/INFRA_DECISIONS.md §3)
+  speed: "1" # ticks/s; default 8 outruns the pipeline (docs/INFRA_DECISIONS.md §3)
   tickMinutes: "15"
-  startMode: paused   # demo is step-driven via /admin/step
-
+  startMode: paused # demo is step-driven via /admin/step
 api:
   replicas: 4
-  hpa: { min: 4, max: 10, cpu: 60 }
-  env: {}             # e.g. CHAOS_500_PCT: "5" to demo an alarm rollback
+  hpa: {min: 4, max: 10, cpu: 60}
+  env: {} # e.g. CHAOS_500_PCT: "5" to demo an alarm rollback
 intel:
   replicas: 2
   env: {}
 ingestor:
   env: {}
-
 # Service name verified against the pinned kube-prometheus-stack chart in infra/.
 prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 rollback:
-  maxErrorRate: 0.02   # canary 5xx ratio that aborts the rollout
+  maxErrorRate: 0.02 # canary 5xx ratio that aborts the rollout
   maxP95Seconds: 0.8
   smokeRequests: 60
   smokeMaxFailures: 1

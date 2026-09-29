@@ -17,7 +17,6 @@ mock_provider "aws" {
 }
 mock_provider "helm" { override_during = plan }
 mock_provider "kubernetes" { override_during = plan }
-mock_provider "github" { override_during = plan }
 mock_provider "random" {
   override_during = plan
   mock_resource "random_password" {
@@ -152,6 +151,33 @@ run "immutable_github_subject" {
     condition     = jsondecode(aws_iam_role.github_actions.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == var.github_oidc_subject
     error_message = "Preserve the exact immutable subject, including both IDs, in the IAM policy."
   }
+}
+
+run "main_immutable_prefix_used_by_both_roles" {
+  command = plan
+  variables {
+    github_oidc_subject = null
+  }
+  assert {
+    condition = alltrue([
+      for policy in [aws_iam_role.github_actions.assume_role_policy, aws_iam_role.terraform.assume_role_policy] :
+      jsondecode(policy).Statement[0].Condition == {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:CREVIOS@48938983/BUP_HACKATHON_DU_FANTA_2026@1394116440:ref:refs/heads/main"
+        }
+      }
+    ])
+    error_message = "Both roles must preserve main's immutable identity and restrict it to the exact main branch."
+  }
+}
+
+run "reject_wildcard_prefix" {
+  command = plan
+  variables {
+    github_oidc_sub_prefix = "repo:CREVIOS/*"
+  }
+  expect_failures = [var.github_oidc_sub_prefix]
 }
 
 run "reject_wildcard_subject" {

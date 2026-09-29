@@ -43,6 +43,7 @@ resource "helm_release" "platform" {
   name       = "platform"
   chart      = "${path.module}/../deploy/platform"
   namespace  = "kube-system"
+  replace    = true # Preserve recovery of releases left in a failed state.
   depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring]
 }
 
@@ -142,7 +143,7 @@ resource "helm_release" "argocd" {
       }
     }
   })]
-  depends_on = [module.eks, github_repository_deploy_key.argocd]
+  depends_on = [module.eks]
 }
 
 # App secrets. ponytail: values sit in (encrypted) TF state; use External Secrets if this outlives the event.

@@ -30,19 +30,19 @@ variable "github_repo" {
 }
 
 variable "git_revision" {
-  description = "Branch Argo CD tracks"
+  description = "Branch or exact commit Argo CD tracks"
   type        = string
   default     = "main"
 }
 
 variable "github_oidc_subject" {
-  description = "Exact GitHub OIDC sub for this repository on main. Required because GitHub supports both name-only and immutable owner/repository-ID subjects; confirm the repository's format before applying."
+  description = "Optional exact main-branch OIDC subject override. By default both AWS roles use github_oidc_sub_prefix plus :ref:refs/heads/main."
   type        = string
-  nullable    = false
+  default     = null
 
   validation {
     # @ is reserved for immutable numeric IDs in GitHub's subject format.
-    condition = (
+    condition = var.github_oidc_subject == null ? true : (
       can(regex("^repo:[^:@/]+(@[0-9]+)?/[^:@/]+(@[0-9]+)?:ref:refs/heads/main$", var.github_oidc_subject)) &&
       replace(var.github_oidc_subject, "/@[0-9]+/", "") == "repo:${var.github_repo}:ref:refs/heads/main"
     )
@@ -68,4 +68,18 @@ variable "seed_users" {
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "github_oidc_sub_prefix" {
+  description = "OIDC sub prefix; this repo uses GitHub's immutable subject format (gh api repos/OWNER/REPO/actions/oidc/customization/sub)"
+  type        = string
+  default     = "repo:CREVIOS@48938983/BUP_HACKATHON_DU_FANTA_2026@1394116440"
+
+  validation {
+    condition = (
+      can(regex("^repo:[^:@/]+(@[0-9]+)?/[^:@/]+(@[0-9]+)?$", var.github_oidc_sub_prefix)) &&
+      replace(var.github_oidc_sub_prefix, "/@[0-9]+/", "") == "repo:${var.github_repo}"
+    )
+    error_message = "The OIDC prefix must identify github_repo exactly, optionally including its immutable numeric IDs; no wildcard or branch suffix is allowed."
+  }
 }

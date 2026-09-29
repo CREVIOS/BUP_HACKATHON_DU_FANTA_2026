@@ -27,7 +27,7 @@ Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/pla
 
 - [x] Remove public Argo CD, Grafana, and Rollouts ingresses; document localhost port-forward access and configure service paths to match it.
 - [x] Make the Rollouts dashboard read-only for workloads. Keep Argo CD/Grafana authentication enabled and restore Argo CD server TLS.
-- [x] Restrict the GitHub OIDC role subject to the repository's exact `main`-branch subject and require confirmation of its legacy/immutable format as a deployment input. Restrict manual release dispatches to `main` too.
+- [x] Restrict both GitHub OIDC roles to the repository's exact `main`-branch subject. Preserve `main`'s configured immutable prefix, allow a validated exact-subject override, and restrict manual dispatches to `main` too.
 - [ ] Support reuse of an existing account-level GitHub OIDC provider without putting it under disposable demo ownership.
 - [ ] Document the current secret model: encrypted Terraform state plus Kubernetes Secrets. Limit each workload to secrets it uses; distinguish this from a future Secrets Manager integration.
 - [ ] Make account-specific image repositories/configuration derive from the chosen deployment inputs rather than assuming the hard-coded account everywhere.
@@ -35,6 +35,8 @@ Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/pla
 Completion: default rendering publishes only the intended app ingress, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have a working private access procedure.
 
 Increment 2 implements the three access items above. Mocked Terraform plans and chart rendering cover the configured defaults; live port-forward/login checks, ALB rule removal, and OIDC assumption still require the deployment rehearsal. Shared provider ownership, workload secret scope, and account-specific image configuration remain open, so this step is not yet complete. See [private operator access](../infra/README.md#private-operator-access) for commands and existing-environment effects.
+
+Merge integration with `main` preserves its separate Terraform role/EKS access entries, removal of the GitHub provider, scanner layer-read permission, Next.js frontend, and published image tags. The platform chart advances to `0.3.0` so private access supersedes `main`'s separate public ops ALB. PR checks remain credential-free; live Terraform runs manually from `main` and exposes application activation/revision inputs. Frontend CI uses its pinned pnpm version/lockfile, and the web chart targets the Next.js image's port 3000.
 
 ## 3. Make rollout checks and HPA reliable
 

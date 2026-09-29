@@ -22,7 +22,7 @@ The Kubernetes target remains `1.36`. All five external charts were rendered loc
 
 ## Creation order
 
-1. AWS resources: VPC, EKS, RDS, ECR, and GitHub wiring.
+1. AWS resources: VPC, EKS, RDS, ECR, and separate GitHub image-publisher/Terraform roles. Repository variables and Argo's read-only deploy key are registered separately; Terraform no longer uses the GitHub provider.
 2. Explicitly managed `argocd`, `argo-rollouts`, and `monitoring` namespaces; the existing `fuelops` namespace retains its Terraform address.
 3. Argo CD, Argo Rollouts, monitoring, and metrics-server releases. The pinned controller values use ephemeral storage.
 4. The local platform chart, including the Auto Mode IngressClass and gp3 StorageClass. It retains the dependency on controller releases so the application gate waits for them. It creates no operator ingresses. If controller persistence is added later, install the StorageClass in a separate earlier stage to avoid this dependency cycle.
@@ -68,9 +68,9 @@ Use the current Argo CD password if the initial one has been rotated. Argo CD an
 
 ## GitHub release trust
 
-`github_oidc_subject` is a **required deployment input**. Confirm the repository's actual OIDC subject format in GitHub settings before planning an apply; there is no guessed default. The policy uses exact `StringEquals` matches for this subject and the `sts.amazonaws.com` audience. Terraform accepts only this `github_repo` on `refs/heads/main`, including GitHub's optional immutable numeric owner/repository IDs.
+Both AWS roles use exact `StringEquals` matches for the `sts.amazonaws.com` audience and this repository on `refs/heads/main`. The default subject is derived from `github_oidc_sub_prefix`, preserving the immutable repository identity configured on `main`: `repo:CREVIOS@48938983/BUP_HACKATHON_DU_FANTA_2026@1394116440`. Confirm the prefix for the target repository before applying, especially after a fork or transfer. `github_oidc_subject` is now an optional exact-subject override; the merge no longer requires a new input for the existing repository. Both inputs validate the repository name and reject wildcards.
 
-For the name-only format, the input is:
+For a repository that uses the name-only format, the explicit subject override is:
 
 ```hcl
 github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/main"
@@ -78,7 +78,13 @@ github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/m
 
 For an immutable subject, use `repo:OWNER@OWNER_ID/REPO@REPO_ID:ref:refs/heads/main` with the actual names and IDs. GitHub documents both formats in its [OIDC reference](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims) and [AWS integration guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws). Custom subject templates need a separate policy change; do not broaden the subject to a wildcard to make a release pass.
 
-The release workflow also restricts its publication job to `main`, including manual dispatches. Protect that branch and workflow changes in GitHub. If releases later use a protected GitHub environment, update its deployment restrictions and the exact IAM subject together. The role remains ECR-only. Reusing an account-level OIDC provider safely is still pending: the current root owns the provider, so review its ownership before applying or destroying this stack.
+The release workflow also restricts its publication job to `main`, including manual dispatches. Protect that branch and workflow changes in GitHub. If releases later use a protected GitHub environment, update its deployment restrictions and the exact IAM subject together. The image-publisher role remains ECR-only, including layer-download permission for image scanning. The separate Terraform role introduced on `main` retains its AdministratorAccess policy and EKS access entry; narrowing that infrastructure role is separate work. Reusing an account-level OIDC provider safely is still pending: the current root owns the provider, so review its ownership before applying or destroying this stack.
+
+## Terraform workflow and repository setup
+
+PRs run credential-free validation and mock plans through `ci.yml`; they do not attempt to assume the main-only Terraform role. The `infra` workflow runs live `plan`, `apply`, or `destroy` only by manual dispatch from `main`, with Terraform `1.13.5` and the read-only provider lockfile. Its `enable_application` input defaults to **true** to retain management of an existing app, matching the previous workflow's behavior. Select **false only for a fresh bootstrap**. Local Terraform still defaults to false. The `git_revision` input accepts a branch or an exact release commit; use the release commit for a fixed rehearsal.
+
+Before running workflows, register these GitHub repository variables: `AWS_REGION`, `AWS_ROLE_ARN` from `github_actions_role_arn`, `TF_ROLE_ARN` from `terraform_role_arn`, and `ECR_REGISTRY` matching the registry in `ecr_repositories`. Add `argocd_deploy_public_key` as a read-only repository deploy key. These settings are managed outside Terraform after `main` removed the GitHub provider. If an older state still contains GitHub-provider resources, review and transfer their ownership before applying; do not treat a proposed deploy-key deletion as routine cleanup. No state handoff has been performed here.
 
 ## Adopting an existing environment
 
@@ -92,7 +98,7 @@ terraform -chdir=infra import 'kubernetes_namespace_v1.platform["monitoring"]' m
 
 These are state-changing adoption commands, not prerequisites for an empty environment. Review the plan afterward for unexpected deletes/replacements and chart upgrades/downgrades. No live state inventory or migration has been performed as part of this increment.
 
-The operator-access increment upgrades the local platform chart to `0.2.0`; applying it removes its three previously managed operator Ingress objects. It also restores Argo CD server TLS and changes UI paths to `/`. Establish operator Kubernetes access first, then verify the three port-forwards and confirm `kubectl get ingress -A` has no operator ingresses. Inspect the ALB rules to confirm the old operator backends are gone; the app's catch-all route may still answer those URLs. An existing environment's access remains unchanged until this configuration is applied.
+The merged operator-access increment upgrades the local platform chart to `0.3.0`, above `main`'s `0.2.0`; applying it removes its three previously managed operator Ingress objects and the separate `alb-ops` IngressClass/parameters. It also restores Argo CD server TLS and uses UI paths at `/`. Establish operator Kubernetes access first, then verify the three port-forwards and confirm `kubectl get ingress -A` has no operator ingresses. Inspect the ALB rules to confirm the old operator backends are gone and the separate ops ALB is cleaned up; the app's catch-all route may still answer former sub-path URLs. An existing environment's access remains unchanged until this configuration is applied.
 
 ## Local and CI validation
 
@@ -110,7 +116,9 @@ python3 scripts/check_bootstrap_charts.py
 
 Increment 2 validation: Terraform formatting/validation and all nine mock plan tests passed. Both local charts passed their checks. The three affected pinned upstream charts were rendered with values from the mock plan against Kubernetes `1.36.0`; the rendered manifests confirmed ClusterIP-only Services, no operator ingress, Argo CD TLS and authentication, Grafana authentication and root URL, port-forward Service ports, and read-only dashboard workload RBAC. The app still renders its single `/` and `/api` ingress. Live behavior has not been verified.
 
-The app chart deliberately fails default `helm lint`/`helm template` while its values contain bootstrap placeholders. For a one-off local render, supply synthetic full SHA tags; this does not publish images:
+Merge validation against `main` at `cf0f21a`: read-only Terraform initialization and validation passed, along with all 11 mock plans, Helm checks, application/platform render assertions, Compose configuration, backend race tests/vet, frontend production build using pnpm `12.6.0`, and actionlint. The new assertions cover both roles using the existing immutable subject prefix; render inspection confirms the Next.js Service/probe target matches its image's port 3000 and preserves the published image tags.
+
+The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 
 ```bash
 helm template fuelops deploy/charts/fuelops --namespace fuelops \

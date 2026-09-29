@@ -7,17 +7,17 @@ docker compose up --build
 ```
 | Service | URL |
 |---|---|
-| API (status) | http://localhost:8080/api/status |
-| API (state) | http://localhost:8080/api/state |
+| Operator UI | http://localhost:3000 |
+| API (status) | http://localhost:8000/api/status |
+| API (state) | http://localhost:8000/api/state |
 | Ingestor health | http://localhost:8081/healthz |
 | Intel health | http://localhost:8082/healthz |
-| Simulator admin | http://localhost:8000/admin |
 
 ## Layout
 | Path | Owner | What |
 |---|---|---|
 | `backend/` | backend track | Go 1.26 module, one image `fuelops api\|ingestor\|intel\|migrate` |
-| `frontend/` | frontend track | Vite + React + TS operator UI (separate nginx container: `/` → SPA, `/api` → api:8080) |
+| `frontend/` | frontend track | Next.js + React + TS operator UI (standalone Node image on port 3000; ALB routes `/api` directly to the API) |
 | `infra/`, `deploy/` | DevOps track | Terraform (AWS, EKS), Helm, Argo |
 | `docs/` | all | `PLAN.md` (execution plan), `BRIEF.md`, `INFRA_DECISIONS.md`, `SIMULATOR_GUIDE.pdf`, `API.md`, `research/` |
 
@@ -37,7 +37,7 @@ cd backend && go test -race ./... && go vet ./...
 
 See [infra/README.md](infra/README.md) for pinned dependencies, bootstrap ordering,
 application activation, [private operator access](infra/README.md#private-operator-access),
-required GitHub OIDC input, existing-environment adoption, and validation commands.
+GitHub OIDC configuration, existing-environment adoption, and validation commands.
 Application creation defaults to disabled; the Helm chart requires full commit SHA
 image tags before it can render. Remaining deployment fixes are tracked in
 [docs/INFRA_WORK_PLAN.md](docs/INFRA_WORK_PLAN.md).

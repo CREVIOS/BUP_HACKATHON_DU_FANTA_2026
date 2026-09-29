@@ -23,6 +23,9 @@ data:
         tls: { insecure: true }
       prometheus:
         endpoint: 0.0.0.0:8889
+        # OpenMetrics format carries exemplars (trace_id) so Grafana can jump from a latency point to its trace.
+        enable_open_metrics: true
+        resource_to_telemetry_conversion: { enabled: false }
     service:
       pipelines:
         traces:
@@ -87,21 +90,6 @@ metadata:
 spec:
   selector: { matchLabels: { app: otel-collector } }
   podMetricsEndpoints: [{ port: metrics, path: /metrics, interval: 15s }]
----
-# Grafana Tempo datasource so judges open a trace straight from Grafana (/grafana).
-# The kube-prometheus-stack Grafana sidecar imports any ConfigMap with this label.
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: fuelops-tempo-datasource
-  labels: { grafana_datasource: "1" }
-data:
-  tempo-datasource.yaml: |
-    apiVersion: 1
-    datasources:
-      - name: Tempo
-        type: tempo
-        access: proxy
-        url: http://tempo.monitoring.svc:3200
-        uid: tempo
+# Grafana datasources (Tempo, Loki, exemplar links) are provisioned centrally by kube-prometheus-stack
+# in infra/platform.tf, so there is exactly one definition per datasource uid.
 {{- end }}

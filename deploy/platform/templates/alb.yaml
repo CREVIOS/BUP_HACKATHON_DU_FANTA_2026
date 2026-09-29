@@ -1,4 +1,4 @@
-# One shared internet-facing ALB for the app, Argo CD and Grafana (IngressClassParams group).
+# Shared internet-facing HTTPS ALB. ACM owns the certificate lifecycle.
 apiVersion: eks.amazonaws.com/v1
 kind: IngressClassParams
 metadata:
@@ -7,6 +7,9 @@ spec:
   scheme: internet-facing
   group:
     name: fuelops
+  certificateARNs:
+    {{- toYaml .Values.alb.certificateARNs | nindent 4 }}
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -20,27 +23,6 @@ spec:
     apiGroup: eks.amazonaws.com
     kind: IngressClassParams
     name: alb
----
-# Argo CD's UI does not serve cleanly under a sub-path, so it gets its own ALB at "/".
-apiVersion: eks.amazonaws.com/v1
-kind: IngressClassParams
-metadata:
-  name: alb-ops
-spec:
-  scheme: internet-facing
-  group:
-    name: fuelops-ops
----
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: alb-ops
-spec:
-  controller: eks.amazonaws.com/alb
-  parameters:
-    apiGroup: eks.amazonaws.com
-    kind: IngressClassParams
-    name: alb-ops
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass

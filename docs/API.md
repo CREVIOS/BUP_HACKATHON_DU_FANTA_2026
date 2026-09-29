@@ -108,7 +108,7 @@ serving the last-known-good snapshot and `/api/status` shows `fuel_simulator: "u
         │ no                         │                         │  approve ─▶ APPROVED (decision APPROVE)
         └──────────▶ PROPOSED        │                         │  reject  ─▶ REJECTED (decision REJECT)
                                      ▼                         │  superseded / 8 ticks / reset ─▶ EXPIRED
-                         outbox (exact body stored)            
+                         outbox (exact body stored)
                                      │  pre-flight vs live world fails ─▶ FAILED (last_error "PREFLIGHT: …")
                                      │  simulator 4xx                   ─▶ FAILED (last_error "<CODE>: …")
                                      │  5xx/timeout ×5, key not visible ─▶ FAILED (FAILED_PERMANENT)
@@ -252,6 +252,7 @@ Manual allocations carry `{"manual": true, "reason": "...", "what_if": {…§5.1
 | 5.21 | `GET /api/me` | viewer | caller's role |
 | 5.22 | `GET /api/state` | viewer | raw latest snapshot (debug) |
 | 5.23 | `GET /api/stream` | viewer | SSE ([§6](#6-live-stream-sse)) |
+| 5.24 | `GET /api/rl` · `GET /api/rl/shadow` | viewer | trained RL policy, shadow decisions |
 
 ### 5.1 `GET /api/overview`
 Dashboard header. No parameters. `503 NO_SNAPSHOT` before the first poll.
@@ -566,6 +567,26 @@ re-decides immediately (e.g. cancels PENDING allocations the event dooms).
 ### 5.22 `GET /api/state`
 Raw latest snapshot for debugging: `{"tick", "stale", "captured_at", "age_seconds", "snapshot": {instance, regions, depots, stations, routes, events, allocations, supply_arrivals, stale, metrics}}`, or `{"tick": null}` before the first poll.
 
+### 5.24 `GET /api/rl` · `GET /api/rl/shadow` — the trained RL policy (shadow mode)
+The Maskable PPO policy trained for this project (Hugging Face `crevious/fuelops-maskable-ppo-20260929`, pinned
+`7be470b`, seed 11, `model.zip`) runs **inside the ingestor on every decided tick**. The exact exported actor weights
+(95,117 parameters, SHA-256 in the response) are executed in Go through the same Go planner the model was trained with:
+live world → `rl.Snapshot` → planner (13 candidate plans, mask, 600 features) → actor → chosen plan. It is **shadow**:
+the plan is recorded next to the planner's rule baseline and our greedy recommendations, never submitted
+(`promotion: false`, handoff §13). Disable with `RL_SHADOW=false`.
+
+`GET /api/rl` → `{mode:"shadow", model:{repo, revision, seed, promotion, source_sha256, actor_sha256, …}, architecture,
+verification, offline_heldout:[…4 policies…], live:{ticks_decided, errors, ticks_rl_ships, ticks_baseline_ships,
+agrees_with_planner_baseline, avg_latency_us}}`.
+
+`GET /api/rl/shadow?limit=50` → `{tick, decisions:[{tick, action, strategy, baseline_action, baseline_strategy,
+shipments:[{station_id, fuel_type, depot_id, route_id, quantity}], baseline_shipments, greedy:[…], mask, logits, error, latency_us}]}`.
+`error` is set when the policy refuses to run (stale snapshot, untrusted clock, topology it was not trained on).
+
+**Verification** (reproducible with `fuelops replay -policy rl -scenario <name> -reference parity-full.json`):
+actor parity 2,304/2,304 decisions vs SB3 `choose()`; end to end against the real simulator on the 4 exact scenarios
+× 576 ticks: 2,304/2,304 actions and masks identical, max feature difference 1.2e-7, 785 shipments posted, 0 rejected, 0 failed.
+
 ---
 
 ## 6. Live stream (SSE)
@@ -698,7 +719,8 @@ Every process: `GET /healthz` (readiness: 200 `{"status":"ok"}` / 503 `{"status"
 Ingestor: `sim_requests_total{path,code}`, `sim_inflight` (must stay ≤ 4), `sim_request_duration_seconds{path}`, `sim_stale_responses_total`,
 `sim_tick`, `sim_service_level`, `sim_sse_connected`, `sim_sse_reconnects_total{reason}`, `ingestor_snapshots_total`, `ingestor_poll_errors_total`,
 `decisions_total{source,verdict}`, `decision_fallback_total`, `review_queue_depth`, `stockout_probability{station,fuel}`, `alerts_open{severity}`,
-`outbox_results_total{result}`, `allocations_cancelled_to_prevent_loss_total`, `forecast_mape{model=forecast|naive}`.
+`outbox_results_total{result}`, `allocations_cancelled_to_prevent_loss_total`, `forecast_mape{model=forecast|naive}`,
+`rl_shadow_decisions_total{kind,baseline}`, `rl_shadow_errors_total`, `rl_shadow_inference_seconds`.
 Intel: `jev_requests_total{result}`, `jev_request_duration_seconds`.
 
 **OpenTelemetry** — enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (OTLP/gRPC). Spans for HTTP server/client and Postgres queries; trace

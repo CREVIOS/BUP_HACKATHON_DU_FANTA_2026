@@ -1,0 +1,20 @@
+{
+    "auto_execute": true,
+    "jev_configured": false,
+    "jev_threshold": 0.8,
+    "options": {
+        "horizon_ticks": 48,
+        "min_lot_liters": 500,
+        "monte_carlo_runs": 64,
+        "review_above_liters": 5000,
+        "safety_ticks": 24
+    },
+    "policy_version": "greedy-v1",
+    "review_rule": [
+        "hard veto (always review): stale data, shipment > review_above_liters, an event touching the route/station/depot, rerouted around a disruption",
+        "otherwise Jev decides: auto if p_auto >= jev_threshold",
+        "if Jev is off or fails, the fixed rule decides: review if any crisis is active, residual risk after the shipment > 25%, or unexplained demand anomaly"
+    ],
+    "updated_at": "2026-09-29T06:54:33.888498Z",
+    "updated_by": "system"
+}

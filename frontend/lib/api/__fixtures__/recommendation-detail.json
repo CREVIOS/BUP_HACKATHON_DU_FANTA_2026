@@ -1,0 +1,106 @@
+{
+    "decisions": [
+        {
+            "action": "APPROVE",
+            "actor": "admin:demo",
+            "created_at": "2026-09-29T07:01:52.289154Z",
+            "id": 1,
+            "reason": "fixture capture"
+        }
+    ],
+    "recommendation": {
+        "id": 55,
+        "epoch_id": 2,
+        "tick": 48,
+        "station_id": "station-mirpur",
+        "fuel_type": "DIESEL",
+        "depot_id": "depot-patiya",
+        "route_id": "route-patiya-mirpur",
+        "quantity": 1000,
+        "policy_version": "greedy-v1",
+        "source": "intel",
+        "risk_before": 1,
+        "risk_after": 1,
+        "rule_verdict": "review",
+        "jev_p_auto": null,
+        "jev_model": null,
+        "verdict": "review",
+        "status": "SUBMITTED",
+        "created_at": "2026-09-29T07:01:26.065286Z",
+        "explanation": {
+            "signals": {
+                "on_hand": 3476.385,
+                "capacity": 15000,
+                "in_transit": 0,
+                "horizon_ticks": 48,
+                "reorder_point": 4096,
+                "demand_multiplier": 1.8,
+                "demand_next_horizon": 7746
+            },
+            "verdict": "review",
+            "depot_id": "depot-patiya",
+            "features": {
+                "fuel": "DIESEL",
+                "route": "cross-region (slower, draws on the other region's depot)",
+                "margin": "tight: stockout expected within 6 hours",
+                "active_crises": "demand_spike, route_disruption",
+                "demand_signal": "abnormal spike, explained by an active demand spike",
+                "shipment_size": "small (under a third of a day's demand)",
+                "data_freshness": "fresh",
+                "stockout_risk_now": "high",
+                "depot_stock_after_shipment": "healthy",
+                "stockout_risk_after_shipment": "high"
+            },
+            "quantity": 1000,
+            "route_id": "route-patiya-mirpur",
+            "fuel_type": "DIESEL",
+            "jev_p_auto": null,
+            "risk_after": 1,
+            "station_id": "station-mirpur",
+            "risk_before": 1,
+            "alternatives": [
+                {
+                    "depot_id": "depot-gazipur",
+                    "rejected": "route disrupted at departure tick 48",
+                    "route_id": "route-gazipur-mirpur",
+                    "transit_ticks": 2
+                }
+            ],
+            "arrival_tick": 52,
+            "rule_reasons": [
+                "rerouted around disrupted route-gazipur-mirpur",
+                "crisis active: demand_spike, route_disruption",
+                "low confidence: 100% stockout risk remains after this shipment"
+            ],
+            "rule_verdict": "review",
+            "transit_ticks": 4,
+            "review_reasons": [
+                "rerouted around disrupted route-gazipur-mirpur"
+            ],
+            "review_required": true,
+            "time_to_stockout": 23,
+            "binding_constraint": "depot dispatch capacity this tick"
+        },
+        "outbox": {
+            "status": "SENT",
+            "attempts": 1,
+            "last_error": null,
+            "sim_allocation_id": 1
+        }
+    },
+    "sim_allocation": {
+        "id": 1,
+        "idempotency_key": "fuelops-e2-r55",
+        "source_depot_id": "depot-patiya",
+        "destination_station_id": "station-mirpur",
+        "route_id": "route-patiya-mirpur",
+        "fuel_type": "DIESEL",
+        "quantity": 1000,
+        "created_tick": 48,
+        "departure_tick": 48,
+        "expected_arrival_tick": 52,
+        "actual_arrival_tick": null,
+        "status": "IN_TRANSIT",
+        "failure_reason": null
+    }
+}

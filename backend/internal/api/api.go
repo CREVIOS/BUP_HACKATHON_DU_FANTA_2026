@@ -85,6 +85,8 @@ func (s *server) routes(mux *http.ServeMux) []string {
 	handle("GET /api/intel/quality", s.quality)
 	handle("GET /api/stream", s.stream)
 	handle("GET /api/me", s.auth.me)
+	handle("GET /api/rl", s.rlModel)
+	handle("GET /api/rl/shadow", s.rlShadow)
 
 	// Decisions (brief §9: inspectable recommendations, human review).
 	handle("GET /api/recommendations", s.listRecommendations)

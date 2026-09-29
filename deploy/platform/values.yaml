@@ -1,0 +1,7 @@
+# Terraform supplies existing ACM certificates; standalone renders must supply them too.
+alb:
+  certificateARNs: []
+argocd:
+  ingress:
+    enabled: false
+    hostname: argocd.hemal.me

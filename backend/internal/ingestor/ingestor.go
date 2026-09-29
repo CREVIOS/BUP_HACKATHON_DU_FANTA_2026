@@ -18,6 +18,7 @@ import (
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/config"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/obs"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/rl"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/sim"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/store"
 	"github.com/jackc/pgx/v5"
@@ -54,6 +55,12 @@ func Run(ctx context.Context, cfg config.Config) error {
 		stream:   sim.NewStream(cfg.SimBaseURL, 3*time.Second),
 		intelURL: cfg.IntelURL,
 		intel:    &http.Client{Timeout: 4 * time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)},
+	}
+	if cfg.RLShadow {
+		if ing.actor, err = rl.LoadActor(); err != nil {
+			return fmt.Errorf("load rl actor: %w", err)
+		}
+		slog.InfoContext(ctx, "rl shadow enabled", "repo", ing.actor.Meta.Repo, "revision", ing.actor.Meta.Revision, "seed", ing.actor.Meta.Seed)
 	}
 	mux := httpx.NewMux("ingestor", ing.healthy, false)
 	ctx, cancel := context.WithCancelCause(ctx)
@@ -97,6 +104,7 @@ type ingestor struct {
 	stream   *sim.Stream
 	intelURL string
 	intel    *http.Client
+	actor    *rl.Actor // RL policy in shadow mode; nil disables it
 	leader   atomic.Bool
 
 	world       sim.World                    // latest tick-fenced world (the outbox pre-flights against it)
@@ -105,8 +113,10 @@ type ingestor struct {
 	epochID        int64
 	last           sim.Instance
 	lastStale      bool
-	lastWorld      [32]byte // hash of the last persisted world
-	lastEvents     [32]byte // hash of the events at the last decision
+	lastWorld      [32]byte  // hash of the last persisted world
+	lastEvents     [32]byte  // hash of the events at the last decision
+	fellBack       bool      // the last decision used the fallback (intel unreachable)
+	decidedAt      time.Time // when the last decision ran
 	lastDemandTick int
 	metrics        *sim.Metrics
 	metricsAt      time.Time
@@ -169,7 +179,10 @@ func (i *ingestor) cycle(ctx context.Context, force bool) {
 		}
 		return
 	}
-	if changed || force {
+	// While on the fallback, re-decide every 5 s even without a new tick, so a paused simulator does not keep
+	// the fallback (and its alert) after intel recovers, e.g. when the ingestor starts before intel is ready.
+	retry := i.fellBack && time.Since(i.decidedAt) >= 5*time.Second
+	if changed || force || retry {
 		if err := i.decide(ctx, w); err != nil && ctx.Err() == nil {
 			slog.ErrorContext(ctx, "decide failed", "tick", w.Instance.Tick, "err", err)
 		}

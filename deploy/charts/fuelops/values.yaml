@@ -1,10 +1,15 @@
 # CI rewrites the two image tags below on every main build (GitOps); Argo CD syncs them.
+# Placeholder tags deliberately fail chart schema validation. For local lint/render,
+# supply full SHA tags; enable_application stays false until CI commits real releases.
+ingress:
+  # Must be covered by the Terraform-managed ALB's existing ACM certificates.
+  hostname: fuelops.hemal.me
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: 0a1456e3f9c60a28697f7dac93cdae45a6f6d6e0
+  tag: 4197a730d5acb94d146e536f24be3fccef99db46
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: 0a1456e3f9c60a28697f7dac93cdae45a6f6d6e0
+  tag: 4197a730d5acb94d146e536f24be3fccef99db46
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
@@ -20,10 +25,12 @@ intel:
   env: {}
 ingestor:
   env: {}
+# Service name verified against the pinned kube-prometheus-stack chart in infra/.
 prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 # OpenTelemetry: backend pods export OTLP to the in-namespace collector, which sends
 # traces to Grafana Tempo (monitoring ns) and re-exposes OTel metrics for Prometheus.
-# Set endpoint to "" to disable tracing without redeploying the collector.
+# Set endpoint to "" to remove OTel env vars and the app Collector on the next sync.
+# Terraform-managed Tempo, Loki, node log collection, and Grafana datasources remain.
 otel:
   endpoint: http://otel-collector.fuelops.svc:4317
   environment: prod

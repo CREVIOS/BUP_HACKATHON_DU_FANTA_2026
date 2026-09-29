@@ -1,0 +1,80 @@
+# One mock plan also supplies the actual Helm settings to check_observability.py.
+# Every provider is mocked; no AWS credentials, cluster, or remote state is used.
+variables {
+  alb_certificate_arns = [
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/22222222-2222-2222-2222-222222222222",
+  ]
+}
+
+mock_provider "aws" {
+  override_during = plan
+  mock_data "aws_availability_zones" {
+    defaults = { names = ["ap-southeast-1a", "ap-southeast-1b"] }
+  }
+  mock_data "aws_caller_identity" {
+    defaults = { account_id = "123456789012" }
+  }
+  mock_data "aws_partition" {
+    defaults = { partition = "aws" }
+  }
+}
+mock_provider "helm" { override_during = plan }
+mock_provider "kubernetes" { override_during = plan }
+mock_provider "random" {
+  override_during = plan
+  mock_resource "random_password" {
+    defaults = { result = "test-only-password-not-a-secret" }
+  }
+}
+mock_provider "tls" {
+  override_during = plan
+  mock_resource "tls_private_key" {
+    defaults = {
+      private_key_openssh = "test-only-private-key-not-a-secret"
+      public_key_openssh  = "ssh-ed25519 test-only-public-key"
+    }
+  }
+}
+override_module {
+  target = module.vpc
+  outputs = {
+    vpc_id          = "vpc-00000000000000001"
+    private_subnets = ["subnet-00000000000000001", "subnet-00000000000000002"]
+  }
+}
+override_module {
+  target = module.eks
+  outputs = {
+    cluster_name                       = "fuelops-test"
+    cluster_endpoint                   = "https://eks.example.invalid"
+    cluster_certificate_authority_data = "dGVzdA=="
+    cluster_primary_security_group_id  = "sg-00000000000000001"
+  }
+}
+
+run "observability_contract" {
+  command = plan
+  assert {
+    condition = alltrue([
+      for release in [helm_release.tempo, helm_release.loki, helm_release.otel_logs] :
+      release.namespace == kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
+    ])
+    error_message = "Observability releases must use the explicitly managed monitoring namespace."
+  }
+  assert {
+    condition = (
+      !yamldecode(helm_release.tempo.values[0]).persistence.enabled &&
+      yamldecode(helm_release.tempo.values[0]).service.type == "ClusterIP"
+    )
+    error_message = "The demo's trace backend must remain private with explicit ephemeral storage."
+  }
+  assert {
+    condition = (
+      yamldecode(helm_release.argo_rollouts.values[0]).controller.metrics.serviceMonitor.enabled &&
+      yamldecode(helm_release.argocd.values[0]).controller.metrics.serviceMonitor.enabled &&
+      yamldecode(helm_release.argocd.values[0]).server.metrics.serviceMonitor.enabled
+    )
+    error_message = "Keep main's Rollouts and Argo CD metrics ServiceMonitors enabled."
+  }
+}

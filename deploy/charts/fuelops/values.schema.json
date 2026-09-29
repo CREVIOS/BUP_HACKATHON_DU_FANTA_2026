@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["image", "web", "ingress"],
+  "properties": {
+    "image": { "$ref": "#/definitions/releaseImage" },
+    "web": { "$ref": "#/definitions/releaseImage" },
+    "ingress": {
+      "type": "object",
+      "required": ["hostname"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "releaseImage": {
+      "type": "object",
+      "required": ["repository", "tag"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "tag": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Publish the image to ECR and set its full 40-character Git commit SHA before deployment. bootstrap/latest/dev tags are not releases."
+        }
+      }
+    }
+  }
+}

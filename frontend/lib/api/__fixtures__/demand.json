@@ -1,0 +1,821 @@
+{
+  "series": [
+    {
+      "station_id": "station-mirpur",
+      "fuel_type": "DIESEL",
+      "history": [
+        {
+          "tick": 27,
+          "demand": 120.515,
+          "served": 120.515,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 28,
+          "demand": 226.469,
+          "served": 226.469,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 29,
+          "demand": 245.75,
+          "served": 245.75,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 30,
+          "demand": 243.3,
+          "served": 243.3,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 31,
+          "demand": 219.643,
+          "served": 219.643,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 32,
+          "demand": 220.958,
+          "served": 220.958,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 33,
+          "demand": 209.495,
+          "served": 209.495,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 34,
+          "demand": 224.64,
+          "served": 224.64,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 35,
+          "demand": 232.177,
+          "served": 232.177,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 36,
+          "demand": 244.658,
+          "served": 244.658,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 37,
+          "demand": 224.292,
+          "served": 224.292,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 38,
+          "demand": 210.511,
+          "served": 210.511,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 39,
+          "demand": 214.413,
+          "served": 214.413,
+          "unmet": 0,
+          "forecast": 231.09375
+        },
+        {
+          "tick": 40,
+          "demand": 116.355,
+          "served": 116.355,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 41,
+          "demand": 104.716,
+          "served": 104.716,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 42,
+          "demand": 113.41,
+          "served": 113.41,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 43,
+          "demand": 116.455,
+          "served": 116.455,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 44,
+          "demand": 108.108,
+          "served": 108.108,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 45,
+          "demand": 118.943,
+          "served": 118.943,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 46,
+          "demand": 107.831,
+          "served": 107.831,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 47,
+          "demand": 107.272,
+          "served": 107.272,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 48,
+          "demand": 110.58,
+          "served": 110.58,
+          "unmet": 0,
+          "forecast": 111.5625
+        },
+        {
+          "tick": 49,
+          "demand": 57.725,
+          "served": 57.725,
+          "unmet": 0,
+          "forecast": 61.979166666666664
+        },
+        {
+          "tick": 50,
+          "demand": 60.851,
+          "served": 60.851,
+          "unmet": 0,
+          "forecast": 61.979166666666664
+        }
+      ],
+      "forecast": [
+        {
+          "tick": 51,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 52,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 53,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 54,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 55,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 56,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 57,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 58,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 59,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 60,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 61,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 62,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 63,
+          "expected": 61.979166666666664,
+          "low": 55.78125,
+          "high": 68.17708333333334
+        },
+        {
+          "tick": 64,
+          "expected": 128.38541666666666,
+          "low": 115.546875,
+          "high": 141.22395833333334
+        },
+        {
+          "tick": 65,
+          "expected": 128.38541666666666,
+          "low": 115.546875,
+          "high": 141.22395833333334
+        },
+        {
+          "tick": 66,
+          "expected": 128.38541666666666,
+          "low": 115.546875,
+          "high": 141.22395833333334
+        }
+      ]
+    },
+    {
+      "station_id": "station-mirpur",
+      "fuel_type": "PETROL",
+      "history": [
+        {
+          "tick": 27,
+          "demand": 135.701,
+          "served": 135.701,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 28,
+          "demand": 269.076,
+          "served": 269.076,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 29,
+          "demand": 282.397,
+          "served": 282.397,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 30,
+          "demand": 304.676,
+          "served": 304.676,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 31,
+          "demand": 261.906,
+          "served": 261.906,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 32,
+          "demand": 310.736,
+          "served": 310.736,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 33,
+          "demand": 286.169,
+          "served": 286.169,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 34,
+          "demand": 279.164,
+          "served": 279.164,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 35,
+          "demand": 290.729,
+          "served": 290.729,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 36,
+          "demand": 294.086,
+          "served": 294.086,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 37,
+          "demand": 288.886,
+          "served": 288.886,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 38,
+          "demand": 274.016,
+          "served": 274.016,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 39,
+          "demand": 271.657,
+          "served": 271.657,
+          "unmet": 0,
+          "forecast": 285.46875
+        },
+        {
+          "tick": 40,
+          "demand": 149.696,
+          "served": 149.696,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 41,
+          "demand": 130.072,
+          "served": 130.072,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 42,
+          "demand": 149.114,
+          "served": 149.114,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 43,
+          "demand": 134.429,
+          "served": 134.429,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 44,
+          "demand": 142.402,
+          "served": 142.402,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 45,
+          "demand": 142.278,
+          "served": 142.278,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 46,
+          "demand": 131.528,
+          "served": 131.528,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 47,
+          "demand": 124.316,
+          "served": 124.316,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 48,
+          "demand": 144.035,
+          "served": 144.035,
+          "unmet": 0,
+          "forecast": 137.8125
+        },
+        {
+          "tick": 49,
+          "demand": 72.479,
+          "served": 72.479,
+          "unmet": 0,
+          "forecast": 76.5625
+        },
+        {
+          "tick": 50,
+          "demand": 82.947,
+          "served": 82.947,
+          "unmet": 0,
+          "forecast": 76.5625
+        }
+      ],
+      "forecast": [
+        {
+          "tick": 51,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 52,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 53,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 54,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 55,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 56,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 57,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 58,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 59,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 60,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 61,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 62,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 63,
+          "expected": 76.5625,
+          "low": 68.90625,
+          "high": 84.21875
+        },
+        {
+          "tick": 64,
+          "expected": 158.59375,
+          "low": 142.734375,
+          "high": 174.453125
+        },
+        {
+          "tick": 65,
+          "expected": 158.59375,
+          "low": 142.734375,
+          "high": 174.453125
+        },
+        {
+          "tick": 66,
+          "expected": 158.59375,
+          "low": 142.734375,
+          "high": 174.453125
+        }
+      ]
+    },
+    {
+      "station_id": "station-mirpur",
+      "fuel_type": "OCTANE",
+      "history": [
+        {
+          "tick": 27,
+          "demand": 69.259,
+          "served": 69.259,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 28,
+          "demand": 137.541,
+          "served": 137.541,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 29,
+          "demand": 143.038,
+          "served": 143.038,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 30,
+          "demand": 155.903,
+          "served": 155.903,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 31,
+          "demand": 152.505,
+          "served": 152.505,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 32,
+          "demand": 160.062,
+          "served": 160.062,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 33,
+          "demand": 161.73,
+          "served": 161.73,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 34,
+          "demand": 137.237,
+          "served": 137.237,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 35,
+          "demand": 154.368,
+          "served": 154.368,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 36,
+          "demand": 157.551,
+          "served": 157.551,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 37,
+          "demand": 154.314,
+          "served": 154.314,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 38,
+          "demand": 140.27,
+          "served": 140.27,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 39,
+          "demand": 160.368,
+          "served": 160.368,
+          "unmet": 0,
+          "forecast": 152.25
+        },
+        {
+          "tick": 40,
+          "demand": 72.598,
+          "served": 72.598,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 41,
+          "demand": 66.728,
+          "served": 66.728,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 42,
+          "demand": 71.009,
+          "served": 71.009,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 43,
+          "demand": 75.61,
+          "served": 75.61,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 44,
+          "demand": 71.43,
+          "served": 71.43,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 45,
+          "demand": 74.295,
+          "served": 74.295,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 46,
+          "demand": 72.092,
+          "served": 72.092,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 47,
+          "demand": 78.745,
+          "served": 78.745,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 48,
+          "demand": 79.303,
+          "served": 79.303,
+          "unmet": 0,
+          "forecast": 73.5
+        },
+        {
+          "tick": 49,
+          "demand": 38.802,
+          "served": 38.802,
+          "unmet": 0,
+          "forecast": 40.833333333333336
+        },
+        {
+          "tick": 50,
+          "demand": 40.013,
+          "served": 40.013,
+          "unmet": 0,
+          "forecast": 40.833333333333336
+        }
+      ],
+      "forecast": [
+        {
+          "tick": 51,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 52,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 53,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 54,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 55,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 56,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 57,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 58,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 59,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 60,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 61,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 62,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 63,
+          "expected": 40.833333333333336,
+          "low": 36.75,
+          "high": 44.91666666666667
+        },
+        {
+          "tick": 64,
+          "expected": 84.58333333333333,
+          "low": 76.125,
+          "high": 93.04166666666667
+        },
+        {
+          "tick": 65,
+          "expected": 84.58333333333333,
+          "low": 76.125,
+          "high": 93.04166666666667
+        },
+        {
+          "tick": 66,
+          "expected": 84.58333333333333,
+          "low": 76.125,
+          "high": 93.04166666666667
+        }
+      ]
+    }
+  ],
+  "tick": 51
+}

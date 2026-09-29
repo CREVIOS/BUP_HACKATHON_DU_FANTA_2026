@@ -39,7 +39,7 @@ export async function POST(req: Request): Promise<Response> {
     model,
     instructions: CHAT_INSTRUCTIONS,
     messages: await convertToModelMessages(parsed.messages),
-    tools: createTools(() => loadContext(parsed.scenario)),
+    tools: createTools(() => loadContext()),
     stopWhen: isStepCount(MAX_TOOL_STEPS),
     timeout: CHAT_TIMEOUT_MS,
     abortSignal: req.signal, // Stop or a closed tab cancels the model call

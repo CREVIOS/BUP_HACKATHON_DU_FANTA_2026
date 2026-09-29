@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ActionDone, ActionError } from "@/components/action-error";
+import { SelectField } from "@/components/select-field";
 import { FIELD, LABEL, TEXTAREA } from "@/components/form-styles";
 import { FUELS } from "@/components/inventory-table";
 import { Button } from "@/components/ui/button";
@@ -54,33 +55,33 @@ export function ManualAllocation() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label>
           <span className={LABEL}>Station</span>
-          <select className={FIELD} value={station} onChange={(e) => setStationId(e.target.value)}>
+          <SelectField value={station} onChange={(e) => setStationId(e.target.value)}>
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label>
           <span className={LABEL}>Fuel</span>
-          <select className={FIELD} value={fuel} onChange={(e) => setFuel(e.target.value as Fuel)}>
+          <SelectField value={fuel} onChange={(e) => setFuel(e.target.value as Fuel)}>
             {FUELS.map((f) => (
               <option key={f} value={f}>
                 {humanize(f)}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label>
           <span className={LABEL}>Route</span>
-          <select className={FIELD} value={route} onChange={(e) => setRouteId(e.target.value)}>
+          <SelectField value={route} onChange={(e) => setRouteId(e.target.value)}>
             {routes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.source_depot_id.replace("depot-", "")}, {r.transit_ticks} ticks{r.usable_now ? "" : " (not usable now)"}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label>
           <span className={LABEL}>Quantity (L){room !== undefined ? `, room ${formatNumber(room)}` : ""}</span>

@@ -8,16 +8,15 @@ import { Section } from "@/components/section";
 import { SimulationPanel } from "@/components/simulation-panel";
 import { SystemStatus } from "@/components/system-status";
 import { useOverview, useStatus } from "@/lib/api/hooks";
-import type { Scenario } from "@/lib/mock/scenarios";
 
-export function OverviewTab({ scenario, names }: { scenario?: Scenario; names: ReadonlyMap<string, string> }) {
+export function OverviewTab({ names }: { names: ReadonlyMap<string, string> }) {
   const overview = useOverview();
   const status = useStatus();
   return (
     <>
       {overview.data ? (
         <Section title="Briefing">
-          <Briefing key={scenario ?? "live"} scenario={scenario} tick={overview.data.tick} />
+          <Briefing tick={overview.data.tick} />
         </Section>
       ) : null}
       <Section title="Simulation">

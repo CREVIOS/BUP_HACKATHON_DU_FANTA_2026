@@ -69,3 +69,10 @@ export function formatHours(hours: number | null | undefined): string {
 export function formatProbability(p: number | null | undefined): string {
   return p === null || p === undefined || Number.isNaN(p) ? "n/a" : `${Math.round(p * 100)}%`;
 }
+
+// Time-to-stockout wording for the UI: a dry tank says so, instead of "0 min".
+export function stockoutLabel(hours: number | null | undefined, onHand: number): string {
+  if (onHand <= 0) return "Empty";
+  if (hours !== null && hours !== undefined && hours >= 0 && hours < 1 / 60) return "now";
+  return formatHours(hours);
+}

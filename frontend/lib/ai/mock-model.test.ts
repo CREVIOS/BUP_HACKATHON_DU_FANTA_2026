@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createMockModel } from "@/lib/ai/mock-model";
 import { HEALTHY_DATA } from "@/lib/ai/quality";
 import { createTools } from "@/lib/ai/tools";
-import { mockSnapshot } from "@/lib/mock/scenarios";
+import { crisisSnapshot } from "@/lib/mock/scenarios";
 
 const ask = (question: string, load: Parameters<typeof createTools>[0]) =>
   streamText({
@@ -14,7 +14,7 @@ const ask = (question: string, load: Parameters<typeof createTools>[0]) =>
   });
 
 describe("mock model", () => {
-  const crisis = async () => ({ snapshot: mockSnapshot("crisis"), quality: HEALTHY_DATA });
+  const crisis = async () => ({ snapshot: crisisSnapshot(), quality: HEALTHY_DATA });
 
   it.each([
     ["Any disrupted routes?", "getRoutes", "disrupted"],

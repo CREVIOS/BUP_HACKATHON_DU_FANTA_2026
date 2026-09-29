@@ -59,6 +59,7 @@
 }
 
 :root {
+  color-scheme: light;
   /* Warm monochrome; colour is reserved for status. One radius scale: 8px surfaces, pill badges. */
   --background: #fbfbfa;
   --foreground: #111111;
@@ -107,6 +108,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
+    color-scheme: dark;
     --background: #131312;
     --foreground: #ededec;
     --card: #1a1a19;

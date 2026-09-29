@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useAccess } from "@/hooks/use-access";
 import { useAckAlert, useAlerts } from "@/lib/api/hooks";
 import type { Alert, Severity } from "@/lib/api/schemas";
-import { formatHours, formatProbability, humanize } from "@/lib/format";
+import { formatNumber, formatProbability, humanize, stockoutLabel } from "@/lib/format";
 import { describeSubject } from "@/lib/names";
 
 const SEVERITY: Record<Severity, { Icon: typeof Info; className: string }> = {
@@ -29,7 +29,10 @@ function summary(alert: Alert): string {
   const d = alert.detail ?? {};
   if (typeof d.message === "string") return d.message;
   if (alert.kind === "stockout_risk") {
-    return `Stockout in ${formatHours(num(d.time_to_stockout_hours))}, probability ${formatProbability(num(d.stockout_prob))}`;
+    const onHand = num(d.on_hand) ?? 0;
+    if (onHand <= 0) return `Out of stock, ${formatNumber(num(d.demand_next_12h))} L of demand in the next 12 h`;
+    const label = stockoutLabel(num(d.time_to_stockout_hours), onHand);
+    return `Stockout ${label === "now" ? "now" : `in ${label}`}, probability ${formatProbability(num(d.stockout_prob))}`;
   }
   if (alert.kind === "disruption" || alert.kind === "disruption_upcoming") {
     return `${humanize(String(d.type ?? "event"))}, ticks ${String(d.start_tick ?? "?")} to ${String(d.end_tick ?? "?")}`;

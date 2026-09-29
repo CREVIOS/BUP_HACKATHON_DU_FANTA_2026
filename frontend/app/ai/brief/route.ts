@@ -1,11 +1,10 @@
-import { briefSchema, buildTemplateBrief, type BriefResponse } from "@/lib/ai/brief";
+import { buildTemplateBrief, type BriefResponse } from "@/lib/ai/brief";
 import { loadContext } from "@/lib/ai/backend";
 import { generateBrief } from "@/lib/ai/generate-brief";
 import { clientKey, json } from "@/lib/ai/http";
 import { getModel } from "@/lib/ai/model";
 import { createRateLimiter } from "@/lib/ai/rate-limit";
 import { createTtlCache } from "@/lib/ai/ttl-cache";
-import { isScenario } from "@/lib/mock/scenarios";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,33 +17,29 @@ const perClient = createRateLimiter({ limit: 12, windowMs: 60_000 });
 const everyone = createRateLimiter({ limit: 60, windowMs: 60_000 }); // hard ceiling on model spend
 
 export async function GET(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-  const param = url.searchParams.get("scenario");
-  const scenario = isScenario(param) ? param : undefined;
-
   let loaded;
   try {
-    loaded = await loadContext(scenario);
+    loaded = await loadContext();
   } catch (error) {
     console.error("ai brief: cannot load state", { error: String(error) });
     return json({ error: "The operational data is unavailable." }, 502);
   }
   const { snapshot, quality } = loaded;
 
-  const key = `${scenario ?? "live"}:${snapshot.instance.scenario_id}`;
+  // Without a language model the briefing is the rules brief itself: no cache or rate limit needed.
+  const { model, mock } = getModel();
+  if (mock) return json(buildTemplateBrief(snapshot, quality) satisfies BriefResponse);
+
+  const key = snapshot.instance.scenario_id;
   const hit = cache.get(key);
-  if (hit && url.searchParams.get("refresh") !== "1") return json(hit);
+  if (hit && new URL(req.url).searchParams.get("refresh") !== "1") return json(hit);
 
   // Only a model call costs money, so only that is rate limited. Cache hits are free.
   if (!perClient.allow(clientKey(req)) || !everyone.allow("all")) {
     return hit ? json(hit) : json({ error: "Too many requests." }, 429);
   }
 
-  // The mock model echoes the rules brief; a real model just ignores it.
-  const template = briefSchema.safeParse(buildTemplateBrief(snapshot, quality));
-  const { model, mock } = getModel({ brief: template.success ? template.data : undefined });
   const brief = await generateBrief(snapshot, model, quality);
-  const response: BriefResponse = { ...brief, mock };
-  cache.set(key, response);
-  return json(response);
+  cache.set(key, brief);
+  return json(brief);
 }

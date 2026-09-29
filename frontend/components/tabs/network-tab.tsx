@@ -47,7 +47,7 @@ export function NetworkTab({ view }: { view?: NetworkView }) {
         <RegionalDemand />
       </Section>
       <Section title="Activity">
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <QueryBlock query={events}>{(data) => <Events events={data.events} />}</QueryBlock>
           <QueryBlock query={allocations}>{(data) => <Allocations allocations={data.allocations} names={names} />}</QueryBlock>
           <QueryBlock query={supply}>{(data) => <IncomingSupply arrivals={data.arrivals} names={names} />}</QueryBlock>

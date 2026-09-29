@@ -11,16 +11,19 @@ import { formatHours, formatProbability } from "@/lib/format";
 
 // Approve (optionally with an edited quantity), reject with a reason, or test a quantity first.
 // The API re-validates everything; these checks only stop obviously bad input early.
-export function DecisionForm({ rec }: { rec: Recommendation }) {
+// Keyed by station and fuel (not id), so typed input survives the next tick's proposal. The
+// quantity follows the newest proposal until the operator edits it.
+export function DecisionForm({ rec, onDecided }: { rec: Recommendation; onDecided: (id: number) => void }) {
   const access = useAccess();
   const approve = useApprove();
   const reject = useReject();
   const simulate = useSimulate();
-  const [quantity, setQuantity] = useState(String(rec.quantity));
+  const [edited, setEdited] = useState<string | null>(null);
+  const quantity = edited ?? String(rec.quantity);
   const [reason, setReason] = useState("");
   const qty = Number(quantity);
   const qtyValid = Number.isFinite(qty) && qty > 0;
-  const edited = qtyValid && qty !== rec.quantity;
+  const changed = qtyValid && qty !== rec.quantity;
   const busy = approve.isPending || reject.isPending;
 
   if (!access.can("approve")) {
@@ -34,7 +37,10 @@ export function DecisionForm({ rec }: { rec: Recommendation }) {
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
-        approve.mutate({ id: rec.id, reason: reason.trim() || undefined, quantity: edited ? qty : undefined });
+        approve.mutate(
+          { id: rec.id, reason: reason.trim() || undefined, quantity: changed ? qty : undefined },
+          { onSuccess: (saved) => onDecided(saved.id) },
+        );
       }}
     >
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
@@ -44,7 +50,7 @@ export function DecisionForm({ rec }: { rec: Recommendation }) {
             className={FIELD}
             inputMode="numeric"
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value.replace(/[^\d.]/g, ""))}
+            onChange={(e) => setEdited(e.target.value.replace(/[^\d.]/g, ""))}
             aria-invalid={!qtyValid}
           />
         </label>
@@ -55,14 +61,14 @@ export function DecisionForm({ rec }: { rec: Recommendation }) {
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy || !qtyValid}>
-          {edited ? `Approve ${qty.toLocaleString("en-US")} L` : "Approve"}
+          {changed ? `Approve ${qty.toLocaleString("en-US")} L` : "Approve"}
         </Button>
         <Button
           type="button"
           variant="outline"
           disabled={busy || reason.trim() === ""}
           title={reason.trim() === "" ? "Write a reason first" : undefined}
-          onClick={() => reject.mutate({ id: rec.id, reason: reason.trim() })}
+          onClick={() => reject.mutate({ id: rec.id, reason: reason.trim() }, { onSuccess: (saved) => onDecided(saved.id) })}
         >
           Reject
         </Button>

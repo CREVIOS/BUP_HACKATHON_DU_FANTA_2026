@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ActionDone, ActionError } from "@/components/action-error";
+import { SelectField } from "@/components/select-field";
 import { FIELD, LABEL } from "@/components/form-styles";
 import { Button } from "@/components/ui/button";
 import { useInjectEvent } from "@/lib/api/hooks";
@@ -69,13 +70,13 @@ export function CrisisForm({ network }: { network?: Network }) {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <label>
             <span className={LABEL}>Event</span>
-            <select className={FIELD} value={form.type} onChange={(e) => update({ type: e.target.value as EventType, targetIds: [] })}>
+            <SelectField value={form.type} onChange={(e) => update({ type: e.target.value as EventType, targetIds: [] })}>
               {TYPES.map((t) => (
                 <option key={t} value={t}>
                   {humanize(t)}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label>
             <span className={LABEL}>Starts in (ticks)</span>

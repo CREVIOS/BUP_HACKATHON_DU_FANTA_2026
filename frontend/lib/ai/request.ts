@@ -1,12 +1,11 @@
 import { safeValidateUIMessages, type UIMessage } from "ai";
-import { isScenario, type Scenario } from "@/lib/mock/scenarios";
 
 export const MAX_MESSAGES = 30;
 export const MAX_TEXT_CHARS = 2000; // per user message
 export const MAX_HISTORY_CHARS = 20_000; // whole conversation, assistant text included
 
 export type ChatRequest =
-  | { ok: true; messages: UIMessage[]; scenario: Scenario | undefined }
+  | { ok: true; messages: UIMessage[] }
   | { ok: false; error: string };
 
 const fail = (error: string): ChatRequest => ({ ok: false, error });
@@ -25,7 +24,7 @@ function textOnly(message: UIMessage): UIMessage | undefined {
 // Validate everything from the browser before it reaches the model.
 export async function parseChatRequest(body: unknown): Promise<ChatRequest> {
   if (typeof body !== "object" || body === null) return fail("Request body must be a JSON object.");
-  const { messages, scenario } = body as { messages?: unknown; scenario?: unknown };
+  const { messages } = body as { messages?: unknown };
 
   if (!Array.isArray(messages) || messages.length === 0) return fail("messages must be a non-empty array.");
   if (messages.length > MAX_MESSAGES) return fail(`At most ${MAX_MESSAGES} messages are accepted.`);
@@ -44,5 +43,5 @@ export async function parseChatRequest(body: unknown): Promise<ChatRequest> {
   if (cleaned.reduce((n, m) => n + textLength(m), 0) > MAX_HISTORY_CHARS) {
     return fail("The conversation is too long. Start a new one.");
   }
-  return { ok: true, messages: cleaned, scenario: isScenario(scenario) ? scenario : undefined };
+  return { ok: true, messages: cleaned };
 }

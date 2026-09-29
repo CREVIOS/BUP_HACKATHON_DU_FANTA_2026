@@ -34,13 +34,16 @@ export function ControlTab() {
           <Section title="Decision policy">
             <PolicyPanel />
           </Section>
+          <Section title="Command log">
+            <CommandLog enabled={admin} />
+          </Section>
         </>
       ) : (
-        <p className="border-t py-8 text-sm text-muted-foreground">{access.needs("control")}</p>
+        <p className="border-t py-8 text-sm text-muted-foreground">
+          Sign in above with the admin token to step or run the simulator, inject crises and faults, change the decision policy and see
+          the command log.
+        </p>
       )}
-      <Section title="Command log">
-        <CommandLog enabled={admin} />
-      </Section>
     </>
   );
 }

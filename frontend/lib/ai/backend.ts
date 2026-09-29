@@ -1,5 +1,4 @@
-import { assessQuality, HEALTHY_DATA, type LoadedState } from "@/lib/ai/quality";
-import { isScenario, mockSnapshot, type Scenario } from "@/lib/mock/scenarios";
+import { assessQuality, type LoadedState } from "@/lib/ai/quality";
 import type { StateResponse, StatusResponse } from "@/lib/types";
 
 // Server-side base URL of the Go API. Same variable next.config.ts uses for the /api proxy.
@@ -15,14 +14,9 @@ async function getJSON<T>(fetchImpl: FetchLike, path: string): Promise<T> {
 }
 
 // The single source of facts for every AI feature: the latest stored snapshot plus how far to trust
-// it, or a mock world. The state call must succeed; the health call may fail, which is reported as
-// "could not confirm" rather than assumed healthy.
-export async function loadContext(
-  scenario: Scenario | undefined,
-  fetchImpl: FetchLike = fetch,
-): Promise<LoadedState> {
-  if (isScenario(scenario)) return { snapshot: mockSnapshot(scenario), quality: HEALTHY_DATA };
-
+// it. The state call must succeed; the health call may fail, which is reported as "could not
+// confirm" rather than assumed healthy.
+export async function loadContext(fetchImpl: FetchLike = fetch): Promise<LoadedState> {
   const [state, status] = await Promise.allSettled([
     getJSON<StateResponse>(fetchImpl, "/api/state"),
     getJSON<StatusResponse>(fetchImpl, "/api/status"),

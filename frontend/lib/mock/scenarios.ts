@@ -1,16 +1,7 @@
-// Mock worlds for UI work and tests. Built from the real baseline snapshot so the shape is exact.
-import demoState from "@/lib/api/__fixtures__/state.json";
-import demoStatus from "@/lib/api/__fixtures__/status.json";
+// Hand-built test world for the AI unit tests: the real baseline snapshot pushed into a crisis
+// (low stock, a disrupted route, a failed allocation). Test-only; the app always uses live data.
 import { BASELINE } from "@/lib/mock/baseline";
-import type { Snapshot, StateResponse, Station } from "@/lib/types";
-
-// "demo": a real API capture (same world as the dashboard's mock mode). "crisis": hand-built for tests.
-export const SCENARIOS = ["demo", "crisis"] as const;
-export type Scenario = (typeof SCENARIOS)[number];
-
-export function isScenario(value: unknown): value is Scenario {
-  return typeof value === "string" && (SCENARIOS as readonly string[]).includes(value);
-}
+import type { Snapshot, Station } from "@/lib/types";
 
 const STATION_OVERRIDES: Record<string, Pick<Station, "inventory"> & Partial<Pick<Station, "status">>> = {
   "station-mirpur": { inventory: { DIESEL: 2100, PETROL: 3400, OCTANE: 4100 } },
@@ -23,7 +14,7 @@ const CRISIS_DEPOT_INVENTORY: Record<string, Snapshot["depots"][number]["invento
   "depot-patiya": { DIESEL: 38200, PETROL: 27400, OCTANE: 15600 },
 };
 
-function crisisSnapshot(): Snapshot {
+export function crisisSnapshot(): Snapshot {
   return {
     ...BASELINE,
     instance: {
@@ -51,38 +42,3 @@ function crisisSnapshot(): Snapshot {
     metrics: { service_level: 0.943, unmet_demand_liters: 18450, allocation_failures: 1 },
   };
 }
-
-export function mockSnapshot(scenario: Scenario): Snapshot {
-  switch (scenario) {
-    case "demo":
-      return structuredClone(demoState.snapshot) as unknown as Snapshot;
-    case "crisis":
-      return crisisSnapshot();
-  }
-}
-
-// /api/status as captured with the demo world.
-export const DEMO_STATUS: Record<string, string | number> = demoStatus;
-
-export function mockState(scenario: Scenario): StateResponse {
-  return {
-    tick: mockSnapshot(scenario).instance.tick,
-    stale: false,
-    captured_at: "2026-01-02T13:00:00Z",
-    age_seconds: 0,
-    snapshot: mockSnapshot(scenario),
-  };
-}
-
-// Health panel values for mock mode (same shape as GET /api/status).
-export const MOCK_STATUS: Record<string, string | number> = {
-  backend_api: "healthy",
-  database: "healthy",
-  fuel_simulator: "healthy",
-  prediction_service: "healthy",
-  decision_engine: "degraded: fallback policy active (intel timed out)",
-  jev: "disabled: fixed review rule only",
-  p95_latency_ms: 14.2,
-  error_rate: 0.004,
-  requests_5m: 812,
-};

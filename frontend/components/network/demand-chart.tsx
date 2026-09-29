@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FIELD, LABEL } from "@/components/form-styles";
+import { useElementWidth } from "@/hooks/use-element-width";
+import { SelectField } from "@/components/select-field";
+import { LABEL } from "@/components/form-styles";
 import { FUELS } from "@/components/inventory-table";
 import { EmptyState } from "@/components/section";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,10 +12,8 @@ import type { Fuel, NetworkStation } from "@/lib/api/schemas";
 import { demandPoints, niceMax, ticksBetween, type DemandPoint } from "@/lib/chart";
 import { formatNumber, humanize } from "@/lib/format";
 
-const W = 640;
-const H = 220;
-const M = { top: 12, right: 72, bottom: 24, left: 48 };
-const PLOT_W = W - M.left - M.right;
+const H = 240;
+const M = { top: 12, right: 16, bottom: 28, left: 52 };
 const PLOT_H = H - M.top - M.bottom;
 
 function path(points: DemandPoint[], key: "observed" | "forecast", x: (t: number) => number, y: (v: number) => number): string {
@@ -32,14 +32,14 @@ function band(points: DemandPoint[], x: (t: number) => number, y: (v: number) =>
 }
 
 function Chart({ points, now }: { points: DemandPoint[]; now: number }) {
+  const [box, W] = useElementWidth<HTMLDivElement>(640);
+  const PLOT_W = Math.max(120, W - M.left - M.right);
   const [hover, setHover] = useState<number | null>(null);
   const first = points[0].tick;
   const last = points[points.length - 1].tick;
   const max = niceMax(Math.max(...points.map((p) => Math.max(p.observed ?? 0, p.forecast ?? 0, p.high ?? 0))));
   const x = (t: number) => M.left + ((t - first) / Math.max(1, last - first)) * PLOT_W;
   const y = (v: number) => M.top + PLOT_H - (v / max) * PLOT_H;
-  const lastObserved = [...points].reverse().find((p) => p.observed !== undefined);
-  const lastForecast = [...points].reverse().find((p) => p.forecast !== undefined);
   const active = hover === null ? undefined : points[hover];
 
   function onMove(event: React.PointerEvent<SVGRectElement>) {
@@ -53,35 +53,31 @@ function Chart({ points, now }: { points: DemandPoint[]; now: number }) {
   }
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Observed demand and forecast, litres per tick">
+    <div ref={box} className="relative w-full">
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block" role="img" aria-label="Observed demand and forecast, litres per tick">
         {ticksBetween(max, 4).map((v) => (
           <g key={v}>
             <line x1={M.left} x2={M.left + PLOT_W} y1={y(v)} y2={y(v)} className="stroke-border" strokeWidth={1} />
-            <text x={M.left - 8} y={y(v)} dy="0.32em" textAnchor="end" className="fill-muted-foreground font-mono text-[10px] tabular-nums">
+            <text x={M.left - 10} y={y(v)} dy="0.32em" textAnchor="end" className="fill-muted-foreground font-mono text-[11px] tabular-nums">
               {formatNumber(v)}
             </text>
           </g>
         ))}
         {[first, now, last].map((t) => (
-          <text key={t} x={x(t)} y={H - 6} textAnchor="middle" className="fill-muted-foreground font-mono text-[10px]">
-            {t === now ? "now" : `t${t}`}
+          <text
+            key={t}
+            x={x(t)}
+            y={H - 8}
+            textAnchor={t === first ? "start" : t === last ? "end" : "middle"}
+            className="fill-muted-foreground font-mono text-[11px]"
+          >
+            {t === now ? "now" : `tick ${t}`}
           </text>
         ))}
         <line x1={x(now)} x2={x(now)} y1={M.top} y2={M.top + PLOT_H} className="stroke-muted-foreground/40" strokeWidth={1} />
         <path d={band(points, x, y)} className="fill-series-2" fillOpacity={0.12} />
         <path d={path(points, "forecast", x, y)} className="stroke-series-2" fill="none" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         <path d={path(points, "observed", x, y)} className="stroke-series-1" fill="none" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-        {lastObserved ? (
-          <text x={x(lastObserved.tick) + 6} y={y(lastObserved.observed as number)} dy="0.32em" className="fill-foreground text-[10px]">
-            Observed
-          </text>
-        ) : null}
-        {lastForecast ? (
-          <text x={x(lastForecast.tick) + 6} y={y(lastForecast.forecast as number)} dy="0.32em" className="fill-foreground text-[10px]">
-            Forecast
-          </text>
-        ) : null}
         {active ? (
           <g>
             <line x1={x(active.tick)} x2={x(active.tick)} y1={M.top} y2={M.top + PLOT_H} className="stroke-foreground/30" strokeWidth={1} />
@@ -137,25 +133,25 @@ export function DemandChart({ stations, now }: { stations: NetworkStation[]; now
       <div className="flex flex-wrap items-end gap-3">
         <label className="w-56">
           <span className={LABEL}>Station</span>
-          <select className={FIELD} value={station} onChange={(e) => setStationId(e.target.value)}>
+          <SelectField value={station} onChange={(e) => setStationId(e.target.value)}>
             {stations.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label className="w-36">
           <span className={LABEL}>Fuel</span>
-          <select className={FIELD} value={fuel} onChange={(e) => setFuel(e.target.value as Fuel)}>
+          <SelectField value={fuel} onChange={(e) => setFuel(e.target.value as Fuel)}>
             {FUELS.map((f) => (
               <option key={f} value={f}>
                 {humanize(f)}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
-        <ul className="ml-auto flex gap-4 text-xs text-muted-foreground" aria-label="Legend">
+        <ul className="ml-auto flex h-9 items-center gap-4 text-xs text-muted-foreground" aria-label="Legend">
           <li className="flex items-center gap-1.5">
             <span className="h-0.5 w-4 rounded-full bg-series-1" aria-hidden />
             Observed demand
@@ -167,11 +163,12 @@ export function DemandChart({ stations, now }: { stations: NetworkStation[]; now
         </ul>
       </div>
       {demand.isPending ? (
-        <Skeleton className="aspect-[640/220] w-full motion-reduce:animate-none" />
+        <Skeleton className="h-60 w-full motion-reduce:animate-none" />
       ) : points.length < 2 ? (
         <EmptyState>No demand history yet</EmptyState>
       ) : (
         <>
+          <p className="text-xs text-muted-foreground">Litres per tick (one tick is 15 simulated minutes)</p>
           <Chart points={points} now={now} />
           <details className="text-sm">
             <summary className="cursor-pointer text-xs text-muted-foreground">Show as table</summary>

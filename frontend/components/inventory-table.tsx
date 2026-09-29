@@ -2,7 +2,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { CELL, HEAD, HEAD_NUM } from "@/components/table-styles";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Fuel, RiskLevel } from "@/lib/api/schemas";
-import { formatNumber, formatPercent, humanize, stockLevel } from "@/lib/format";
+import { formatNumber, formatPercent, humanize, stockLevel, stockoutLabel } from "@/lib/format";
 import { statusTone } from "@/lib/tone";
 
 export const FUELS: readonly Fuel[] = ["DIESEL", "PETROL", "OCTANE"];
@@ -38,17 +38,17 @@ function FuelCell({ cell }: { cell?: FuelCellData }) {
   if (!cell) return <TableCell className={`${CELL} text-right text-muted-foreground`}>n/a</TableCell>;
   const level = levelOf(cell);
   const width = Math.min(100, Math.max(0, cell.fill * 100));
+  const empty = cell.inventory <= 0;
   const hours = cell.hoursToStockout;
+  const label = empty ? "Empty" : typeof hours === "number" ? stockoutLabel(hours, cell.inventory) : formatPercent(cell.fill);
   return (
     <TableCell className={`${CELL} text-right`} title={`${formatNumber(cell.inventory)} L of ${formatNumber(cell.capacity)} L`}>
-      <div className="ml-auto w-28">
+      <div className="ml-auto w-24 sm:w-28">
         <div className="flex items-baseline justify-between font-mono text-sm tabular-nums">
-          <span className={`text-xs ${TEXT[level]}`}>
-            {typeof hours === "number" ? `${hours.toFixed(1)} h` : formatPercent(cell.fill)}
-          </span>
+          <span className={`text-xs ${empty ? "font-sans font-medium text-bad-fg" : TEXT[level]}`}>{label}</span>
           <span>{formatNumber(cell.inventory)}</span>
         </div>
-        <div className="mt-1 h-1 rounded-full bg-muted" aria-hidden>
+        <div className={`mt-1 h-1 rounded-full ${empty ? "bg-bad-fg/25" : "bg-muted"}`} aria-hidden>
           <div className={`h-full rounded-full ${BAR[level]}`} style={{ width: `${width}%` }} />
         </div>
       </div>

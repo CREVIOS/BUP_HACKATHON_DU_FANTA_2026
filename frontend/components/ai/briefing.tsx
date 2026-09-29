@@ -6,7 +6,6 @@ import { ICON } from "@/components/icon-props";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { BriefResponse } from "@/lib/ai/brief";
-import type { Scenario } from "@/lib/mock/scenarios";
 
 const STATUS_ICON = {
   stable: { Icon: CheckCircle, className: "text-ok-fg" },
@@ -23,26 +22,19 @@ const SEVERITY_ICON = {
 const REFRESH_CHECK_MS = 20_000;
 
 function SourceChip({ brief }: { brief: BriefResponse }) {
-  const { label, hint } = brief.mock
-    ? { label: "Mock", hint: "Written by the mock model, no LLM is connected" }
-    : brief.source === "ai"
-      ? { label: "AI", hint: "Written by the language model from computed facts" }
-      : { label: "Rules", hint: "Built from computed facts without a model" };
+  const ai = brief.source === "ai";
   return (
     <span
-      title={hint}
+      title={ai ? "Written by the language model from computed facts" : "Built from computed facts by rules; no language model is connected"}
       className="rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wider text-muted-foreground"
     >
-      {label}
+      {ai ? "AI" : "Rules"}
     </span>
   );
 }
 
-async function requestBrief(scenario: Scenario | undefined, refresh: boolean, signal?: AbortSignal): Promise<BriefResponse> {
-  const query = new URLSearchParams();
-  if (scenario) query.set("scenario", scenario);
-  if (refresh) query.set("refresh", "1");
-  const res = await fetch(`/ai/brief?${query}`, { cache: "no-store", signal });
+async function requestBrief(refresh: boolean, signal?: AbortSignal): Promise<BriefResponse> {
+  const res = await fetch(refresh ? "/ai/brief?refresh=1" : "/ai/brief", { cache: "no-store", signal });
   if (!res.ok) throw new Error(`brief returned ${res.status}`);
   return (await res.json()) as BriefResponse;
 }
@@ -50,8 +42,7 @@ async function requestBrief(scenario: Scenario | undefined, refresh: boolean, si
 // Loads the briefing on mount, then again when the tick has moved past the tick of the brief on screen
 // (checked every 20 s, so a fast simulator does not cost a model call per tick). Only one request is
 // in flight: starting a new one aborts the previous, so an old answer can never overwrite a newer one.
-// Remount with a new key to switch scenario.
-export function useBrief(scenario: Scenario | undefined, tick: number | undefined) {
+export function useBrief(tick: number | undefined) {
   const [brief, setBrief] = useState<BriefResponse>();
   const [loading, setLoading] = useState(true); // true until the first answer or failure
   const [failed, setFailed] = useState(false);
@@ -68,7 +59,7 @@ export function useBrief(scenario: Scenario | undefined, tick: number | undefine
       inflight.current?.abort();
       const controller = new AbortController();
       inflight.current = controller;
-      requestBrief(scenario, refresh, controller.signal)
+      requestBrief(refresh, controller.signal)
         .then((next) => {
           if (controller.signal.aborted) return;
           setBrief(next);
@@ -84,7 +75,7 @@ export function useBrief(scenario: Scenario | undefined, tick: number | undefine
           if (!controller.signal.aborted) setLoading(false);
         });
     },
-    [scenario],
+    [],
   );
 
   useEffect(() => {
@@ -106,8 +97,8 @@ export function useBrief(scenario: Scenario | undefined, tick: number | undefine
   return { brief, loading, failed, refresh };
 }
 
-export function Briefing({ scenario, tick }: { scenario?: Scenario; tick?: number }) {
-  const { brief, loading, failed, refresh } = useBrief(scenario, tick);
+export function Briefing({ tick }: { tick?: number }) {
+  const { brief, loading, failed, refresh } = useBrief(tick);
 
   return (
     <div>

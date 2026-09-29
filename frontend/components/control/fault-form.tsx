@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ActionDone, ActionError } from "@/components/action-error";
+import { SelectField } from "@/components/select-field";
 import { FIELD, LABEL } from "@/components/form-styles";
 import { Button } from "@/components/ui/button";
 import { useClearFaults, useInjectFault } from "@/lib/api/hooks";
@@ -41,8 +42,7 @@ export function FaultForm() {
       <div className="grid gap-3 sm:grid-cols-3">
         <label>
           <span className={LABEL}>Fault</span>
-          <select
-            className={FIELD}
+          <SelectField
             value={type}
             onChange={(e) => {
               const next = e.target.value as FaultType;
@@ -55,7 +55,7 @@ export function FaultForm() {
                 {humanize(t.type)}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label>
           <span className={LABEL}>Duration (seconds)</span>

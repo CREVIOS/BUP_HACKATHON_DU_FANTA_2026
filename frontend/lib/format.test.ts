@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatHours, formatProbability, formatSimTime, humanize } from "@/lib/format";
+import { formatHours, formatProbability, formatSimTime, humanize, stockoutLabel } from "@/lib/format";
 
 describe("format", () => {
   it("formats hours to stockout", () => {
@@ -21,5 +21,12 @@ describe("format", () => {
 
   it("humanizes enum values", () => {
     expect(humanize("IN_TRANSIT")).toBe("In transit");
+  });
+
+  it("says Empty for a tank that is already dry, instead of 0 min", () => {
+    expect(stockoutLabel(0, 0)).toBe("Empty");
+    expect(stockoutLabel(0, 120)).toBe("now");
+    expect(stockoutLabel(2.5, 900)).toBe("2.5 h");
+    expect(stockoutLabel(null, 900)).toBe("none in 12 h");
   });
 });

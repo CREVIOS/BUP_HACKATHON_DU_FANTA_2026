@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/section";
 import { StatusBadge } from "@/components/status-badge";
 import { DecisionForm } from "@/components/decisions/decision-form";
 import { useRecommendation } from "@/lib/api/hooks";
-import type { RecommendationDetail } from "@/lib/api/schemas";
+import type { Recommendation, RecommendationDetail } from "@/lib/api/schemas";
 import { formatNumber, formatProbability, humanize } from "@/lib/format";
 import { statusTone } from "@/lib/tone";
 
@@ -60,8 +60,14 @@ function Impact({ before, after }: { before?: number | null; after?: number | nu
   );
 }
 
-function Inspector({ detail, names }: { detail: RecommendationDetail; names: ReadonlyMap<string, string> }) {
-  const rec = detail.recommendation;
+interface Shared {
+  names: ReadonlyMap<string, string>;
+  formKey?: string;
+  onDecided: (id: number) => void;
+}
+
+// `rec` is what to show and decide on; `extras` (validity, violations, trail) only when they belong to it.
+function Inspector({ rec, extras, waiting, names, formKey, onDecided }: Shared & { rec: Recommendation; extras?: RecommendationDetail; waiting: boolean }) {
   const e = rec.explanation;
   const reasons = [...(e.review_reasons ?? []), ...(e.rule_reasons ?? [])];
   const uniqueReasons = [...new Set(reasons)];
@@ -82,26 +88,31 @@ function Inspector({ detail, names }: { detail: RecommendationDetail; names: Rea
           {e.transit_ticks !== undefined ? ` (${e.transit_ticks} ticks in transit)` : ""}. Proposed at tick {rec.tick} by{" "}
           {rec.source === "fallback" ? "the fallback policy" : rec.source === "manual" ? "an operator" : `policy ${rec.policy_version}`}.
         </p>
+        {waiting ? (
+          <p className="mt-1 text-xs text-muted-foreground">Newest proposal for this station and fuel. It refreshes each tick while the simulator runs.</p>
+        ) : rec.status !== "PROPOSED" ? (
+          <p className="mt-1 text-xs text-muted-foreground">No longer waiting for review.</p>
+        ) : null}
       </div>
 
       <Block title="Expected impact">
         <Impact before={rec.risk_before} after={rec.risk_after} />
       </Block>
 
-      {rec.status === "PROPOSED" && detail.still_valid === false ? (
+      {waiting && extras?.still_valid === false ? (
         <div role="alert" className="rounded-md bg-bad-bg px-3 py-2 text-sm text-bad-fg">
           <p>No longer safe to execute:</p>
           <ul className="mt-1 list-disc pl-5 text-xs">
-            {(detail.violations ?? []).map((v) => (
+            {(extras?.violations ?? []).map((v) => (
               <li key={v}>{v}</li>
             ))}
           </ul>
         </div>
       ) : null}
 
-      {rec.status === "PROPOSED" ? (
+      {waiting ? (
         <Block title="Your decision">
-          <DecisionForm key={rec.id} rec={rec} />
+          <DecisionForm key={formKey ?? rec.id} rec={rec} onDecided={onDecided} />
         </Block>
       ) : null}
 
@@ -132,8 +143,13 @@ function Inspector({ detail, names }: { detail: RecommendationDetail; names: Rea
                 <span className="font-mono tabular-nums">{formatNumber(e.signals?.[key])}</span>
               </Row>
             ))}
-            {e.binding_constraint ? <Row label="Quantity capped by">{e.binding_constraint}</Row> : null}
           </dl>
+          {e.binding_constraint ? (
+            <p className="mt-3 text-sm">
+              <span className="text-muted-foreground">Quantity capped by: </span>
+              {e.binding_constraint}
+            </p>
+          ) : null}
         </Block>
       </div>
 
@@ -164,10 +180,10 @@ function Inspector({ detail, names }: { detail: RecommendationDetail; names: Rea
         </details>
       ) : null}
 
-      {detail.decisions.length > 0 || rec.outbox ? (
+      {(extras?.decisions.length ?? 0) > 0 || rec.outbox ? (
         <Block title="Trail">
           <ul className="space-y-1 text-sm">
-            {detail.decisions.map((d) => (
+            {(extras?.decisions ?? []).map((d) => (
               <li key={d.id}>
                 {humanize(d.action)} by {d.actor}
                 {d.reason ? <span className="text-muted-foreground">: {d.reason}</span> : null}
@@ -177,7 +193,7 @@ function Inspector({ detail, names }: { detail: RecommendationDetail; names: Rea
               <li className="text-muted-foreground">
                 Submission {rec.outbox.status.toLowerCase()}
                 {rec.outbox.sim_allocation_id ? `, simulator allocation ${rec.outbox.sim_allocation_id}` : ""}
-                {detail.sim_allocation ? ` (${humanize(detail.sim_allocation.status).toLowerCase()})` : ""}
+                {extras?.sim_allocation ? ` (${humanize(extras.sim_allocation.status).toLowerCase()})` : ""}
                 {rec.outbox.last_error ? `: ${rec.outbox.last_error}` : ""}
               </li>
             ) : null}
@@ -188,8 +204,19 @@ function Inspector({ detail, names }: { detail: RecommendationDetail; names: Rea
   );
 }
 
-export function RecommendationInspector({ id, names }: { id?: number; names: ReadonlyMap<string, string> }) {
-  const detail = useRecommendation(id);
-  if (id === undefined) return <EmptyState>Pick a recommendation to see why it was made and decide on it</EmptyState>;
-  return <QueryBlock query={detail} rows={6}>{(data) => <Inspector detail={data} names={names} />}</QueryBlock>;
+// While a proposal waits, show the queue's copy (always the newest; each tick replaces it) and add
+// the detail endpoint's extras only when they are for that same id. Once decided or gone, show the
+// last proposal from the detail endpoint.
+export function RecommendationInspector({ live, id, ...shared }: Shared & { live?: Recommendation; id?: number }) {
+  const detail = useRecommendation(live?.id ?? id);
+  if (live) {
+    const extras = detail.data?.recommendation.id === live.id ? detail.data : undefined;
+    return <Inspector rec={live} extras={extras} waiting {...shared} />;
+  }
+  if (id === undefined) return <EmptyState>Nothing to review right now</EmptyState>;
+  return (
+    <QueryBlock query={detail} rows={6}>
+      {(data) => <Inspector rec={data.recommendation} extras={data} waiting={data.recommendation.status === "PROPOSED"} {...shared} />}
+    </QueryBlock>
+  );
 }

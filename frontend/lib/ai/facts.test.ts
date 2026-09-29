@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { lowStock, networkFacts, stockEntries } from "@/lib/ai/facts";
 import { BASELINE } from "@/lib/mock/baseline";
-import { mockSnapshot } from "@/lib/mock/scenarios";
+import { crisisSnapshot } from "@/lib/mock/scenarios";
 
 describe("stockEntries", () => {
   it("covers every depot and station by fuel", () => {
@@ -9,7 +9,7 @@ describe("stockEntries", () => {
   });
 
   it("computes whole-number percentages and levels", () => {
-    const mirpurDiesel = stockEntries(mockSnapshot("crisis")).find(
+    const mirpurDiesel = stockEntries(crisisSnapshot()).find(
       (e) => e.id === "station-mirpur" && e.fuel === "DIESEL",
     );
     expect(mirpurDiesel).toMatchObject({ inventory: 2100, capacity: 15000, percent: 14, level: "low" });
@@ -27,7 +27,7 @@ describe("lowStock", () => {
   });
 
   it("returns entries at or below the threshold, emptiest first", () => {
-    const entries = lowStock(mockSnapshot("crisis"), 40);
+    const entries = lowStock(crisisSnapshot(), 40);
     expect(entries.length).toBeGreaterThan(1);
     expect(entries[0]).toMatchObject({ id: "station-mirpur", fuel: "DIESEL", percent: 14 });
     const percents = entries.map((e) => e.percent);
@@ -43,7 +43,7 @@ describe("networkFacts", () => {
   });
 
   it("resolves names for disrupted routes and delayed supply in a crisis", () => {
-    const facts = networkFacts(mockSnapshot("crisis"));
+    const facts = networkFacts(crisisSnapshot());
     expect(facts.disruptedRoutes).toEqual([
       { id: "route-gazipur-mirpur", from: "Gazipur Depot", to: "Mirpur Fuel Station" },
     ]);
@@ -54,7 +54,7 @@ describe("networkFacts", () => {
   });
 
   it("does not mutate its input", () => {
-    const snapshot = mockSnapshot("crisis");
+    const snapshot = crisisSnapshot();
     const before = structuredClone(snapshot);
     networkFacts(snapshot);
     lowStock(snapshot);

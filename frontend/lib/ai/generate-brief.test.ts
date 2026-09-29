@@ -5,10 +5,10 @@ import { buildTemplateBrief } from "@/lib/ai/brief";
 import { createMockModel } from "@/lib/ai/mock-model";
 import { HEALTHY_DATA } from "@/lib/ai/quality";
 import { createTools } from "@/lib/ai/tools";
-import { mockSnapshot } from "@/lib/mock/scenarios";
+import { crisisSnapshot } from "@/lib/mock/scenarios";
 import { MockLanguageModelV4 } from "ai/test";
 
-const crisis = mockSnapshot("crisis");
+const crisis = crisisSnapshot();
 const usage = {
   inputTokens: { total: 1, noCache: 1, cacheRead: undefined, cacheWrite: undefined },
   outputTokens: { total: 1, text: 1, reasoning: undefined },
@@ -71,7 +71,7 @@ describe("generateBrief safety floor", () => {
 
   it("raises a stable model brief when the data source is unhealthy", async () => {
     const quality = { stale: false, sourceHealthy: false, reason: "fuel simulator: no poll for 60s" };
-    const stable = await generateBrief(mockSnapshot("crisis"), model({ headline: "Fine", status: "stable", items: [] }), quality);
+    const stable = await generateBrief(crisisSnapshot(), model({ headline: "Fine", status: "stable", items: [] }), quality);
     expect(stable.status).toBe("critical");
     expect(JSON.stringify(stable.items)).toMatch(/out of date/i);
   });

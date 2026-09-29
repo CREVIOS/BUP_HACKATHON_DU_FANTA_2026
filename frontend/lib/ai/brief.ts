@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { lowStock, networkFacts } from "@/lib/ai/facts";
+import { lowStock, networkFacts, type StockEntry } from "@/lib/ai/facts";
 import { HEALTHY_DATA, type DataQuality } from "@/lib/ai/quality";
 import { formatNumber, humanize } from "@/lib/format";
+import { groupBy } from "@/lib/group";
 import type { Snapshot } from "@/lib/types";
 
 export const MAX_ITEMS = 8;
@@ -35,12 +36,26 @@ export interface Brief extends BriefContent {
   tick: number;
 }
 
-export type BriefResponse = Brief & { mock: boolean }; // mock: the answer came from the mock model
+export type BriefResponse = Brief;
 
 // A problem found by code. `subjects` are lowercase phrases a model's write-up must mention;
 // if none appears, the model left this problem out and it gets added back (see generate-brief).
 export interface Finding extends BriefItem {
   subjects: string[];
+}
+
+const MAX_STATION_ITEMS = 4;
+
+function listWords(words: string[]): string {
+  return words.length <= 1 ? (words[0] ?? "") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
+}
+
+// One item per station, however many of its fuels are critical: "Mirpur: diesel, petrol and octane empty".
+function stationTitle(name: string, entries: StockEntry[]): string {
+  const fuels = entries.map((e) => humanize(e.fuel).toLowerCase());
+  if (entries.every((e) => e.inventory <= 0)) return `${name}: ${listWords(fuels)} empty`;
+  if (entries.length === 1) return `${name}: ${humanize(entries[0].fuel)} at ${entries[0].percent}%`;
+  return `${name}: ${listWords(entries.map((e) => `${humanize(e.fuel).toLowerCase()} ${e.percent}%`))}`;
 }
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -70,8 +85,10 @@ export function findings(snapshot: Snapshot, quality: DataQuality = HEALTHY_DATA
     add("medium", "Simulator data is stale", "The simulator flagged its responses as stale.", ["stale"]);
   }
 
-  for (const e of lowStock(snapshot, CRITICAL_PERCENT).filter((x) => x.kind === "station").slice(0, 3)) {
-    add("high", `${e.name}: ${humanize(e.fuel)} at ${e.percent}%`, `${formatNumber(e.inventory)} L of ${formatNumber(e.capacity)} L in stock.`, [e.name]);
+  const critical = lowStock(snapshot, CRITICAL_PERCENT).filter((x) => x.kind === "station");
+  for (const { key, items } of groupBy(critical, (e) => e.name).slice(0, MAX_STATION_ITEMS)) {
+    const detail = items.map((e) => `${humanize(e.fuel)} ${formatNumber(e.inventory)} of ${formatNumber(e.capacity)} L`).join("; ");
+    add("high", stationTitle(key, items), `${detail}.`, [key]);
   }
   if (facts.outageStations.length > 0) {
     add("high", `${plural(facts.outageStations.length, "station")} in outage`, facts.outageStations.join(", "), [...facts.outageStations, "outage"]);

@@ -3,8 +3,7 @@ import { isApiError } from "@/lib/api/http";
 const HINTS: Record<string, string> = {
   UNAUTHORIZED: "Add an operator or admin token in the Control tab.",
   EXPIRED: "The simulator was reset since this was proposed.",
-  NOT_PROPOSED: "Someone already decided this one. The list will refresh.",
-  MOCK_READONLY: "",
+  NOT_PROPOSED: "A newer proposal replaced it, or someone else decided it. The panel now shows the latest; check it and decide again.",
 };
 
 // Inline error for a failed action: the API's message, its details (e.g. why a shipment is UNSAFE), and a hint.

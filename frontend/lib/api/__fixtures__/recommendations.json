@@ -132,7 +132,7 @@
         "arrival_tick": 53,
         "rule_reasons": [
           "crisis active: route_disruption",
-          "low confidence: 100% stockout risk remains after this shipment"
+          "not enough on its own: 100% stockout risk remains after this shipment"
         ],
         "rule_verdict": "review",
         "transit_ticks": 2,
@@ -348,7 +348,7 @@
         "rule_reasons": [
           "large shipment (6500 L > 5000 L)",
           "crisis active: route_disruption",
-          "low confidence: 100% stockout risk remains after this shipment",
+          "not enough on its own: 100% stockout risk remains after this shipment",
           "unexplained demand spike (\u00d71.43 of normal)"
         ],
         "rule_verdict": "review",
@@ -423,7 +423,7 @@
         "arrival_tick": 52,
         "rule_reasons": [
           "crisis active: route_disruption",
-          "low confidence: 100% stockout risk remains after this shipment"
+          "not enough on its own: 100% stockout risk remains after this shipment"
         ],
         "rule_verdict": "review",
         "transit_ticks": 2,
@@ -571,7 +571,7 @@
         "rule_reasons": [
           "rerouted around disrupted route-gazipur-mirpur",
           "crisis active: demand_spike, route_disruption",
-          "low confidence: 100% stockout risk remains after this shipment"
+          "not enough on its own: 100% stockout risk remains after this shipment"
         ],
         "rule_verdict": "review",
         "transit_ticks": 4,

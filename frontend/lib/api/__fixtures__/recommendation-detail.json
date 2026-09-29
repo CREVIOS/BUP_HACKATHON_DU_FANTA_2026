@@ -70,7 +70,7 @@
             "rule_reasons": [
                 "rerouted around disrupted route-gazipur-mirpur",
                 "crisis active: demand_spike, route_disruption",
-                "low confidence: 100% stockout risk remains after this shipment"
+                "not enough on its own: 100% stockout risk remains after this shipment"
             ],
             "rule_verdict": "review",
             "transit_ticks": 4,

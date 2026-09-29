@@ -36,6 +36,7 @@ Tempo uses the maintained community chart repository linked from [Grafana's inst
 
 App activation is a separate reviewed configuration change after the platform is ready:
 
+- Wire `OPERATOR_TOKEN` and `ADMIN_TOKEN` into the API workload before public activation. The operator API merged from `main` grants admin access to every caller when both are unset; the current Terraform Secret does not supply them. Existing `JWT_SECRET`/`SEED_USERS` entries do not configure this bearer-token authentication. This remains the next secret-wiring increment.
 - Publish backend and web images, and verify their full 40-character commit SHA tags exist in the intended ECR repositories.
 - Commit those tags in `deploy/charts/fuelops/values.yaml` in the Git revision Argo will track. Include the new `values.schema.json` in that revision.
 - Set `enable_application = true` in the deployment's persistent Terraform variable configuration. Terraform leaves image tags owned by Git; it does not override them through Helm parameters.
@@ -197,6 +198,8 @@ Tracing increment validation: Terraform formatting/validation, all 12 mock plans
 OIDC ownership increment validation: Terraform formatting/validation, all 20 mock plans, the observability render check, and infra workflow actionlint passed. A separate local fixture using the actual provider resource/moved block, synthetic state, disabled refresh, and loopback-only AWS endpoints confirmed a move with zero resource changes, rejection of a mode switch before handoff, and no provider destruction after synthetic handoff. This did not inspect or modify live AWS resources or remote state.
 
 Observability merge validation against `main` at `51fc9a2`: Terraform formatting/validation, all 20 mock plans, bootstrap and expanded observability chart checks, and backend race tests/vet passed. Actual mock-plan values also rendered the Argo CD/Rollouts ServiceMonitors with the monitoring API available, while preserving private Services. The merge retains main's dashboard, linked datasources, trace-aware logging, and published image pair; Loki/log-agent pins and storage dependencies are explicit. Loki retention cleanup and all live telemetry checks remain open.
+
+The follow-up merge of `main` at `0a1456e` brings in the operator API without infrastructure conflicts. Backend race tests/vet passed again. Terraform/chart configuration was unchanged by that follow-up. Its new bearer-token inputs still need the API workload wiring noted in the activation prerequisites above.
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

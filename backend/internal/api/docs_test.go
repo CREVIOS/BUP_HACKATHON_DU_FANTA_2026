@@ -52,7 +52,12 @@ func TestOpenAPISpecDocumentsEveryRoute(t *testing.T) {
 	if !strings.Contains(spec, "openapi: 3.") {
 		t.Fatalf("embedded spec is not OpenAPI 3.x")
 	}
-	for _, want := range []string{"/api/state:", "/api/status:", "/healthz:", "/version:", "/metrics:"} {
+	want := []string{"/healthz:", "/version:", "/metrics:"}
+	for _, p := range (&server{hub: newHub()}).routes(http.NewServeMux()) {
+		_, path, _ := strings.Cut(p, " ")
+		want = append(want, "  "+path+":")
+	}
+	for _, want := range want {
 		if !strings.Contains(spec, want) {
 			t.Errorf("spec is missing documented path %q", want)
 		}

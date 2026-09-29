@@ -35,6 +35,7 @@ Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/pla
 - [x] Restrict both GitHub OIDC roles to the repository's exact `main`-branch subject. Preserve `main`'s configured immutable prefix, allow a validated exact-subject override, and restrict manual dispatches to `main` too.
 - [x] Support reuse of an existing account-level GitHub OIDC provider through a data source. Preserve existing managed state with a moved block, guard deletion, and document the handoff; actual account ownership and state handoff remain deployment prerequisites.
 - [ ] Document the current secret model: encrypted Terraform state plus Kubernetes Secrets. Limit each workload to secrets it uses; distinguish this from a future Secrets Manager integration.
+- [ ] Wire the operator API's `OPERATOR_TOKEN`/`ADMIN_TOKEN` into the API workload before public deployment. Both unset enables admin access for every caller; the current JWT/seed-user Secret entries do not configure these tokens.
 - [ ] Make account-specific image repositories/configuration derive from the chosen deployment inputs rather than assuming the hard-coded account everywhere.
 
 Completion: default rendering publishes only the intended app ingress, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have a working private access procedure.

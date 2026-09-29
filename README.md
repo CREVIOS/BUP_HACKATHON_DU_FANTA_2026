@@ -22,6 +22,7 @@ docker compose up --build
 | `docs/` | all | `PLAN.md` (execution plan), `BRIEF.md`, `INFRA_DECISIONS.md`, `SIMULATOR_GUIDE.pdf`, `API.md`, `research/` |
 
 ## Backend contract
+- **Operator API contracts (every endpoint, request/response, flows, errors): [`docs/API.md`](docs/API.md)** · live spec at `/docs` on the api.
 - Each process exposes `/healthz`, `/version`, `/metrics`. Ports: api `:8080`, ingestor `:8081`, intel `:8082`.
 - Env: `HTTP_ADDR`, `DATABASE_URL`, `SIM_BASE_URL`, `SIM_MAX_INFLIGHT` (default 4), `INTEL_URL`, `TYPESAFE_API_KEY`, `OTEL_EXPORTER_OTLP_ENDPOINT` (unset = tracing off).
 - Rollback-demo flags (api, intel): `CHAOS_500_PCT=0..100` (500 on that % of non-probe requests), `FAIL_HEALTH=true` (`/healthz` → 503).

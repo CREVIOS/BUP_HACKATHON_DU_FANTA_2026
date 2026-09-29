@@ -1,4 +1,4 @@
-{{- range $svc := list (dict "name" "api" "port" 8080 "replicas" .Values.api.replicas "env" .Values.api.env "smokePath" "/api/state" "cpu" "200m")
+{{- range $svc := list (dict "name" "api" "port" 8000 "replicas" .Values.api.replicas "env" .Values.api.env "smokePath" "/api/state" "cpu" "200m")
                        (dict "name" "intel" "port" 8082 "replicas" .Values.intel.replicas "env" .Values.intel.env "smokePath" "/healthz" "cpu" "200m") }}
 ---
 # Canary with automated rollback: a smoke Job hammers only the canary pods, and a background

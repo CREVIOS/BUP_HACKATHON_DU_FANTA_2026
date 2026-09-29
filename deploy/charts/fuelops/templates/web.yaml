@@ -19,6 +19,12 @@ spec:
           ports: [{ name: http, containerPort: 3000 }]
           readinessProbe: { httpGet: { path: /, port: http }, periodSeconds: 5 }
           resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
+          # Only what the /ai routes need (same as compose), never the backend's fuelops-env (DB, JWT).
+          env:
+            - { name: API_PROXY_TARGET, value: "http://api:8000" }
+          # OPENAI_API_KEY (+ optional LLM_MODEL, OPENAI_BASE_URL): kubectl create secret generic fuelops-web ...
+          # Optional: without it the assistant answers with its built-in mock model.
+          envFrom: [{ secretRef: { name: fuelops-web, optional: true } }]
 ---
 apiVersion: v1
 kind: Service
@@ -41,5 +47,5 @@ spec:
   rules:
     - http:
         paths:
-          - { path: /api, pathType: Prefix, backend: { service: { name: api, port: { number: 8080 } } } }
+          - { path: /api, pathType: Prefix, backend: { service: { name: api, port: { number: 8000 } } } }
           - { path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 80 } } } }

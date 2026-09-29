@@ -24,6 +24,8 @@ docker compose up --build
 ## Backend contract
 - Each process exposes `/healthz`, `/version`, `/metrics`. Ports: api `:8080`, ingestor `:8081`, intel `:8082`.
 - Env: `HTTP_ADDR`, `DATABASE_URL`, `SIM_BASE_URL`, `SIM_MAX_INFLIGHT` (default 4), `INTEL_URL`, `TYPESAFE_API_KEY`.
+- Rollback-demo flags (api, intel): `CHAOS_500_PCT=0..100` (500 on that % of non-probe requests), `FAIL_HEALTH=true` (`/healthz` → 503).
+- `/healthz` = readiness ("ready to serve"); use TCP for liveness. Metrics: `http_requests_total{route,method,code}`, `http_request_duration_seconds{route,method}`, `sim_requests_total{path,code}`, `sim_inflight`, `sim_tick`.
 - **Only the ingestor talks to the simulator**, with at most 4 requests in flight. The simulator permanently wedges at ~15 concurrent requests (see `docs/PLAN.md` §2).
 
 ## Dev

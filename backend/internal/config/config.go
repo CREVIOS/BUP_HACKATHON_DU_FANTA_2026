@@ -16,6 +16,8 @@ type Config struct {
 	PollInterval   time.Duration // ingestor fallback poll interval
 	IntelURL       string        // intel service base URL (api -> intel)
 	TypesafeAPIKey string        // Jev; empty = rule-based fallback only
+	Chaos500Pct    int           // rollback demo: % of non-probe requests answered with 500
+	FailHealth     bool          // rollback demo: /healthz always 503
 }
 
 func Load() Config {
@@ -28,6 +30,8 @@ func Load() Config {
 		PollInterval:   envDuration("POLL_INTERVAL", time.Second),
 		IntelURL:       env("INTEL_URL", "http://localhost:8082"),
 		TypesafeAPIKey: os.Getenv("TYPESAFE_API_KEY"),
+		Chaos500Pct:    min(envInt("CHAOS_500_PCT", 0), 100),
+		FailHealth:     os.Getenv("FAIL_HEALTH") == "true" || os.Getenv("FAIL_HEALTH") == "1",
 	}
 }
 

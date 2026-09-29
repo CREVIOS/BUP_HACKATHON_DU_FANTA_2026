@@ -1,0 +1,55 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata: { name: smoke }
+spec:
+  args: [{ name: url }]
+  metrics:
+    - name: smoke
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            template:
+              spec:
+                restartPolicy: Never
+                containers:
+                  - name: smoke
+                    image: curlimages/curl:8.10.1
+                    command: ["/bin/sh", "-c"]
+                    args:
+                      - |
+                        fail=0
+                        for i in $(seq {{ .Values.rollback.smokeRequests }}); do
+                          code=$(curl -s -o /dev/null -m 3 -w '%{http_code}' "{{ "{{" }}args.url{{ "}}" }}")
+                          case "$code" in 2*) ;; *) fail=$((fail+1)); echo "request $i -> $code";; esac
+                          sleep 0.5
+                        done
+                        echo "failures=$fail"
+                        [ "$fail" -le {{ .Values.rollback.smokeMaxFailures }} ]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata: { name: canary-metrics }
+spec:
+  args: [{ name: service }, { name: canary-hash }]
+  metrics:
+    - name: error-rate
+      interval: 30s
+      failureLimit: 1
+      successCondition: result[0] <= {{ .Values.rollback.maxErrorRate }}
+      provider:
+        prometheus:
+          address: {{ .Values.prometheusURL }}
+          query: |
+            (sum(rate(http_requests_total{app="{{ "{{" }}args.service{{ "}}" }}",rollouts_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}",code=~"5.."}[1m])) or vector(0))
+            /
+            clamp_min((sum(rate(http_requests_total{app="{{ "{{" }}args.service{{ "}}" }}",rollouts_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}"}[1m])) or vector(0)), 1e-9)
+    - name: p95-latency
+      interval: 30s
+      failureLimit: 1
+      successCondition: result[0] <= {{ .Values.rollback.maxP95Seconds }}
+      provider:
+        prometheus:
+          address: {{ .Values.prometheusURL }}
+          query: |
+            histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{app="{{ "{{" }}args.service{{ "}}" }}",rollouts_pod_template_hash="{{ "{{" }}args.canary-hash{{ "}}" }}"}[1m]))) or vector(0)

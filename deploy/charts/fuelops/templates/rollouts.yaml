@@ -1,0 +1,54 @@
+{{- range $svc := list (dict "name" "api" "port" 8080 "replicas" .Values.api.replicas "env" .Values.api.env "smokePath" "/api/state" "cpu" "200m")
+                       (dict "name" "intel" "port" 8082 "replicas" .Values.intel.replicas "env" .Values.intel.env "smokePath" "/healthz" "cpu" "200m") }}
+---
+# Canary with automated rollback: a smoke Job hammers only the canary pods, and a background
+# Prometheus analysis watches the canary's 5xx ratio + p95. Any failure aborts => stable stays live.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ $svc.name }}
+  labels:
+    {{- include "fuelops.labels" $svc.name | nindent 4 }}
+spec:
+  replicas: {{ $svc.replicas }}
+  revisionHistoryLimit: 5
+  selector: { matchLabels: { app: {{ $svc.name }} } }
+  template:
+    metadata:
+      labels:
+        {{- include "fuelops.labels" $svc.name | nindent 8 }}
+    spec:
+      {{- include "fuelops.pod" (dict "root" $ "name" $svc.name "port" $svc.port "env" $svc.env "cpu" $svc.cpu) | nindent 6 }}
+  strategy:
+    canary:
+      canaryService: {{ $svc.name }}-canary
+      stableService: {{ $svc.name }}-stable
+      analysis:
+        startingStep: 1
+        templates: [{ templateName: canary-metrics }]
+        args:
+          - { name: service, value: {{ $svc.name }} }
+          - name: canary-hash
+            valueFrom: { podTemplateHashValue: Latest }
+      steps:
+        - setWeight: 25
+        - analysis:
+            templates: [{ templateName: smoke }]
+            args:
+              - { name: url, value: "http://{{ $svc.name }}-canary:{{ $svc.port }}{{ $svc.smokePath }}" }
+        - pause: { duration: 60s }
+        - setWeight: 50
+        - pause: { duration: 60s }
+{{- range $suffix := list "" "-canary" "-stable" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $svc.name }}{{ $suffix }}
+  annotations:
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+spec:
+  selector: { app: {{ $svc.name }} }
+  ports: [{ name: http, port: {{ $svc.port }}, targetPort: http }]
+{{- end }}
+{{- end }}

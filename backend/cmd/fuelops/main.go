@@ -4,6 +4,7 @@
 //	fuelops ingestor  sole simulator client: snapshots + allocation outbox (single writer)
 //	fuelops intel     forecasting, risk, detection, allocation policy, Jev triage
 //	fuelops migrate   apply database migrations and exit
+//	fuelops replay    drive a THROWAWAY simulator with /admin/step and report decision quality (eval + CI gate)
 package main
 
 import (
@@ -24,7 +25,7 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: fuelops api|ingestor|intel|migrate")
+		fmt.Fprintln(os.Stderr, "usage: fuelops api|ingestor|intel|migrate|replay")
 		os.Exit(2)
 	}
 	cmd := os.Args[1]
@@ -44,6 +45,8 @@ func main() {
 		err = intel.Run(ctx, cfg)
 	case "migrate":
 		err = store.Migrate(ctx, cfg.DatabaseURL)
+	case "replay":
+		err = runReplay(ctx, cfg, os.Args[2:])
 	default:
 		err = fmt.Errorf("unknown command %q", cmd)
 	}

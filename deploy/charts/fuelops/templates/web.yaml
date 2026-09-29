@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    {{- include "fuelops.labels" "web" | nindent 4 }}
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector: { matchLabels: { app: web } }
+  template:
+    metadata:
+      labels:
+        {{- include "fuelops.labels" "web" | nindent 8 }}
+    spec:
+      containers:
+        - name: web
+          image: {{ .Values.web.repository }}:{{ .Values.web.tag }}
+          ports: [{ name: http, containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /, port: http }, periodSeconds: 5 }
+          resources: { requests: { cpu: 50m, memory: 32Mi }, limits: { memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  annotations: { alb.ingress.kubernetes.io/healthcheck-path: / }
+spec:
+  selector: { app: web }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fuelops
+  annotations:
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.order: "100"
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - { path: /api, pathType: Prefix, backend: { service: { name: api, port: { number: 8080 } } } }
+          - { path: /, pathType: Prefix, backend: { service: { name: web, port: { number: 80 } } } }

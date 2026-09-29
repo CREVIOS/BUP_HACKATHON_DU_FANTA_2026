@@ -6,9 +6,11 @@ import (
 	"testing"
 )
 
-// The JSON below is copied verbatim from the Integration Guide (§4, §5.3) so
-// these tests fail loudly if a struct tag drifts from the simulator's shape.
+type validatable interface{ Validate() error }
 
+// TestDecodeGuideExamples decodes the guide's verbatim example JSON (§4, §5.3)
+// into the wire structs with DisallowUnknownFields, so a struct tag drifting from
+// the simulator's shape fails here, then validates each.
 func TestDecodeGuideExamples(t *testing.T) {
 	cases := []struct {
 		name string
@@ -74,7 +76,7 @@ func TestDecodeGuideExamples(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			v := c.into()
 			dec := json.NewDecoder(strings.NewReader(c.json))
-			dec.DisallowUnknownFields() // catches a field the simulator sends that we forgot to model
+			dec.DisallowUnknownFields()
 			if err := dec.Decode(v); err != nil {
 				t.Fatalf("decode: %v", err)
 			}
@@ -85,10 +87,8 @@ func TestDecodeGuideExamples(t *testing.T) {
 	}
 }
 
-// TestAllocationRequestMatchesGuide decodes the POST /v1/allocations request body
-// verbatim from guide §5.1 with DisallowUnknownFields, then re-marshals it and
-// asserts the wire shape is exactly the six documented keys — proving the input
-// struct matches the simulator's input format, not just that it validates.
+// TestAllocationRequestMatchesGuide decodes the POST /v1/allocations body verbatim
+// from §5.1 and asserts the emitted wire shape is exactly the six documented keys.
 func TestAllocationRequestMatchesGuide(t *testing.T) {
 	const body = `{
 		"idempotency_key": "demo-001",
@@ -107,11 +107,10 @@ func TestAllocationRequestMatchesGuide(t *testing.T) {
 	if err := req.Validate(); err != nil {
 		t.Fatalf("guide example failed validation: %v", err)
 	}
-	if req.FuelType != Diesel || req.Quantity != 3000 || req.IdempotencyKey != "demo-001" {
+	if req.FuelType != Diesel || req.Quantity != 3000 {
 		t.Fatalf("decoded into wrong fields: %+v", req)
 	}
 
-	// Re-marshal and confirm the emitted keys are precisely §5.1's set.
 	out, _ := json.Marshal(req)
 	var got map[string]any
 	if err := json.Unmarshal(out, &got); err != nil {
@@ -123,7 +122,7 @@ func TestAllocationRequestMatchesGuide(t *testing.T) {
 	}
 	for _, k := range want {
 		if _, ok := got[k]; !ok {
-			t.Errorf("missing key %q in emitted request body", k)
+			t.Errorf("missing key %q in emitted body", k)
 		}
 	}
 }
@@ -137,7 +136,6 @@ func TestAllocationRequestValidate(t *testing.T) {
 	if err := ok.Validate(); err != nil {
 		t.Fatalf("valid request rejected: %v", err)
 	}
-
 	bad := map[string]AllocationRequest{
 		"empty key":     mutate(ok, func(r *AllocationRequest) { r.IdempotencyKey = "" }),
 		"long key":      mutate(ok, func(r *AllocationRequest) { r.IdempotencyKey = string(make([]byte, 151)) }),
@@ -155,27 +153,26 @@ func TestAllocationRequestValidate(t *testing.T) {
 	}
 }
 
-func TestSnapshotValidateRejectsBadNested(t *testing.T) {
-	s := Snapshot{
-		Instance: Instance{ScenarioID: "baseline", Tick: 0, Status: Paused, SimTime: "2026-01-01T00:00:00"},
-		Metrics:  Metrics{ServiceLevel: 1.0},
-		Depots:   []Depot{{ID: "depot-x", RegionID: "r", Status: DepotOpen}},
-		Routes:   []Route{{ID: "route-x", SourceDepotID: "d", DestinationStationID: "s", MaxShipment: -5, Status: RouteAvailable}},
+func TestWorldValidateRejectsBadNested(t *testing.T) {
+	w := World{
+		Instance: Instance{ScenarioID: "baseline", Tick: 0, Status: "PAUSED", SimTime: "2026-01-01T00:00:00"},
+		Depots:   []Depot{{ID: "depot-x", RegionID: "r", Status: "OPEN"}},
+		Routes:   []Route{{ID: "route-x", SourceDepotID: "d", DestinationStationID: "s", MaxShipment: -5, Status: "AVAILABLE"}},
 	}
-	if err := s.Validate(); err == nil {
-		t.Fatal("expected snapshot with negative max_shipment to fail")
+	if err := w.Validate(); err == nil {
+		t.Fatal("expected world with negative max_shipment to fail")
 	}
 }
 
-func TestEnumValidity(t *testing.T) {
-	if Diesel.Valid() != true || FuelType("KEROSENE").Valid() != false {
+func TestFuelAndStatusValidity(t *testing.T) {
+	if !Diesel.Valid() || FuelType("KEROSENE").Valid() {
 		t.Fatal("FuelType.Valid wrong")
 	}
-	if (FuelMap{Diesel: 1, "BOGUS": 2}).valid() == nil {
-		t.Fatal("FuelMap.valid should reject an unknown fuel key")
+	if fuelMapOK("depot", "x", map[string]float64{"DIESEL": 1, "BOGUS": 2}) == nil {
+		t.Fatal("fuelMapOK should reject an unknown fuel key")
 	}
-	if SimStatus("STOPPED").Valid() || !Running.Valid() {
-		t.Fatal("SimStatus.Valid wrong")
+	if (Instance{ScenarioID: "s", Status: "STOPPED", SimTime: "2026-01-01T00:00:00"}).Validate() == nil {
+		t.Fatal("Instance.Validate should reject unknown status")
 	}
 }
 

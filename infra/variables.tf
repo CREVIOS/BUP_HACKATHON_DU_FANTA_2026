@@ -48,3 +48,9 @@ variable "seed_users" {
   default     = ""
   sensitive   = true
 }
+
+variable "github_oidc_sub_prefix" {
+  description = "OIDC sub prefix; this repo uses GitHub's immutable subject format (gh api repos/OWNER/REPO/actions/oidc/customization/sub)"
+  type        = string
+  default     = "repo:CREVIOS@48938983/BUP_HACKATHON_DU_FANTA_2026@1394116440"
+}

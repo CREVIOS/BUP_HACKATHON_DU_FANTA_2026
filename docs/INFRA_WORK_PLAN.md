@@ -4,7 +4,7 @@ Branch: `infra/deployment-readiness`, created from `main` at `533d814`.
 
 Scope: implement the deployment-readiness fixes in [DEPLOYMENT_REVIEW.md](DEPLOYMENT_REVIEW.md), reconcile the architecture docs, and prepare a reproducible deployment. Checked items are implemented and locally verified; live deployment/rehearsal gates remain separate.
 
-Keep EKS Auto Mode in Singapore, private RDS, Argo CD, basic Argo Rollouts canaries, and local Compose as the judging baseline. Implement the following in order as small commits.
+Keep EKS Auto Mode in Singapore, private RDS, Argo CD, basic Argo Rollouts canaries, and local Compose as the judging baseline. The chosen access update exposes FuelOps and authenticated Argo CD on their `hemal.me` HTTPS hostnames; see [HTTPS setup](HTTPS_SETUP.md). Implement the following in order as small commits.
 
 ## 1. Pin dependencies and make bootstrap predictable
 
@@ -30,7 +30,9 @@ The latest observability merge centralizes all linked Grafana datasources in Ter
 
 Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/platform/templates/ops-ingress.yaml`, `deploy/charts/fuelops/templates/_helpers.tpl`, `README.md`.
 
-- [x] Remove public Argo CD, Grafana, and Rollouts ingresses; document localhost port-forward access and configure service paths to match it.
+- [x] Remove legacy operator ingresses and document localhost access. The later user-selected HTTPS configuration publishes authenticated Argo CD on `argocd.hemal.me`; Grafana and Rollouts remain private.
+- [x] Wire the two existing ACM certificate ARNs to Auto Mode, with hostname routing and HTTP-to-HTTPS redirects for FuelOps/Argo CD. Support opting out of public Argo ingress and document Cloudflare records.
+- [ ] Verify certificate issuance/coverage, live SNI selection, redirects, DNS, and Argo login during the deployment rehearsal.
 - [x] Make the Rollouts dashboard read-only for workloads. Keep Argo CD/Grafana authentication enabled and restore Argo CD server TLS.
 - [x] Restrict both GitHub OIDC roles to the repository's exact `main`-branch subject. Preserve `main`'s configured immutable prefix, allow a validated exact-subject override, and restrict manual dispatches to `main` too.
 - [x] Support reuse of an existing account-level GitHub OIDC provider through a data source. Preserve existing managed state with a moved block, guard deletion, and document the handoff; actual account ownership and state handoff remain deployment prerequisites.
@@ -38,7 +40,7 @@ Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/pla
 - [ ] Wire the operator API's `OPERATOR_TOKEN`/`ADMIN_TOKEN` into the API workload before public deployment. Both unset enables admin access for every caller; the current JWT/seed-user Secret entries do not configure these tokens.
 - [ ] Make account-specific image repositories/configuration derive from the chosen deployment inputs rather than assuming the hard-coded account everywhere.
 
-Completion: default rendering publishes only the intended app ingress, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have a working private access procedure.
+Completion: rendering publishes only the configured FuelOps/Argo HTTPS ingresses, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have authenticated public Argo access plus a working private access procedure.
 
 Increment 2 implements the three access items above. Mocked Terraform plans and chart rendering cover the configured defaults; live port-forward/login checks, ALB rule removal, and OIDC assumption still require the deployment rehearsal. The ownership follow-up adds an existing-provider ARN input, issuer/audience/account validation, both-role trust checks, deletion protection, and a persistent workflow repository variable. The [OIDC handoff procedure](../infra/README.md#shared-github-oidc-ownership) must be completed before teardown if the provider is already managed here. Workload secret scope and account-specific image configuration remain open, so this step is not yet complete. See [private operator access](../infra/README.md#private-operator-access) for commands and existing-environment effects.
 
@@ -93,4 +95,4 @@ Completion: dashboards contain real panels, configuration and docs agree, and ev
 
 For implementation changes, run Terraform formatting/validation for each root, Helm lint/render, Kubernetes/CRD schema validation, focused analysis fixtures, workflow validation, and the relevant existing backend tests. Before calling the stack deploy-ready, perform the live first deployment, failed-release checks, HPA test, and clean teardown described in the review.
 
-The code work can start now. Before account-affecting steps, establish the target account/profile, ownership of the existing state/OIDC resources, GitHub branch protection and deployment-status access, and whether the app needs a public TLS domain. Use private ops access as the default. The intel business smoke test depends on the backend endpoint; an external alert receiver depends on the team's chosen destination.
+Before account-affecting steps, establish the target account/profile, ownership of the existing state/OIDC resources, GitHub branch protection and deployment-status access, and verify the supplied ACM certificates. Public HTTPS domains are now selected: `fuelops.hemal.me` and `argocd.hemal.me`, with Cloudflare DNS and Argo login. The intel business smoke test depends on the backend endpoint; an external alert receiver depends on the team's chosen destination.

@@ -40,6 +40,8 @@ cd backend && go test -race ./... && go vet ./...
 See [infra/README.md](infra/README.md) for pinned dependencies, bootstrap ordering,
 application activation, [private operator access](infra/README.md#private-operator-access),
 GitHub OIDC configuration, existing-environment adoption, and validation commands.
+The selected deployment publishes FuelOps and authenticated Argo CD over HTTPS;
+see [ACM certificates and Cloudflare DNS setup](docs/HTTPS_SETUP.md).
 Application creation defaults to disabled; the Helm chart requires full commit SHA
 image tags before it can render. Remaining deployment fixes are tracked in
 [docs/INFRA_WORK_PLAN.md](docs/INFRA_WORK_PLAN.md).

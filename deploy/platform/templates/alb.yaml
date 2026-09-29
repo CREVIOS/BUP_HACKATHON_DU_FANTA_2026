@@ -1,4 +1,4 @@
-# Internet-facing ALB for the application only; operators use kubectl port-forward.
+# Shared internet-facing HTTPS ALB. ACM owns the certificate lifecycle.
 apiVersion: eks.amazonaws.com/v1
 kind: IngressClassParams
 metadata:
@@ -7,6 +7,9 @@ spec:
   scheme: internet-facing
   group:
     name: fuelops
+  certificateARNs:
+    {{- toYaml .Values.alb.certificateARNs | nindent 4 }}
+  sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
 ---
 apiVersion: networking.k8s.io/v1
 kind: IngressClass

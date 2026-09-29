@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
-from check_bootstrap_charts import APP, ROOT, SHA, helm
+from check_bootstrap_charts import APP, ROOT, SHA, check_https, helm
 
 
 def require(condition, message):
@@ -47,7 +47,7 @@ def mock_releases(infra_dir):
                 for item in event["test_plan"]["resource_changes"]
             }
     require(result.returncode == 0, f"Mock Terraform plan failed: {result.stderr}")
-    return {name: resources[f"helm_release.{name}"] for name in ("monitoring", "tempo", "loki", "otel_logs")}
+    return {name: resources[f"helm_release.{name}"] for name in ("monitoring", "tempo", "loki", "otel_logs", "platform")}
 
 
 def chart_package(release, locked, cache):
@@ -192,7 +192,7 @@ def check_disabled(app):
     resource(app, "PrometheusRule", "fuelops")
 
 
-def check_logs(loki, logs):
+def check_logs(loki, logs, platform):
     service = resource(loki, "Service", "loki")
     workload = resource(loki, "StatefulSet", "loki")
     ports_match(service, workload, (3100,))
@@ -201,7 +201,6 @@ def check_logs(loki, logs):
             "Loki's query/OTLP receiver configuration changed")
     require(config["schema_config"]["configs"][0]["schema"] == "v13", "Loki OTLP metadata needs the configured v13 schema")
     claim = workload["spec"]["volumeClaimTemplates"][0]["spec"]
-    platform = render("platform", "deploy/platform", "kube-system")
     storage = resource(platform, "StorageClass", claim["storageClassName"])
     require(claim["resources"]["requests"]["storage"] == "10Gi" and storage["provisioner"] == "ebs.csi.eks.amazonaws.com",
             "Loki's PVC must use the platform's Auto Mode gp3 StorageClass")
@@ -240,7 +239,8 @@ def main():
         cache = args.chart_cache.resolve() if args.chart_cache else scratch
         cache.mkdir(parents=True, exist_ok=True)
         manifests = {}
-        for name, release in releases.items():
+        for name in locks:
+            release = releases[name]
             package = chart_package(release, locks[name], cache)
             value_files = []
             for index, contents in enumerate(release["values"]):
@@ -249,9 +249,16 @@ def main():
                 value_files.extend(["-f", str(path)])
             manifests[name] = render(release["name"], package, release["namespace"], *value_files)
         tags = ["--set-string", f"image.tag={SHA},web.tag={SHA}"]
-        check_enabled(render("fuelops", APP, "fuelops", *tags), manifests["tempo"],
+        platform_values_file = scratch / "platform.yaml"
+        platform_values_file.write_text(releases["platform"]["values"][0])
+        platform_values = yaml.safe_load(platform_values_file.read_text())
+        platform = render("platform", "deploy/platform", "kube-system", "-f", str(platform_values_file))
+        app = render("fuelops", APP, "fuelops", *tags)
+        check_https(platform, app, platform_values["alb"]["certificateARNs"],
+                    platform_values["argocd"]["ingress"]["hostname"])
+        check_enabled(app, manifests["tempo"],
                       manifests["monitoring"], releases["tempo"]["namespace"])
-        check_logs(manifests["loki"], manifests["otel_logs"])
+        check_logs(manifests["loki"], manifests["otel_logs"], platform)
         check_disabled(render("fuelops", APP, "fuelops", *tags, "--set-string", "otel.endpoint="))
     print("Observability checks passed: pinned charts, trace/metric/log routing, unique linked datasources, dashboard discovery, Loki storage, private Services, tracing enabled/disabled.")
 

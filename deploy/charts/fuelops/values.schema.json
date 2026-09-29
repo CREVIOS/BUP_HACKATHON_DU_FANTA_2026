@@ -1,10 +1,21 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["image", "web"],
+  "required": ["image", "web", "ingress"],
   "properties": {
     "image": { "$ref": "#/definitions/releaseImage" },
-    "web": { "$ref": "#/definitions/releaseImage" }
+    "web": { "$ref": "#/definitions/releaseImage" },
+    "ingress": {
+      "type": "object",
+      "required": ["hostname"],
+      "properties": {
+        "hostname": {
+          "type": "string",
+          "maxLength": 253,
+          "pattern": "^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$"
+        }
+      }
+    }
   },
   "definitions": {
     "releaseImage": {

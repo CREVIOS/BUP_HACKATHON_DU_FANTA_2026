@@ -1,5 +1,12 @@
 # One mock plan also supplies the actual Helm settings to check_observability.py.
 # Every provider is mocked; no AWS credentials, cluster, or remote state is used.
+variables {
+  alb_certificate_arns = [
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/22222222-2222-2222-2222-222222222222",
+  ]
+}
+
 mock_provider "aws" {
   override_during = plan
   mock_data "aws_availability_zones" {
@@ -7,6 +14,9 @@ mock_provider "aws" {
   }
   mock_data "aws_caller_identity" {
     defaults = { account_id = "123456789012" }
+  }
+  mock_data "aws_partition" {
+    defaults = { partition = "aws" }
   }
 }
 mock_provider "helm" { override_during = plan }

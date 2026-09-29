@@ -1,6 +1,6 @@
 # Infrastructure bootstrap
 
-The configuration pins dependencies, orders namespace/controller creation, separates platform bootstrap from application activation, and keeps operator tools off the public ALB. The configuration is still one Terraform root. Splitting AWS and platform state requires an inventory of existing remote state first.
+The configuration pins dependencies, orders namespace/controller creation, and separates platform bootstrap from application activation. The selected deployment uses a shared HTTPS ALB for `fuelops.hemal.me` and authenticated `argocd.hemal.me`; Grafana and Rollouts use private access. See [HTTPS setup](../docs/HTTPS_SETUP.md) for the two existing ACM certificates and Cloudflare DNS steps. The configuration is still one Terraform root. Splitting AWS and platform state requires an inventory of existing remote state first.
 
 Shared OIDC provider reuse is supported, with a documented handoff for providers already in this state. Workload secret scope, rollback analysis, HPA/GitOps ownership, and release-status reporting still need the subsequent fixes in [the work plan](../docs/INFRA_WORK_PLAN.md). Passing the checks below does not establish readiness for public deployment.
 
@@ -30,13 +30,14 @@ Tempo uses the maintained community chart repository linked from [Grafana's inst
 1. AWS resources: VPC, EKS, RDS, ECR, and separate GitHub image-publisher/Terraform roles. Repository variables and Argo's read-only deploy key are registered separately; Terraform no longer uses the GitHub provider.
 2. Explicitly managed `argocd`, `argo-rollouts`, and `monitoring` namespaces; the existing `fuelops` namespace retains its Terraform address.
 3. Monitoring and metrics-server releases; Tempo, Argo CD, and Argo Rollouts depend on monitoring. This installs the ServiceMonitor CRD before the delivery controllers' metrics resources. The pinned controller values use ephemeral storage.
-4. The local platform chart, including the Auto Mode IngressClass and gp3 StorageClass. It retains the dependency on controller releases so the application gate waits for them. It creates no operator ingresses. If controller persistence is added later, install the StorageClass in a separate earlier stage to avoid this dependency cycle.
+4. The local platform chart, including the Auto Mode IngressClass with existing ACM certificates, the optional authenticated Argo CD HTTPS ingress, and gp3 StorageClass. It retains the dependency on controller releases so the application gate waits for them. The selected Terraform deployment enables public Argo ingress; `argocd_ingress_enabled=false` opts out. If controller persistence is added later, install the StorageClass in a separate earlier stage to avoid this dependency cycle.
 5. Loki, after monitoring and the platform StorageClass, followed by the node log-collector DaemonSet.
 6. The `argocd-apps` Helm release, which also waits for Tempo and the log collector. With `enable_application = false` (default), it has **no Application objects**, so a fresh bootstrap cannot launch app migrations/workloads. The release itself retains its existing Terraform address.
 
 App activation is a separate reviewed configuration change after the platform is ready:
 
 - Wire `OPERATOR_TOKEN` and `ADMIN_TOKEN` into the API workload before public activation. The operator API merged from `main` grants admin access to every caller when both are unset; the current Terraform Secret does not supply them. Existing `JWT_SECRET`/`SEED_USERS` entries do not configure this bearer-token authentication. This remains the next secret-wiring increment.
+- Confirm both configured ACM certificates are Issued, unexpired, and cover their corresponding hostnames. Terraform validates ARN format/account/region, but does not inspect certificate issuance or hostname coverage. Follow [HTTPS setup](../docs/HTTPS_SETUP.md) for the controlled ingress transition and Cloudflare records.
 - Publish backend and web images, and verify their full 40-character commit SHA tags exist in the intended ECR repositories.
 - Commit those tags in `deploy/charts/fuelops/values.yaml` in the Git revision Argo will track. Include the new `values.schema.json` in that revision.
 - Set `enable_application = true` in the deployment's persistent Terraform variable configuration. Terraform leaves image tags owned by Git; it does not override them through Helm parameters.
@@ -48,7 +49,7 @@ Do not use `enable_application = false` as a pause or teardown control for an ex
 
 ## Private operator access
 
-Argo CD, Grafana, and the Rollouts dashboard use `ClusterIP` Services with no ingress. Only the application's `/` and `/api` routes are published through the ALB. Configure `kubectl` with the `kubeconfig_command` Terraform output using an operator identity authorized for this EKS cluster; the image-publishing GitHub role has no cluster access. Port-forwarding requires Kubernetes permission to access the selected Pods and create `pods/portforward` requests.
+Argo CD, Grafana, and the Rollouts dashboard use `ClusterIP` Services. The selected deployment additionally publishes Argo CD at `https://argocd.hemal.me` through a platform-owned HTTPS ingress with login required; Grafana and Rollouts have no ingress. Argo port-forwarding remains available, and `argocd_ingress_enabled=false` restores private-only access. Configure `kubectl` with the `kubeconfig_command` Terraform output using an operator identity authorized for this EKS cluster; the image-publishing GitHub role has no cluster access. Port-forwarding requires Kubernetes permission to access the selected Pods and create `pods/portforward` requests.
 
 Run each command in its own terminal and leave it running while using that tool:
 
@@ -162,7 +163,7 @@ terraform -chdir=infra import 'kubernetes_namespace_v1.platform["monitoring"]' m
 
 These are state-changing adoption commands, not prerequisites for an empty environment. Review the plan afterward for unexpected deletes/replacements and chart upgrades/downgrades. No live state inventory or migration has been performed as part of this increment.
 
-The merged operator-access increment upgrades the local platform chart to `0.3.0`, above `main`'s `0.2.0`; applying it removes its three previously managed operator Ingress objects and the separate `alb-ops` IngressClass/parameters. It also restores Argo CD server TLS and uses UI paths at `/`. Establish operator Kubernetes access first, then verify the three port-forwards and confirm `kubectl get ingress -A` has no operator ingresses. Inspect the ALB rules to confirm the old operator backends are gone and the separate ops ALB is cleaned up; the app's catch-all route may still answer former sub-path URLs. An existing environment's access remains unchanged until this configuration is applied.
+The local platform chart is now `0.4.0` and the application chart `0.2.0`. The earlier `0.3.0` operator-access increment removed the separate `alb-ops` class and legacy operator ingresses. The chosen HTTPS configuration now adds only the authenticated Argo CD hostname to the shared application ALB. Establish operator Kubernetes access first, then verify the port-forwards and confirm that only FuelOps and the enabled Argo ingress are public. Inspect ALB rules and cleanup of the old ops ALB. FuelOps now requires its explicit hostname; raw ALB URLs are not application entrypoints. Review the listener/host transition in [HTTPS setup](../docs/HTTPS_SETUP.md); live access changes only when these configurations are applied/synced.
 
 The tracing increment retains the `helm_release.tempo` address and release name while changing its chart repository and pinning its version. Inspect the live plan and installed release before adopting this change; the previously unpinned version is unknown until that inventory. Ephemeral trace history is not guaranteed to survive the update.
 
@@ -175,13 +176,13 @@ terraform -chdir=infra fmt -check -recursive
 terraform -chdir=infra init -backend=false -input=false -lockfile=readonly
 terraform -chdir=infra validate
 terraform -chdir=infra test
-python3 scripts/check_bootstrap_charts.py
 python3 -m venv /tmp/fuelops-infra-checks
 /tmp/fuelops-infra-checks/bin/python -m pip install -r scripts/requirements-infra.txt
+/tmp/fuelops-infra-checks/bin/python -B scripts/check_bootstrap_charts.py
 /tmp/fuelops-infra-checks/bin/python -B scripts/check_observability.py
 ```
 
-`terraform test` uses mocked providers and plan-only runs; it does not need AWS/GitHub credentials or a live cluster. The tests cover disabled/enabled application creation, namespace assignment, Git ownership of image tags, private/authenticated operator values, read-only dashboard configuration, exact legacy/immutable OIDC subjects, and rejection of wildcard, wrong-branch, wrong-repository, pull-request, and environment subjects. The additional observability plan supplies fake secrets and verifies Tempo's namespace, private Service, and ephemeral storage. The bootstrap Python check uses only the standard library and Helm: it lints/renders both local charts, rejects platform ingress resources, then proves either image's invalid tag/repository prevents rendering.
+`terraform test` uses mocked providers and plan-only runs; it does not need AWS/GitHub credentials or a live cluster. The tests cover disabled/enabled application creation, namespace assignment, Git ownership of image tags, authenticated operator values, read-only dashboard configuration, exact legacy/immutable OIDC subjects, and rejection of wildcard, wrong-branch, wrong-repository, pull-request, and environment subjects. HTTPS cases cover both certificate ARNs, invalid account/region/format/duplicate certificates, hostname validation, and Argo's public/private URL switch. The additional observability plan supplies fake secrets/certificates and verifies Tempo's namespace, private Service, and ephemeral storage. The bootstrap Python check uses Helm and pinned PyYAML: it renders both local charts, checks SNI certificates, host routing, redirects, Argo backend TLS, and ingress opt-out, then proves invalid certificate/hostname/image inputs prevent rendering. The observability checker also renders the actual mock-plan platform values through these HTTPS checks.
 
 OIDC ownership tests cover managed bootstrap, read-only reuse, both roles' unchanged trust conditions, and rejection of invalid/wildcard provider ARNs, a different account/partition, an incompatible issuer, or a missing STS audience. These mocks verify configuration behavior; provider existence and current state ownership still need account inspection.
 
@@ -200,6 +201,8 @@ OIDC ownership increment validation: Terraform formatting/validation, all 20 moc
 Observability merge validation against `main` at `51fc9a2`: Terraform formatting/validation, all 20 mock plans, bootstrap and expanded observability chart checks, and backend race tests/vet passed. Actual mock-plan values also rendered the Argo CD/Rollouts ServiceMonitors with the monitoring API available, while preserving private Services. The merge retains main's dashboard, linked datasources, trace-aware logging, and published image pair; Loki/log-agent pins and storage dependencies are explicit. Loki retention cleanup and all live telemetry checks remain open.
 
 The follow-up merge of `main` at `0a1456e` brings in the operator API without infrastructure conflicts. Backend race tests/vet passed again. Terraform/chart configuration was unchanged by that follow-up. Its new bearer-token inputs still need the API workload wiring noted in the activation prerequisites above.
+
+HTTPS increment validation: Terraform formatting/validation and all 27 mock plans passed. Both chart checks and the expanded observability render check passed, including the actual Terraform-to-platform certificate values, two-host routing, redirects, Argo backend TLS, private-ingress opt-out, and invalid certificate/hostname rejection. The CI workflow YAML also parsed successfully after moving the chart check behind PyYAML installation. These checks do not contact AWS or Kubernetes. The separate ACM read-only lookup could not run because the AWS connection credentials had expired; certificate issuance and all live DNS/TLS checks remain unverified. No deployment or DNS change was performed.
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

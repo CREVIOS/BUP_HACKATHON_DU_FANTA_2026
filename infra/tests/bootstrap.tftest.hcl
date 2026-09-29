@@ -1,6 +1,10 @@
 # Plan-only tests: every provider is mocked; no credentials or live cluster needed.
 variables {
   github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/main"
+  alb_certificate_arns = [
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+    "arn:aws:acm:ap-southeast-1:123456789012:certificate/22222222-2222-2222-2222-222222222222",
+  ]
 }
 
 mock_provider "aws" {
@@ -116,9 +120,13 @@ run "operator_access_and_release_trust" {
       yamldecode(helm_release.argocd.values[0]).configs.params["server.basehref"] == "/" &&
       yamldecode(helm_release.argocd.values[0]).configs.params["server.rootpath"] == "" &&
       yamldecode(helm_release.argocd.values[0]).configs.cm["admin.enabled"] &&
-      !yamldecode(helm_release.argocd.values[0]).configs.cm["users.anonymous.enabled"]
+      !yamldecode(helm_release.argocd.values[0]).configs.cm["users.anonymous.enabled"] &&
+      yamldecode(helm_release.argocd.values[0]).configs.cm.url == "https://argocd.hemal.me" &&
+      yamldecode(helm_release.platform.values[0]).argocd.ingress.enabled &&
+      yamldecode(helm_release.platform.values[0]).argocd.ingress.hostname == var.argocd_hostname &&
+      tolist(yamldecode(helm_release.platform.values[0]).alb.certificateARNs) == var.alb_certificate_arns
     )
-    error_message = "Argo CD must use a private Service, TLS, root paths, and authenticated access."
+    error_message = "Argo CD must retain TLS/login on its ClusterIP Service and publish only through the platform-owned HTTPS configuration."
   }
   assert {
     condition = (
@@ -149,6 +157,73 @@ run "operator_access_and_release_trust" {
     }
     error_message = "GitHub trust must match the exact main-branch subject and STS audience."
   }
+}
+
+run "private_argocd_access" {
+  command = plan
+  variables {
+    argocd_ingress_enabled = false
+  }
+  assert {
+    condition = (
+      !yamldecode(helm_release.platform.values[0]).argocd.ingress.enabled &&
+      yamldecode(helm_release.argocd.values[0]).configs.cm.url == "https://localhost:8443" &&
+      !yamldecode(helm_release.argocd.values[0]).configs.params["server.insecure"] &&
+      !yamldecode(helm_release.argocd.values[0]).configs.cm["users.anonymous.enabled"]
+    )
+    error_message = "Disabling public Argo ingress must retain private authenticated HTTPS access."
+  }
+}
+
+run "reject_missing_alb_certificate" {
+  command = plan
+  variables {
+    alb_certificate_arns = []
+  }
+  expect_failures = [var.alb_certificate_arns]
+}
+
+run "reject_cross_region_alb_certificate" {
+  command = plan
+  variables {
+    alb_certificate_arns = ["arn:aws:acm:eu-west-3:123456789012:certificate/11111111-1111-1111-1111-111111111111"]
+  }
+  expect_failures = [var.alb_certificate_arns]
+}
+
+run "reject_cross_account_alb_certificate" {
+  command = plan
+  variables {
+    alb_certificate_arns = ["arn:aws:acm:ap-southeast-1:999999999999:certificate/11111111-1111-1111-1111-111111111111"]
+  }
+  expect_failures = [var.alb_certificate_arns]
+}
+
+run "reject_malformed_alb_certificate" {
+  command = plan
+  variables {
+    alb_certificate_arns = ["arn:aws:acm:ap-southeast-1:123456789012:certificate/*"]
+  }
+  expect_failures = [var.alb_certificate_arns]
+}
+
+run "reject_duplicate_alb_certificate" {
+  command = plan
+  variables {
+    alb_certificate_arns = [
+      "arn:aws:acm:ap-southeast-1:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+      "arn:aws:acm:ap-southeast-1:123456789012:certificate/11111111-1111-1111-1111-111111111111",
+    ]
+  }
+  expect_failures = [var.alb_certificate_arns]
+}
+
+run "reject_wildcard_argocd_hostname" {
+  command = plan
+  variables {
+    argocd_hostname = "*.hemal.me"
+  }
+  expect_failures = [var.argocd_hostname]
 }
 
 run "immutable_github_subject" {

@@ -36,14 +36,20 @@ resource "kubernetes_namespace_v1" "platform" {
   depends_on = [module.eks]
 }
 
-# ALB IngressClass (Auto Mode) for application ingress and default gp3 StorageClass.
+# Shared HTTPS ALB for FuelOps and authenticated Argo CD, plus gp3 StorageClass.
 # The pinned controller releases use ephemeral storage, so they do not require this
 # StorageClass to start. Keep the application gate downstream of controller readiness.
 resource "helm_release" "platform" {
-  name       = "platform"
-  chart      = "${path.module}/../deploy/platform"
-  namespace  = "kube-system"
-  replace    = true # Preserve recovery of releases left in a failed state.
+  name      = "platform"
+  chart     = "${path.module}/../deploy/platform"
+  namespace = "kube-system"
+  replace   = true # Preserve recovery of releases left in a failed state.
+  values = [yamlencode({
+    alb = { certificateARNs = var.alb_certificate_arns }
+    argocd = {
+      ingress = { enabled = var.argocd_ingress_enabled, hostname = var.argocd_hostname }
+    }
+  })]
   depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring]
 }
 
@@ -299,11 +305,11 @@ resource "helm_release" "argocd" {
     server = {
       metrics = { enabled = true, serviceMonitor = { enabled = true } }
       service = { type = "ClusterIP" }
-      ingress = { enabled = false }
+      ingress = { enabled = false } # The platform chart owns the shared-ALB Ingress.
     }
     configs = {
       cm = {
-        url                       = "https://localhost:8443"
+        url                       = var.argocd_ingress_enabled ? "https://${var.argocd_hostname}" : "https://localhost:8443"
         "admin.enabled"           = true
         "users.anonymous.enabled" = false
       }

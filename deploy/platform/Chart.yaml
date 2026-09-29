@@ -1,4 +1,4 @@
 apiVersion: v2
 name: platform
-description: Cluster-level bits for EKS Auto Mode (application ALB IngressClass, gp3 StorageClass)
-version: 0.3.0
+description: EKS Auto Mode HTTPS ALB, authenticated Argo CD ingress, and gp3 StorageClass
+version: 0.4.0

@@ -3,6 +3,43 @@ variable "region" {
   default = "ap-southeast-1"
 }
 
+variable "alb_certificate_arns" {
+  description = "Existing, DNS-validated ACM certificates for the public hostnames. The first is the ALB default; SNI selects the matching certificate. Terraform does not own these certificates."
+  type        = list(string)
+  nullable    = false
+  default = [
+    "arn:aws:acm:ap-southeast-1:373220260649:certificate/91b36eaf-9f79-4250-aac4-ae8401d5c892",
+    "arn:aws:acm:ap-southeast-1:373220260649:certificate/97327450-e8d7-404a-8b48-dc7e5fef6039",
+  ]
+
+  validation {
+    condition = length(var.alb_certificate_arns) > 0 && alltrue([
+      for arn in var.alb_certificate_arns : can(regex(
+        "^arn:${data.aws_partition.current.partition}:acm:${var.region}:${data.aws_caller_identity.current.account_id}:certificate/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", arn
+      ))
+    ]) && length(distinct(var.alb_certificate_arns)) == length(var.alb_certificate_arns)
+    error_message = "Supply distinct ACM certificate ARNs from this AWS account, partition, and deployment region. Verify they are Issued and cover the configured hostnames before applying."
+  }
+}
+
+variable "argocd_ingress_enabled" {
+  description = "Publish Argo CD through the shared HTTPS ALB with Argo CD login required. False retains only private access."
+  type        = bool
+  default     = true
+}
+
+variable "argocd_hostname" {
+  description = "Public Argo CD hostname, covered by one of alb_certificate_arns."
+  type        = string
+  nullable    = false
+  default     = "argocd.hemal.me"
+
+  validation {
+    condition     = length(var.argocd_hostname) <= 253 && can(regex("^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?[.])+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$", var.argocd_hostname))
+    error_message = "Use a fully qualified DNS hostname without a scheme, port, path, trailing dot, or wildcard."
+  }
+}
+
 variable "vpc_cidr" {
   type    = string
   default = "10.60.0.0/16"

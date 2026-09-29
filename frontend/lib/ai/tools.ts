@@ -1,8 +1,17 @@
 import { tool } from "ai";
 import { z } from "zod";
+import type { DecisionExplanation, RecommendationSummary } from "@/lib/ai/backend";
 import { lowStock, networkFacts, type StockEntry } from "@/lib/ai/facts";
 import { allocationSummaries, eventSummaries, routeSummaries, stockFor } from "@/lib/ai/queries";
 import type { LoadedState } from "@/lib/ai/quality";
+
+// The data the chat tools read. Each function is called per tool run so answers
+// use the freshest data; tests inject fakes so no network or backend is needed.
+export interface ChatContext {
+  load: () => Promise<LoadedState>;
+  listRecommendations: (opts: { status?: string; limit?: number }) => Promise<RecommendationSummary[]>;
+  explainRecommendation: (id: number) => Promise<DecisionExplanation>;
+}
 
 const pickStock = ({ name, kind, fuel, inventory, capacity, percent }: StockEntry) => ({
   name,
@@ -14,8 +23,8 @@ const pickStock = ({ name, kind, fuel, inventory, capacity, percent }: StockEntr
 });
 
 // Read-only on purpose: the assistant explains the network, it never changes it (brief section 24).
-// `load` is called per tool run so each answer uses the freshest snapshot.
-export function createTools(load: () => Promise<LoadedState>) {
+export function createTools(ctx: ChatContext) {
+  const load = ctx.load;
   return {
     getOverview: tool({
       description:
@@ -58,6 +67,21 @@ export function createTools(load: () => Promise<LoadedState>) {
         limit: z.number().int().min(1).max(20).default(10),
       }),
       execute: async ({ status, limit }) => ({ allocations: allocationSummaries((await load()).snapshot, status, limit) }),
+    }),
+    listRecommendations: tool({
+      description:
+        "Current allocation recommendations from the decision engine, newest first, with id, station, fuel, quantity, verdict (auto|review) and status. Use this to find a recommendation's id before explaining it.",
+      inputSchema: z.object({
+        status: z.enum(["PROPOSED", "APPROVED", "REJECTED", "SUBMITTED", "EXPIRED", "FAILED"]).optional(),
+        limit: z.number().int().min(1).max(20).default(10),
+      }),
+      execute: async ({ status, limit }) => ({ recommendations: await ctx.listRecommendations({ status, limit }) }),
+    }),
+    explainRecommendation: tool({
+      description:
+        "Plain-language explanation of one recommendation by id: why it was proposed and whether it auto-dispatches or needs human review. The headline, risk figures, confidence and action are computed by the backend and verified against the data — quote them exactly. Find ids with listRecommendations.",
+      inputSchema: z.object({ id: z.number().int().positive().describe("Recommendation id from listRecommendations") }),
+      execute: async ({ id }) => await ctx.explainRecommendation(id),
     }),
   };
 }

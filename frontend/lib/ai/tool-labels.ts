@@ -6,6 +6,8 @@ export const TOOL_LABELS: Record<string, string> = {
   getRoutes: "Routes",
   getEvents: "Events",
   getAllocations: "Allocations",
+  listRecommendations: "Recommendations",
+  explainRecommendation: "Decision explanation",
 };
 
 export const toolLabel = (name: string): string => TOOL_LABELS[name] ?? name;

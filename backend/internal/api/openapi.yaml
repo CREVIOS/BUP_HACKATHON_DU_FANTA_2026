@@ -148,6 +148,13 @@ paths:
       tags: [decisions]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses: { "200": { $ref: "#/components/responses/Json" }, "404": { $ref: "#/components/responses/Error" } }
+  /api/recommendations/{id}/explain:
+    get:
+      summary: Human-readable, operator-facing explanation of a recommendation (GenAI; deterministic hard numbers, LLM narrative with rule-based fallback)
+      operationId: explainRecommendation
+      tags: [decisions]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "404": { $ref: "#/components/responses/Error" } }
   /api/recommendations/{id}/approve:
     post:
       summary: Approve a PROPOSED recommendation (optionally editing the quantity); re-validated against the live world

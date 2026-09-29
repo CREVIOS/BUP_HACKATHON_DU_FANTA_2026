@@ -1,4 +1,5 @@
 import { isToolUIPart, type UIMessage } from "ai";
+import { Markdown } from "@/components/ai/markdown";
 import { ToolCall } from "@/components/ai/tool-call";
 
 function UserMessage({ message }: { message: UIMessage }) {
@@ -13,11 +14,7 @@ function AssistantMessage({ message }: { message: UIMessage }) {
       <div className="min-w-0 flex-1 space-y-2">
         {message.parts.map((part, index) => {
           if (part.type === "text") {
-            return (
-              <p key={index} className="whitespace-pre-wrap text-sm leading-relaxed">
-                {part.text}
-              </p>
-            );
+            return <Markdown key={index} text={part.text} />;
           }
           if (isToolUIPart(part)) return <ToolCall key={part.toolCallId} part={part} />;
           return null;

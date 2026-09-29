@@ -16,6 +16,9 @@ type Config struct {
 	PollInterval   time.Duration // ingestor fallback poll interval
 	IntelURL       string        // intel service base URL (api -> intel)
 	TypesafeAPIKey string        // Jev; empty = rule-based fallback only
+	OpenAIAPIKey   string        // OPENAI_API_KEY; enables the llm.Client (internal/llm); empty = client disabled
+	OpenAIModel    string        // OPENAI_MODEL; empty = llm package default
+	OpenAIBaseURL  string        // OPENAI_BASE_URL; empty = api.openai.com (set for Azure/proxy/gateway)
 	OperatorToken  string        // bearer token for operator actions (approve/reject/allocate/cancel); empty + no admin token = auth off
 	AdminToken     string        // bearer token for admin actions (sim control, crisis/fault injection, policy settings)
 	RLShadow       bool          // run the trained RL policy in shadow mode (never executes); default on
@@ -33,6 +36,9 @@ func Load() Config {
 		PollInterval:   envDuration("POLL_INTERVAL", time.Second),
 		IntelURL:       env("INTEL_URL", "http://localhost:8082"),
 		TypesafeAPIKey: os.Getenv("TYPESAFE_API_KEY"),
+		OpenAIAPIKey:   os.Getenv("OPENAI_API_KEY"),
+		OpenAIModel:    os.Getenv("OPENAI_MODEL"),
+		OpenAIBaseURL:  os.Getenv("OPENAI_BASE_URL"),
 		OperatorToken:  os.Getenv("OPERATOR_TOKEN"),
 		AdminToken:     os.Getenv("ADMIN_TOKEN"),
 		RLShadow:       os.Getenv("RL_SHADOW") != "false",

@@ -4,11 +4,14 @@ import type { StateResponse, StatusResponse } from "@/lib/types";
 // Server-side base URL of the Go API. Same variable next.config.ts uses for the /api proxy.
 const API_BASE = process.env.API_PROXY_TARGET ?? "http://api:8000";
 const TIMEOUT_MS = 3000;
+// The explain endpoint makes a live LLM call (~4-6s), so it needs a longer
+// budget than the fast read endpoints. Kept under the chat route's 30s cap.
+const EXPLAIN_TIMEOUT_MS = 25000;
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
-async function getJSON<T>(fetchImpl: FetchLike, path: string): Promise<T> {
-  const res = await fetchImpl(`${API_BASE}${path}`, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+async function getJSON<T>(fetchImpl: FetchLike, path: string, timeoutMs = TIMEOUT_MS): Promise<T> {
+  const res = await fetchImpl(`${API_BASE}${path}`, { cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
   if (!res.ok) throw new Error(`API ${path} returned ${res.status}`);
   return (await res.json()) as T;
 }
@@ -27,4 +30,68 @@ export async function loadContext(fetchImpl: FetchLike = fetch): Promise<LoadedS
     snapshot: state.value.snapshot,
     quality: assessQuality(state.value, status.status === "fulfilled" ? status.value : undefined),
   };
+}
+
+// A recommendation as the assistant needs to refer to it: enough to name it and
+// pick an id to explain. The full evidence lives behind explainRecommendation.
+export interface RecommendationSummary {
+  id: number;
+  station_id: string;
+  fuel_type: string;
+  quantity: number;
+  verdict: string;
+  status: string;
+  risk_before: number | null;
+  risk_after: number | null;
+}
+
+// The backend's guarded decision explanation (internal/genai): the hard numbers
+// are computed server-side, the narrative is grounded and verified there.
+export interface DecisionExplanation {
+  headline: string;
+  narrative: string;
+  factors: string[];
+  confidence: string;
+  action: string;
+  source: "llm" | "rule-based";
+}
+
+// The list endpoint returns more fields than we need; we read only these.
+interface RecListResponse {
+  recommendations: RecommendationSummary[];
+}
+
+// listRecommendations reads the current recommendations from the Go API.
+export async function listRecommendations(
+  opts: { status?: string; limit?: number } = {},
+  fetchImpl: FetchLike = fetch,
+): Promise<RecommendationSummary[]> {
+  const q = new URLSearchParams();
+  if (opts.status) q.set("status", opts.status);
+  q.set("limit", String(opts.limit ?? 20));
+  const res = await getJSON<RecListResponse>(fetchImpl, `/api/recommendations?${q.toString()}`);
+  return res.recommendations.map((r) => ({
+    id: r.id,
+    station_id: r.station_id,
+    fuel_type: r.fuel_type,
+    quantity: r.quantity,
+    verdict: r.verdict,
+    status: r.status,
+    risk_before: r.risk_before ?? null,
+    risk_after: r.risk_after ?? null,
+  }));
+}
+
+// explainRecommendation asks the Go API for the guarded explanation of one
+// recommendation. The narrative/numbers come from the backend, not this route.
+export async function explainRecommendation(
+  id: number,
+  fetchImpl: FetchLike = fetch,
+): Promise<DecisionExplanation> {
+  const res = await getJSON<{ explanation: DecisionExplanation }>(
+    fetchImpl,
+    `/api/recommendations/${encodeURIComponent(String(id))}/explain`,
+    EXPLAIN_TIMEOUT_MS,
+  );
+  return res.explanation;
 }

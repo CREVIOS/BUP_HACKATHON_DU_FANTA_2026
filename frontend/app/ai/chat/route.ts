@@ -1,5 +1,5 @@
 import { convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, toUIMessageStream } from "ai";
-import { loadContext } from "@/lib/ai/backend";
+import { explainRecommendation, listRecommendations, loadContext } from "@/lib/ai/backend";
 import { clientKey, json } from "@/lib/ai/http";
 import { getModel } from "@/lib/ai/model";
 import { CHAT_INSTRUCTIONS } from "@/lib/ai/prompts";
@@ -39,10 +39,18 @@ export async function POST(req: Request): Promise<Response> {
     model,
     instructions: CHAT_INSTRUCTIONS,
     messages: await convertToModelMessages(parsed.messages),
-    tools: createTools(() => loadContext()),
+    tools: createTools({
+      load: () => loadContext(),
+      listRecommendations: (opts) => listRecommendations(opts),
+      explainRecommendation: (id) => explainRecommendation(id),
+    }),
     stopWhen: isStepCount(MAX_TOOL_STEPS),
     timeout: CHAT_TIMEOUT_MS,
     abortSignal: req.signal, // Stop or a closed tab cancels the model call
+    // Reasoning models (gpt-5.6+) pair a reasoning item with each message. The
+    // browser replays history without those items, so scope reasoning to the
+    // current turn to avoid the "message without its reasoning item" 400.
+    providerOptions: { openai: { reasoningContext: "current_turn" } },
   });
 
   return createUIMessageStreamResponse({

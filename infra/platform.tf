@@ -36,9 +36,9 @@ resource "kubernetes_namespace_v1" "platform" {
   depends_on = [module.eks]
 }
 
-# ALB IngressClass (Auto Mode), default gp3 StorageClass, ops ingresses.
+# ALB IngressClass (Auto Mode) for application ingress and default gp3 StorageClass.
 # The pinned controller releases use ephemeral storage, so they do not require this
-# StorageClass to start. Wait for their services before creating the ops ingresses.
+# StorageClass to start. Keep the application gate downstream of controller readiness.
 resource "helm_release" "platform" {
   name       = "platform"
   chart      = "${path.module}/../deploy/platform"
@@ -79,8 +79,12 @@ resource "helm_release" "monitoring" {
     }
     grafana = {
       adminPassword = random_password.grafana.result
+      service       = { type = "ClusterIP" }
+      ingress       = { enabled = false }
       "grafana.ini" = {
-        server = { root_url = "%(protocol)s://%(domain)s/grafana", serve_from_sub_path = true }
+        server           = { root_url = "http://localhost:3000/", serve_from_sub_path = false }
+        "auth.anonymous" = { enabled = false }
+        users            = { allow_sign_up = false }
       }
       sidecar = { dashboards = { enabled = true, searchNamespace = "ALL" } }
     }
@@ -95,7 +99,13 @@ resource "helm_release" "argo_rollouts" {
   version    = "2.43.2"
   namespace  = kubernetes_namespace_v1.platform["argo-rollouts"].metadata[0].name
   values = [yamlencode({
-    dashboard = { enabled = true }
+    dashboard = {
+      enabled  = true
+      readonly = true
+      rootPath = "/"
+      service  = { type = "ClusterIP" }
+      ingress  = { enabled = false }
+    }
   })]
   depends_on = [module.eks]
 }
@@ -108,11 +118,20 @@ resource "helm_release" "argocd" {
   namespace  = kubernetes_namespace_v1.platform["argocd"].metadata[0].name
   timeout    = 900
   values = [yamlencode({
+    server = {
+      service = { type = "ClusterIP" }
+      ingress = { enabled = false }
+    }
     configs = {
+      cm = {
+        url                       = "https://localhost:8443"
+        "admin.enabled"           = true
+        "users.anonymous.enabled" = false
+      }
       params = {
-        "server.insecure" = true
-        "server.basehref" = "/argocd"
-        "server.rootpath" = "/argocd"
+        "server.insecure" = false
+        "server.basehref" = "/"
+        "server.rootpath" = ""
       }
       # Argo CD reads the private repo with a read-only deploy key.
       repositories = {

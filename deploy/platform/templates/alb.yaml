@@ -1,4 +1,4 @@
-# One shared internet-facing ALB for the app, Argo CD and Grafana (IngressClassParams group).
+# Internet-facing ALB for the application only; operators use kubectl port-forward.
 apiVersion: eks.amazonaws.com/v1
 kind: IngressClassParams
 metadata:

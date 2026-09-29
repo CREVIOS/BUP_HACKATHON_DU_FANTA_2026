@@ -1,4 +1,4 @@
 apiVersion: v2
 name: platform
-description: Cluster-level bits for EKS Auto Mode (ALB IngressClass, gp3 StorageClass, ops ingresses)
-version: 0.1.0
+description: Cluster-level bits for EKS Auto Mode (application ALB IngressClass, gp3 StorageClass)
+version: 0.2.0

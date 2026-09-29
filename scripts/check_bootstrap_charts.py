@@ -3,6 +3,7 @@
 
 import os
 from pathlib import Path
+import re
 import subprocess
 
 
@@ -30,7 +31,9 @@ def helm(*args, expected_error=None):
 def main():
     valid_tags = ["--set-string", f"image.tag={SHA},web.tag={SHA}"]
     helm("lint", "deploy/platform")
-    helm("template", "platform", "deploy/platform", "--namespace", "kube-system")
+    platform = helm("template", "platform", "deploy/platform", "--namespace", "kube-system")
+    if re.search(r"^kind: (Ingress|HTTPRoute|Gateway)$", platform, re.MULTILINE):
+        raise AssertionError("The platform chart must not publish operator tools.")
     helm("lint", APP, *valid_tags)
     helm("template", "fuelops", APP, "--namespace", "fuelops", *valid_tags)
 
@@ -47,7 +50,7 @@ def main():
             "--set-string", f"{image}.repository=", expected_error=f"/{image}/repository",
         )
 
-    print("Bootstrap chart checks passed: both charts render; invalid release images are rejected.")
+    print("Bootstrap chart checks passed: no platform ingress; both charts render; invalid release images are rejected.")
 
 
 if __name__ == "__main__":

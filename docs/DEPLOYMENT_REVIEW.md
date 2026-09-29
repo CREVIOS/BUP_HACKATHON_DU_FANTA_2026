@@ -4,6 +4,8 @@ Reviewed 2026-09-29 against commit `533d814`, `infra/`, `deploy/`, `.github/work
 
 Follow-up: dependency pins, namespace ordering, application bootstrap gating, and the Prometheus Service URL are addressed by the first increment on `infra/deployment-readiness`. See [the implementation checklist](INFRA_WORK_PLAN.md) and [bootstrap guide](../infra/README.md). Findings below preserve the original review snapshot; remaining deployment blockers are still open.
 
+Access follow-up: increment 2 removes public operator ingresses, restores Argo CD TLS, configures root-path localhost access, makes the Rollouts dashboard read-only for workloads, and restricts GitHub trust to an exact `main` subject. These are configuration changes with local validation; they have not been applied to a live environment. OIDC provider ownership, rollout reliability, and the remaining checklist items are still open.
+
 **Verdict: keep the EKS direction, but fix the deployment and rollback gaps before the first public deployment.** `INFRA_DECISIONS.md` is currently a historical design with a partial EKS update; it is not an executable runbook.
 
 ## 1. What is sound

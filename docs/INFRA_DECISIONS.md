@@ -2,10 +2,11 @@
 
 Status: v2.1 · 2026-09-29 · includes the independent review (fact-check with sources in §12)
 
-> Implementation status: the dependency/bootstrap increment is documented in
+> Implementation status: the dependency/bootstrap and private operator access increments are documented in
 > [infra/README.md](../infra/README.md). The ECS-era sections below remain historical
 > until the full reconciliation in [INFRA_WORK_PLAN.md](INFRA_WORK_PLAN.md). Use the
-> bootstrap guide for current pins, namespace ordering, and the application-enable switch.
+> bootstrap guide for current pins, namespace ordering, the application-enable switch,
+> localhost operator access, and exact GitHub release trust. Live deployment remains unverified.
 
 Runtime on AWS: **≤ 8 hours** (spin up before the demo, destroy after).
 Fixed by the team: Go backend · AWS · RDS for the database · Terraform · CI/CD · automated rollback.

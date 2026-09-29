@@ -35,6 +35,21 @@ variable "git_revision" {
   default     = "main"
 }
 
+variable "github_oidc_subject" {
+  description = "Exact GitHub OIDC sub for this repository on main. Required because GitHub supports both name-only and immutable owner/repository-ID subjects; confirm the repository's format before applying."
+  type        = string
+  nullable    = false
+
+  validation {
+    # @ is reserved for immutable numeric IDs in GitHub's subject format.
+    condition = (
+      can(regex("^repo:[^:@/]+(@[0-9]+)?/[^:@/]+(@[0-9]+)?:ref:refs/heads/main$", var.github_oidc_subject)) &&
+      replace(var.github_oidc_subject, "/@[0-9]+/", "") == "repo:${var.github_repo}:ref:refs/heads/main"
+    )
+    error_message = "Use this github_repo's exact main-branch subject: repo:OWNER/REPO:ref:refs/heads/main (optionally with @numeric IDs after the owner/repository names). Wildcards, other branches, PRs, and environments are not accepted."
+  }
+}
+
 variable "enable_application" {
   description = "Create the Argo CD application after CI has published both images and committed full SHA tags to the tracked chart. Keep false during platform bootstrap."
   type        = bool

@@ -13,7 +13,7 @@ Files: `infra/main.tf`, `infra/platform.tf`, `infra/variables.tf`, `infra/versio
 - [x] Exact-pin the EKS module to `21.26.0` and VPC module to `6.7.3`, the versions resolved during the static review. These still need a live rehearsal.
 - [x] Pin and render metrics-server `3.14.0`, kube-prometheus-stack `91.8.1`, argo-rollouts `2.43.2`, argo-cd `10.9.2`, and argocd-apps `2.0.5` against Kubernetes `1.36.0`. Live compatibility remains unverified.
 - [x] Retain existing provider hashes and add Linux checksums. Pin CI to Terraform `1.13.5` / Helm `3.19.0`; initialize with a read-only lockfile.
-- [x] Create namespaces explicitly and make releases depend on them. Install the platform chart's current ops ingresses after the controller releases. Making ops ingress optional/private remains step 2.
+- [x] Create namespaces explicitly and make releases depend on them. Keep the application gate downstream of controller readiness; step 2 removes operator ingress from the platform chart.
 - [x] Default the Argo application to disabled. Require full SHA tags through schema validation when Argo renders the Git chart; actual ECR image existence remains a preflight check.
 - [ ] Define explicit foundation → platform → application bootstrap stages and reverse teardown order. Prefer separate AWS/platform roots; inspect existing remote state before moving resource ownership and prepare state migration if anything is already managed.
 
@@ -25,14 +25,16 @@ Increment 1 implements the checked items above, with mocked Terraform bootstrap/
 
 Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/platform/templates/ops-ingress.yaml`, `deploy/charts/fuelops/templates/_helpers.tpl`, `README.md`.
 
-- [ ] Disable public Argo CD, Grafana, and Rollouts ingresses by default; document port-forward access and configure service paths to match it.
-- [ ] Make the Rollouts dashboard read-only by default. Keep Argo CD/Grafana authentication enabled.
-- [ ] Restrict the GitHub OIDC role subject to the intended release branch or protected environment.
+- [x] Remove public Argo CD, Grafana, and Rollouts ingresses; document localhost port-forward access and configure service paths to match it.
+- [x] Make the Rollouts dashboard read-only for workloads. Keep Argo CD/Grafana authentication enabled and restore Argo CD server TLS.
+- [x] Restrict the GitHub OIDC role subject to the repository's exact `main`-branch subject and require confirmation of its legacy/immutable format as a deployment input. Restrict manual release dispatches to `main` too.
 - [ ] Support reuse of an existing account-level GitHub OIDC provider without putting it under disposable demo ownership.
 - [ ] Document the current secret model: encrypted Terraform state plus Kubernetes Secrets. Limit each workload to secrets it uses; distinguish this from a future Secrets Manager integration.
 - [ ] Make account-specific image repositories/configuration derive from the chosen deployment inputs rather than assuming the hard-coded account everywhere.
 
 Completion: default rendering publishes only the intended app ingress, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have a working private access procedure.
+
+Increment 2 implements the three access items above. Mocked Terraform plans and chart rendering cover the configured defaults; live port-forward/login checks, ALB rule removal, and OIDC assumption still require the deployment rehearsal. Shared provider ownership, workload secret scope, and account-specific image configuration remain open, so this step is not yet complete. See [private operator access](../infra/README.md#private-operator-access) for commands and existing-environment effects.
 
 ## 3. Make rollout checks and HPA reliable
 

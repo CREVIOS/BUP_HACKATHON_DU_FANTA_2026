@@ -1,4 +1,8 @@
 # Plan-only tests: every provider is mocked; no credentials or live cluster needed.
+variables {
+  github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/main"
+}
+
 mock_provider "aws" {
   override_during = plan
   mock_data "aws_availability_zones" {
@@ -6,6 +10,9 @@ mock_provider "aws" {
   }
   mock_data "aws_caller_identity" {
     defaults = { account_id = "123456789012" }
+  }
+  mock_resource "aws_iam_openid_connect_provider" {
+    defaults = { arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com" }
   }
 }
 mock_provider "helm" { override_during = plan }
@@ -88,4 +95,101 @@ run "application_enable_preserves_git_image_ownership" {
     condition     = toset(keys(yamldecode(helm_release.argocd_apps.values[0]).applications.fuelops.source.helm)) == toset(["valueFiles"])
     error_message = "Terraform must not override image tags owned by the GitOps values file."
   }
+}
+
+run "operator_access_and_release_trust" {
+  command = plan
+
+  assert {
+    condition = (
+      yamldecode(helm_release.argocd.values[0]).server.service.type == "ClusterIP" &&
+      !yamldecode(helm_release.argocd.values[0]).server.ingress.enabled &&
+      !yamldecode(helm_release.argocd.values[0]).configs.params["server.insecure"] &&
+      yamldecode(helm_release.argocd.values[0]).configs.params["server.basehref"] == "/" &&
+      yamldecode(helm_release.argocd.values[0]).configs.params["server.rootpath"] == "" &&
+      yamldecode(helm_release.argocd.values[0]).configs.cm["admin.enabled"] &&
+      !yamldecode(helm_release.argocd.values[0]).configs.cm["users.anonymous.enabled"]
+    )
+    error_message = "Argo CD must use a private Service, TLS, root paths, and authenticated access."
+  }
+  assert {
+    condition = (
+      yamldecode(helm_release.monitoring.values[0]).grafana.service.type == "ClusterIP" &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana.ingress.enabled &&
+      yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.root_url == "http://localhost:3000/" &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].server.serve_from_sub_path &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"]["auth.anonymous"].enabled &&
+      !yamldecode(helm_release.monitoring.values[0]).grafana["grafana.ini"].users.allow_sign_up
+    )
+    error_message = "Grafana must use localhost port-forward access with anonymous access and signup disabled."
+  }
+  assert {
+    condition = (
+      yamldecode(helm_release.argo_rollouts.values[0]).dashboard.readonly &&
+      yamldecode(helm_release.argo_rollouts.values[0]).dashboard.service.type == "ClusterIP" &&
+      !yamldecode(helm_release.argo_rollouts.values[0]).dashboard.ingress.enabled &&
+      yamldecode(helm_release.argo_rollouts.values[0]).dashboard.rootPath == "/"
+    )
+    error_message = "The Rollouts dashboard must be private and read-only for workloads."
+  }
+  assert {
+    condition = jsondecode(aws_iam_role.github_actions.assume_role_policy).Statement[0].Condition == {
+      StringEquals = {
+        "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+        "token.actions.githubusercontent.com:sub" = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/main"
+      }
+    }
+    error_message = "GitHub trust must match the exact main-branch subject and STS audience."
+  }
+}
+
+run "immutable_github_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS@123456/BUP_HACKATHON_DU_FANTA_2026@456789:ref:refs/heads/main"
+  }
+  assert {
+    condition     = jsondecode(aws_iam_role.github_actions.assume_role_policy).Statement[0].Condition.StringEquals["token.actions.githubusercontent.com:sub"] == var.github_oidc_subject
+    error_message = "Preserve the exact immutable subject, including both IDs, in the IAM policy."
+  }
+}
+
+run "reject_wildcard_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:*"
+  }
+  expect_failures = [var.github_oidc_subject]
+}
+
+run "reject_other_branch_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/infra/deployment-readiness"
+  }
+  expect_failures = [var.github_oidc_subject]
+}
+
+run "reject_other_repository_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS/other-repo:ref:refs/heads/main"
+  }
+  expect_failures = [var.github_oidc_subject]
+}
+
+run "reject_pull_request_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:pull_request"
+  }
+  expect_failures = [var.github_oidc_subject]
+}
+
+run "reject_environment_subject" {
+  command = plan
+  variables {
+    github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:environment:production"
+  }
+  expect_failures = [var.github_oidc_subject]
 }

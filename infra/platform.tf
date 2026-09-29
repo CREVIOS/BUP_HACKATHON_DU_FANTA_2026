@@ -33,6 +33,7 @@ resource "helm_release" "platform" {
   name      = "platform"
   chart     = "${path.module}/../deploy/platform"
   namespace = "kube-system"
+  replace   = true # take over a release left in "failed" state by an earlier run
   # Its ingresses live in the argocd / monitoring / argo-rollouts namespaces those releases create.
   depends_on = [helm_release.argocd, helm_release.monitoring, helm_release.argo_rollouts]
 }

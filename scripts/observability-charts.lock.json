@@ -5,6 +5,18 @@
     "version": "91.8.1",
     "sha256": "a93f90d2aec2eff51360f879289138eb1c69f021fc74eb8c344f840a1deaad1b"
   },
+  "loki": {
+    "repository": "https://grafana.github.io/helm-charts",
+    "chart": "loki",
+    "version": "7.3.0",
+    "sha256": "04a339f712d770a1f599f05fc0a5a3cde18e43914e49ae6a49f7171be86bcc09"
+  },
+  "otel_logs": {
+    "repository": "https://open-telemetry.github.io/opentelemetry-helm-charts",
+    "chart": "opentelemetry-collector",
+    "version": "0.173.1",
+    "sha256": "66897a36e9eeda71ce227236fb952c0501ce7d7f6387e0318ca15046950ee04d"
+  },
   "tempo": {
     "repository": "https://grafana-community.github.io/helm-charts",
     "chart": "tempo",

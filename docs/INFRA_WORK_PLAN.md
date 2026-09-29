@@ -13,6 +13,7 @@ Files: `infra/main.tf`, `infra/platform.tf`, `infra/variables.tf`, `infra/versio
 - [x] Exact-pin the EKS module to `21.26.0` and VPC module to `6.7.3`, the versions resolved during the static review. These still need a live rehearsal.
 - [x] Pin and render metrics-server `3.14.0`, kube-prometheus-stack `91.8.1`, argo-rollouts `2.43.2`, argo-cd `10.9.2`, and argocd-apps `2.0.5` against Kubernetes `1.36.0`. Live compatibility remains unverified.
 - [x] Pin and render Tempo chart `2.4.0` / Tempo `2.10.8` from the maintained community repository. Check actual mock-plan Helm values, package digests, Collector/Tempo ports, Grafana datasource discovery/RBAC, and tracing enabled/disabled rendering in CI.
+- [x] Reconcile main's linked datasources, metrics generator, logs, and dashboard. Pin/render Loki `7.3.0` and OTel log collector `0.173.1`; verify log routing and the Auto Mode storage dependency.
 - [ ] Verify Collector → Tempo delivery, Grafana datasource provisioning/querying, and Collector metric scraping during the live rehearsal.
 - [x] Retain existing provider hashes and add Linux checksums. Pin CI to Terraform `1.13.5` / Helm `3.19.0`; initialize with a read-only lockfile.
 - [x] Create namespaces explicitly and make releases depend on them. Keep the application gate downstream of controller readiness; step 2 removes operator ingress from the platform chart.
@@ -23,7 +24,7 @@ Completion: each Terraform root validates, charts render with pinned dependencie
 
 Increment 1 implements the checked items above, with mocked Terraform bootstrap/activation tests and Helm image-validation checks in CI. It also fixes the app's Prometheus URL to match the pinned chart's rendered Service. See [infra/README.md](../infra/README.md) for exact versions, adoption steps, and validation commands. No live plan was run, so replacement risk still needs account/state inspection before applying. Root splitting remains pending.
 
-The tracing follow-up closes the local integration gap introduced by the OpenTelemetry merge: Grafana now watches datasource ConfigMaps in both required namespaces, Collector OTLP ports match its listeners, and application activation waits for Tempo. Tempo remains ephemeral with 24-hour retention. Merge and deployment remain deferred. Step 2 now supports shared GitHub OIDC provider reuse; workload secret scope is the next code increment, followed by deployment-specific image configuration.
+The latest observability merge centralizes all linked Grafana datasources in Terraform's monitoring release; app dashboards remain in `fuelops`. Collector ports match their listeners, and application activation waits for Tempo and platform logging. Tempo remains ephemeral with 24-hour retention; Loki uses a 10 GiB gp3 PVC. Merging the PR and deployment remain deferred. Step 2 supports shared GitHub OIDC provider reuse; workload secret scope is the next code increment, followed by deployment-specific image configuration.
 
 ## 2. Correct access defaults and resource ownership
 
@@ -75,8 +76,10 @@ Completion: CI cannot report successful deployment merely because a Git push suc
 
 Files: `infra/platform.tf`, `deploy/charts/fuelops/templates/observability.yaml`, new `deploy/charts/fuelops/dashboards/`, `docs/INFRA_DECISIONS.md`, `docs/PLAN.md`, `README.md`.
 
-- [ ] Enable Rollouts controller metrics and its ServiceMonitor; confirm the actual metric/labels used by the aborted-rollout alert.
-- [ ] Add one useful Grafana overview covering request rate/errors/latency, resource usage, replica counts, simulator/ingestor health, and available business metrics.
+- [x] Preserve main's Rollouts/Argo CD metrics and ServiceMonitors with the monitoring CRD dependency.
+- [x] Preserve and render main's FuelOps operations dashboard and verify Grafana discovers its ConfigMap.
+- [ ] Confirm the dashboard's panels against live data and the actual metric/labels used by the aborted-rollout alert.
+- [ ] Enable and verify Loki compactor retention cleanup; the inherited 48-hour limit alone does not enforce log deletion. Review migration to the Loki community chart separately.
 - [ ] Define log and monitoring export commands and retention. Configure an alert receiver if notifications are part of the promised demo; otherwise document the limitation.
 - [ ] Rewrite the active architecture/decision table for EKS/Singapore, two images, Kubernetes Services, Prometheus, the current secret model, and Jev configuration. Archive superseded ECS decisions.
 - [ ] Update the DevOps track in `PLAN.md` and add bootstrap, private ops access, release, rollback, evidence export, and teardown instructions to `README.md`.

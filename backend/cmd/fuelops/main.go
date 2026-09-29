@@ -31,7 +31,8 @@ func main() {
 		os.Exit(2)
 	}
 	cmd := os.Args[1]
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("service", cmd, "version", version.Version))
+	// TraceHandler adds trace_id/span_id to records logged with a span-carrying ctx (log↔trace links in Grafana).
+	slog.SetDefault(slog.New(obs.TraceHandler{Handler: slog.NewJSONHandler(os.Stdout, nil)}).With("service", cmd, "version", version.Version))
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -41,18 +42,18 @@ func main() {
 	shutdownOTel, err := obs.Setup(ctx, "fuelops-"+cmd, version.Version)
 	if err != nil {
 		// Telemetry must never take the service down (brief §11): log and run without it.
-		slog.Error("otel setup failed; continuing without telemetry", "err", err)
+		slog.ErrorContext(ctx, "otel setup failed; continuing without telemetry", "err", err)
 		shutdownOTel = func(context.Context) error { return nil }
 	}
 	defer func() {
 		sctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := shutdownOTel(sctx); err != nil {
-			slog.Warn("otel shutdown", "err", err)
+			slog.WarnContext(sctx, "otel shutdown", "err", err)
 		}
 	}()
 	if obs.Enabled() {
-		slog.Info("opentelemetry enabled", "endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
+		slog.InfoContext(ctx, "opentelemetry enabled", "endpoint", os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"))
 	}
 
 	switch cmd {
@@ -70,7 +71,7 @@ func main() {
 		err = fmt.Errorf("unknown command %q", cmd)
 	}
 	if err != nil {
-		slog.Error("exit", "err", err)
+		slog.ErrorContext(ctx, "exit", "err", err)
 		os.Exit(1)
 	}
 }

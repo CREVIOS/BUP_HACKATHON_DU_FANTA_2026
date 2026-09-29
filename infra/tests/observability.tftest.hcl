@@ -46,8 +46,11 @@ override_module {
 run "observability_contract" {
   command = plan
   assert {
-    condition     = helm_release.tempo.namespace == kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
-    error_message = "Tempo must use the explicitly managed monitoring namespace."
+    condition = alltrue([
+      for release in [helm_release.tempo, helm_release.loki, helm_release.otel_logs] :
+      release.namespace == kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
+    ])
+    error_message = "Observability releases must use the explicitly managed monitoring namespace."
   }
   assert {
     condition = (
@@ -55,5 +58,13 @@ run "observability_contract" {
       yamldecode(helm_release.tempo.values[0]).service.type == "ClusterIP"
     )
     error_message = "The demo's trace backend must remain private with explicit ephemeral storage."
+  }
+  assert {
+    condition = (
+      yamldecode(helm_release.argo_rollouts.values[0]).controller.metrics.serviceMonitor.enabled &&
+      yamldecode(helm_release.argocd.values[0]).controller.metrics.serviceMonitor.enabled &&
+      yamldecode(helm_release.argocd.values[0]).server.metrics.serviceMonitor.enabled
+    )
+    error_message = "Keep main's Rollouts and Argo CD metrics ServiceMonitors enabled."
   }
 }

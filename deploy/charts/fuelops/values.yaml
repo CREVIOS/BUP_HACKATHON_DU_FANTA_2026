@@ -3,10 +3,10 @@
 # supply full SHA tags; enable_application stays false until CI commits real releases.
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
+  tag: 7691a1f9b65760e77ae9f94b665c75c70df0e2da
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
+  tag: 7691a1f9b65760e77ae9f94b665c75c70df0e2da
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
@@ -26,8 +26,8 @@ ingestor:
 prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 # OpenTelemetry: backend pods export OTLP to the in-namespace collector, which sends
 # traces to Grafana Tempo (monitoring ns) and re-exposes OTel metrics for Prometheus.
-# Set endpoint to "" to remove OTel env vars, Collector resources, and its datasource
-# ConfigMap on the next sync. Terraform-managed Tempo remains available.
+# Set endpoint to "" to remove OTel env vars and the app Collector on the next sync.
+# Terraform-managed Tempo, Loki, node log collection, and Grafana datasources remain.
 otel:
   endpoint: http://otel-collector.fuelops.svc:4317
   environment: prod

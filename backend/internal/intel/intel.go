@@ -14,7 +14,7 @@ import (
 func Run(ctx context.Context, cfg config.Config) error {
 	mux := httpx.NewMux("intel", nil, cfg.FailHealth)
 	if c := httpx.ChaosEnabled(cfg.Chaos500Pct, cfg.FailHealth); c != "" {
-		slog.Warn("chaos flags enabled", "flags", c)
+		slog.WarnContext(ctx, "chaos flags enabled", "flags", c)
 	}
 	return httpx.Serve(ctx, cfg.HTTPAddr, httpx.Instrument(mux, cfg.Chaos500Pct))
 }

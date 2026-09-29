@@ -20,6 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var (
@@ -78,17 +80,29 @@ func (i *ingestor) loop(ctx context.Context, every time.Duration, wake <-chan st
 	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
-		if err := i.poll(ctx); err != nil && ctx.Err() == nil {
-			pollErrors.Inc()
-			obs.RecordPollError(ctx)
-			slog.Warn("poll failed", "err", err)
-		}
+		i.pollTraced(ctx)
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
 		case <-wake:
 		}
+	}
+}
+
+var tracer = otel.Tracer("github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/ingestor")
+
+// pollTraced runs one poll cycle under a root span, so the cycle's simulator calls (otelhttp), DB writes
+// (otelpgx) and log lines (trace_id) all land in one trace.
+func (i *ingestor) pollTraced(ctx context.Context) {
+	ctx, span := tracer.Start(ctx, "ingestor.poll")
+	defer span.End()
+	if err := i.poll(ctx); err != nil && ctx.Err() == nil {
+		pollErrors.Inc()
+		obs.RecordPollError(ctx)
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		slog.WarnContext(ctx, "poll failed", "err", err)
 	}
 }
 
@@ -121,7 +135,7 @@ func (i *ingestor) poll(ctx context.Context) error {
 		if err := i.writeSnapshot(ctx, w); err != nil {
 			return err
 		}
-		slog.Info("sim tick", "tick", w.Instance.Tick, "status", w.Instance.Status, "epoch", i.epochID,
+		slog.InfoContext(ctx, "sim tick", "tick", w.Instance.Tick, "status", w.Instance.Status, "epoch", i.epochID,
 			"stale", w.Stale, "sse", i.stream.Connected())
 	}
 	i.last, i.lastStale = w.Instance, w.Stale
@@ -197,7 +211,7 @@ func (i *ingestor) ensureEpoch(ctx context.Context, inst sim.Instance) error {
 		inst.ScenarioID, inst.Seed).Scan(&i.epochID)
 	if err == nil {
 		i.lastDemandTick = 0
-		slog.Info("new sim epoch", "epoch", i.epochID, "scenario", inst.ScenarioID, "seed", inst.Seed, "tick", inst.Tick)
+		slog.InfoContext(ctx, "new sim epoch", "epoch", i.epochID, "scenario", inst.ScenarioID, "seed", inst.Seed, "tick", inst.Tick)
 	}
 	return err
 }

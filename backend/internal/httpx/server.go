@@ -49,7 +49,7 @@ func Serve(ctx context.Context, addr string, h http.Handler) error {
 	srv := &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 5 * time.Second}
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
-	slog.Info("http listening", "addr", addr)
+	slog.InfoContext(ctx, "http listening", "addr", addr)
 	select {
 	case err := <-errc:
 		return err

@@ -15,21 +15,24 @@ Shared OIDC provider reuse is supported, with a documented handoff for providers
 | metrics-server chart | 3.14.0 | [Chart repository](https://kubernetes-sigs.github.io/metrics-server/) |
 | kube-prometheus-stack chart | 91.8.1 | [Chart repository](https://prometheus-community.github.io/helm-charts/) |
 | Tempo chart / application | 2.4.0 / 2.10.8 | [Chart release](https://github.com/grafana-community/helm-charts/releases/tag/tempo-2.4.0) |
+| Loki chart / application | 7.3.0 / 3.6.12 | [Chart release](https://github.com/grafana/helm-charts/releases/tag/helm-loki-7.3.0) |
+| OTel log-collector chart / application | 0.173.1 / 0.160.0 | [Chart release](https://github.com/open-telemetry/opentelemetry-helm-charts/releases/tag/opentelemetry-collector-0.173.1) |
 | argo-cd chart | 10.9.2 | [Chart repository](https://argoproj.github.io/argo-helm/) |
 | argo-rollouts chart | 2.43.2 | [Chart repository](https://argoproj.github.io/argo-helm/) |
 | argocd-apps chart | 2.0.5 | [Chart repository](https://argoproj.github.io/argo-helm/) |
 
-The Kubernetes target remains `1.36`. All six external charts were rendered locally against `1.36.0` using the configured Helm values with mock secrets; live compatibility must still be proved in the rehearsal. The app's Prometheus URL was checked against the rendered monitoring Service. Keep `.terraform.lock.hcl`: provider versions are unchanged, Linux package hashes have been added, and existing hashes retained. Module and chart versions are pinned separately because the provider lockfile does not pin them.
+The Kubernetes target remains `1.36`. All eight external charts were rendered locally against `1.36.0` using the configured Helm values with mock secrets; live compatibility must still be proved in the rehearsal. The app's Prometheus URL was checked against the rendered monitoring Service. Keep `.terraform.lock.hcl`: provider versions are unchanged, Linux package hashes have been added, and existing hashes retained. Module and chart versions are pinned separately because the provider lockfile does not pin them.
 
-Tempo uses the maintained community chart repository linked from [Grafana's installation guide](https://grafana.com/docs/tempo/latest/set-up-for-tracing/setup-tempo/deploy/kubernetes/helm-chart/). The pin deliberately stays on Tempo 2; a Tempo 3 migration is separate work. CI checks the Tempo and monitoring package digests in `scripts/observability-charts.lock.json` against the versions in the actual mocked Terraform plan. When changing either pin, review the upstream package, update its lock entry, and run the rendering checks.
+Tempo uses the maintained community chart repository linked from [Grafana's installation guide](https://grafana.com/docs/tempo/latest/set-up-for-tracing/setup-tempo/deploy/kubernetes/helm-chart/). The pin deliberately stays on Tempo 2; a Tempo 3 migration is separate work. Loki stays on the chart family introduced by `main`; the [community-chart migration](https://grafana.com/docs/loki/latest/setup/upgrade/upgrade-to-community/) changes deployment values and needs a separate upgrade review. CI checks monitoring, Tempo, Loki, and log-collector package digests in `scripts/observability-charts.lock.json` against the versions in the actual mocked Terraform plan. When changing a pin, review the upstream package, update its lock entry, and run the rendering checks.
 
 ## Creation order
 
 1. AWS resources: VPC, EKS, RDS, ECR, and separate GitHub image-publisher/Terraform roles. Repository variables and Argo's read-only deploy key are registered separately; Terraform no longer uses the GitHub provider.
 2. Explicitly managed `argocd`, `argo-rollouts`, and `monitoring` namespaces; the existing `fuelops` namespace retains its Terraform address.
-3. Argo CD, Argo Rollouts, monitoring, and metrics-server releases; Tempo depends on monitoring. The pinned controller values use ephemeral storage.
+3. Monitoring and metrics-server releases; Tempo, Argo CD, and Argo Rollouts depend on monitoring. This installs the ServiceMonitor CRD before the delivery controllers' metrics resources. The pinned controller values use ephemeral storage.
 4. The local platform chart, including the Auto Mode IngressClass and gp3 StorageClass. It retains the dependency on controller releases so the application gate waits for them. It creates no operator ingresses. If controller persistence is added later, install the StorageClass in a separate earlier stage to avoid this dependency cycle.
-5. The `argocd-apps` Helm release, which also waits for Tempo. With `enable_application = false` (default), it has **no Application objects**, so a fresh bootstrap cannot launch app migrations/workloads. The release itself retains its existing Terraform address.
+5. Loki, after monitoring and the platform StorageClass, followed by the node log-collector DaemonSet.
+6. The `argocd-apps` Helm release, which also waits for Tempo and the log collector. With `enable_application = false` (default), it has **no Application objects**, so a fresh bootstrap cannot launch app migrations/workloads. The release itself retains its existing Terraform address.
 
 App activation is a separate reviewed configuration change after the platform is ready:
 
@@ -73,18 +76,20 @@ Use the current Argo CD password if the initial one has been rotated. Argo CD an
 
 The application chart configures `api`, `intel`, and `ingestor` to export OTLP/gRPC to `otel-collector.fuelops.svc:4317`. The Collector forwards traces to `tempo.monitoring.svc:4317` and exposes OTel metrics on port `8889` for its PodMonitor. Both Collector and Tempo also expose their configured OTLP/HTTP receiver on `4318`. Grafana queries Tempo over HTTP at `tempo.monitoring.svc:3200`; these Services remain private.
 
-The application's `fuelops-tempo-datasource` ConfigMap lives in `fuelops`. Grafana's datasource sidecar watches ConfigMaps in both `monitoring` and `fuelops`, preserving the Prometheus datasource while discovering Tempo. The render checks verify its label selector and cross-namespace read permissions.
+Terraform now provisions all Grafana datasources together in `monitoring`, preserving main's Prometheus exemplar links, Tempo service map and trace-to-metric/log links, and Loki log-to-trace links. The datasource sidecar watches only `monitoring`; the old app-owned `fuelops-tempo-datasource` ConfigMap is removed on Argo sync to avoid duplicate UID definitions. Dashboard discovery still watches all namespaces so it can import the operations dashboard from `fuelops`. Tempo's metrics generator remote-writes service-graph/span metrics to Prometheus, whose remote-write receiver and exemplar storage are enabled.
 
-Tempo runs one replica with explicit ephemeral local storage and 24-hour retention. A Pod replacement loses stored traces; export useful evidence before teardown. Setting `otel.endpoint` to `""` in the application values removes the OTel environment variables, Collector resources, its PodMonitor, and the datasource ConfigMap on the next successful Argo sync. Terraform-managed Tempo remains running, and the existing application `/metrics` PodMonitor and Prometheus rules remain. Removing the ConfigMap does not guarantee deletion of a datasource already provisioned in Grafana's database.
+Tempo runs one replica with explicit ephemeral local storage and 24-hour retention. A Pod replacement loses stored traces; export useful evidence before teardown. Setting `otel.endpoint` to `""` in the application values removes the OTel environment variables, app Collector resources, and its PodMonitor on the next successful Argo sync. Terraform-managed Tempo, Loki, node log collection, and Grafana datasources remain, as do the existing application `/metrics` PodMonitor and Prometheus rules. The switch controls application OTel export, not platform logging.
+
+The node-level OTel DaemonSet tails Pod files for `fuelops`, `argocd`, and `argo-rollouts`, enriches them with Kubernetes metadata, and sends OTLP/HTTP to `loki.monitoring.svc:3100/otlp`. Its unused network receiver host ports are disabled. Loki uses a single replica and a 10 GiB PVC explicitly assigned to the Auto Mode `gp3` StorageClass. The pinned chart deletes the PVC when its StatefulSet is deleted; export logs before teardown. The inherited `48h` retention limit is configured, but compactor retention cleanup is not enabled or verified yet; do not rely on it to bound disk use. Verify node log-file access and storage readiness on Auto Mode during rehearsal.
 
 During the deferred deployment rehearsal:
 
-1. Confirm Tempo's StatefulSet, the Collector Deployment, and their Service endpoints are ready. Inspect their logs for configuration or export errors.
+1. Confirm the Tempo/Loki StatefulSets, Loki's PVC, app Collector Deployment, and log-agent DaemonSet are ready. Inspect their logs for configuration or export errors.
 2. Send a business API request and allow the ingestor to process a simulator tick. Record the request time and any trace ID from application logs.
-3. Open Grafana using the port-forward above. Confirm both Prometheus and Tempo datasources are present, test the Tempo connection, and use Explore to find fresh spans from the backend services.
-4. Confirm Prometheus has healthy targets for both the application and Collector PodMonitors and receives fresh samples.
+3. Open Grafana using the port-forward above. Confirm Prometheus, Tempo, and Loki datasources are present, find fresh traces and logs, and exercise their cross-links. Open the operations dashboard and check its panels against real data.
+4. Confirm Prometheus has healthy app/Collector targets and Argo CD/Rollouts ServiceMonitors, receives fresh samples and span metrics, and populates the service map.
 
-Local rendering verifies configuration and resource wiring. Successful ingestion, datasource provisioning, trace queries, and metric scraping still require this live check.
+Local rendering verifies configuration and resource wiring. Successful ingestion, datasource provisioning, cross-links, dashboard queries, and metric scraping still require this live check.
 
 ## GitHub release trust
 
@@ -179,7 +184,7 @@ python3 -m venv /tmp/fuelops-infra-checks
 
 OIDC ownership tests cover managed bootstrap, read-only reuse, both roles' unchanged trust conditions, and rejection of invalid/wildcard provider ARNs, a different account/partition, an incompatible issuer, or a missing STS audience. These mocks verify configuration behavior; provider existence and current state ownership still need account inspection.
 
-The observability check needs Python 3.12, pinned PyYAML, and initialized Terraform providers. It obtains the real Helm values from the dedicated mock plan, downloads and checksum-verifies the pinned Tempo/monitoring packages, and renders them with the local app chart. It checks Service selectors and ports, Collector pipelines, Grafana datasource discovery and RBAC, private Services, and tracing enabled/disabled behavior. Use `TERRAFORM` and `HELM` to override CLI paths; `--infra-dir` accepts an initialized temporary root and `--chart-cache` reuses packages while still checking their digests. No cloud credentials are used. CI disables the Terraform wrapper so the checker receives unmodified JSON output.
+The observability check needs Python 3.12, pinned PyYAML, and initialized Terraform providers. It obtains the real Helm values from the dedicated mock plan, downloads and checksum-verifies the four pinned observability packages, and renders them with the local charts. It checks Service selectors and ports, Collector pipelines, Tempo remote write, unique linked datasources, dashboard discovery, Loki storage, file-log routing, private Services, and tracing enabled/disabled behavior. Use `TERRAFORM` and `HELM` to override CLI paths; `--infra-dir` accepts an initialized temporary root and `--chart-cache` reuses packages while still checking their digests. No cloud credentials are used. CI disables the Terraform wrapper so the checker receives unmodified JSON output.
 
 Increment 2 validation: Terraform formatting/validation and all nine mock plan tests passed. Both local charts passed their checks. The three affected pinned upstream charts were rendered with values from the mock plan against Kubernetes `1.36.0`; the rendered manifests confirmed ClusterIP-only Services, no operator ingress, Argo CD TLS and authentication, Grafana authentication and root URL, port-forward Service ports, and read-only dashboard workload RBAC. The app still renders its single `/` and `/api` ingress. Live behavior has not been verified.
 
@@ -190,6 +195,8 @@ The follow-up merge of `main` at `9d01920` preserves the new OpenTelemetry/Tempo
 Tracing increment validation: Terraform formatting/validation, all 12 mock plans, bootstrap chart checks, the enabled/disabled observability render check, and actionlint passed. CI now runs the new mock plan and render check. The upstream chart renders include the pinned Tempo package and Grafana's cross-namespace datasource configuration. Live tracing remains a rehearsal gate.
 
 OIDC ownership increment validation: Terraform formatting/validation, all 20 mock plans, the observability render check, and infra workflow actionlint passed. A separate local fixture using the actual provider resource/moved block, synthetic state, disabled refresh, and loopback-only AWS endpoints confirmed a move with zero resource changes, rejection of a mode switch before handoff, and no provider destruction after synthetic handoff. This did not inspect or modify live AWS resources or remote state.
+
+Observability merge validation against `main` at `51fc9a2`: Terraform formatting/validation, all 20 mock plans, bootstrap and expanded observability chart checks, and backend race tests/vet passed. Actual mock-plan values also rendered the Argo CD/Rollouts ServiceMonitors with the monitoring API available, while preserving private Services. The merge retains main's dashboard, linked datasources, trace-aware logging, and published image pair; Loki/log-agent pins and storage dependencies are explicit. Loki retention cleanup and all live telemetry checks remain open.
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

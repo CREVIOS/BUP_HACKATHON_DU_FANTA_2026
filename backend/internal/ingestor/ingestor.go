@@ -74,6 +74,10 @@ func (i *ingestor) poll(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// Reject a malformed simulator response instead of persisting it (brief §11).
+	if err := inst.Validate(); err != nil {
+		return fmt.Errorf("invalid /v1/instance: %w", err)
+	}
 	if err := i.ensureEpoch(ctx, inst); err != nil {
 		return err
 	}

@@ -6,10 +6,10 @@ ingress:
   hostname: fuelops.hemal.me
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: b69a4960bd1e4cdcb2dfe6df22a9baafa21e4a05
+  tag: a4285e52e6a62ec62eda8412ace1b3e3aedbdb3e
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: b69a4960bd1e4cdcb2dfe6df22a9baafa21e4a05
+  tag: a4285e52e6a62ec62eda8412ace1b3e3aedbdb3e
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0

@@ -40,6 +40,248 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Status" }
+  /api/overview:
+    get:
+      summary: Dashboard header
+      description: Tick, run state, staleness/degraded flags, simulator service level, open alerts by severity, review queue depth, active disruptions, decision source (intel|fallback), auto-execute setting and inventory totals.
+      operationId: getOverview
+      tags: [situation]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/network:
+    get:
+      summary: Live network map
+      description: Every depot (inventory, capacity, dispatch capacity left this tick), station (per fuel inventory, in-transit, room after in-transit, stockout probability, time to stockout, risk level) and route (status, usable now, cross-region, disruption windows).
+      operationId: getNetwork
+      tags: [situation]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/risk:
+    get:
+      summary: Projected shortage risk per station and fuel, most urgent first
+      operationId: getRisk
+      tags: [situation]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/demand:
+    get:
+      summary: Demand history with recorded forecasts, plus the forecast ahead with a noise band
+      operationId: getDemand
+      tags: [situation]
+      parameters:
+        - { name: station_id, in: query, schema: { type: string } }
+        - { name: fuel_type, in: query, schema: { type: string, enum: [DIESEL, PETROL, OCTANE] } }
+        - { name: ticks, in: query, description: "History window (default 96, max 2000).", schema: { type: integer } }
+        - { name: horizon, in: query, description: "Forecast ticks ahead (default 48, max 192).", schema: { type: integer } }
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/demand/regions:
+    get:
+      summary: Regional demand, served, unmet, service level and 12 h forecast per fuel
+      operationId: getRegionalDemand
+      tags: [situation]
+      parameters: [{ name: ticks, in: query, schema: { type: integer } }]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/supply:
+    get:
+      summary: Incoming depot supply with delay/shortfall vs the first-seen schedule and depot-full clip risk
+      operationId: getSupply
+      tags: [situation]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/events:
+    get:
+      summary: Disruptions (crisis events) with plain-language descriptions and whether they have any effect
+      operationId: getEvents
+      tags: [situation]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/allocations:
+    get:
+      summary: Simulator allocations (linked to our recommendations) and our not-yet-sent submission queue
+      operationId: getAllocations
+      tags: [decisions]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+    post:
+      summary: Operator's own shipment (validated, audited, submitted via the outbox)
+      operationId: createAllocation
+      tags: [decisions]
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Proposal"
+                - type: object
+                  properties: { reason: { type: string, maxLength: 500 } }
+                  required: [reason]
+      responses:
+        "201": { description: Created and approved, content: { application/json: { schema: { $ref: "#/components/schemas/Recommendation" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { description: "Unsafe: would be rejected by the simulator or lose fuel (details list every violation).", content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+  /api/allocations/{id}/cancel:
+    post:
+      summary: Cancel a PENDING simulator allocation (the depot is refunded)
+      operationId: cancelAllocation
+      tags: [decisions]
+      security: [{ bearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { $ref: "#/components/responses/Command" }, "404": { $ref: "#/components/responses/Error" }, "409": { $ref: "#/components/responses/Error" } }
+  /api/simulate:
+    post:
+      summary: What-if for a candidate shipment
+      description: Every constraint and simulator trap it would hit (route max, depot stock, per-depot dispatch cap, station room counting in-transit, route disrupted at departure, station outage) and its effect on stockout risk. Nothing is submitted.
+      operationId: simulate
+      tags: [decisions]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/Proposal" } } } }
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/recommendations:
+    get:
+      summary: Recommendations for the current simulator epoch, newest first
+      operationId: listRecommendations
+      tags: [decisions]
+      parameters:
+        - { name: status, in: query, description: "Comma list: PROPOSED,APPROVED,REJECTED,SUBMITTED,EXPIRED,FAILED", schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/recommendations/{id}:
+    get:
+      summary: One recommendation with its evidence, decisions, submission state, live allocation and current validity
+      operationId: getRecommendation
+      tags: [decisions]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "404": { $ref: "#/components/responses/Error" } }
+  /api/recommendations/{id}/approve:
+    post:
+      summary: Approve a PROPOSED recommendation (optionally editing the quantity); re-validated against the live world
+      operationId: approveRecommendation
+      tags: [decisions]
+      security: [{ bearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, properties: { reason: { type: string, maxLength: 500 }, quantity: { type: number } } }
+      responses:
+        "200": { description: Approved, content: { application/json: { schema: { $ref: "#/components/schemas/Recommendation" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/recommendations/{id}/reject:
+    post:
+      summary: Reject a PROPOSED recommendation (reason required)
+      operationId: rejectRecommendation
+      tags: [decisions]
+      security: [{ bearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { reason: { type: string, maxLength: 500 } }, required: [reason] } } }
+      responses: { "200": { description: Rejected, content: { application/json: { schema: { $ref: "#/components/schemas/Recommendation" } } } }, "401": { $ref: "#/components/responses/Error" }, "409": { $ref: "#/components/responses/Error" } }
+  /api/decisions:
+    get:
+      summary: Decision history (audit trail) with outcomes
+      operationId: listDecisions
+      tags: [decisions]
+      parameters: [{ name: limit, in: query, schema: { type: integer } }]
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/alerts:
+    get:
+      summary: Shortage, anomaly, disruption, supply, integration and fallback alerts
+      operationId: listAlerts
+      tags: [situation]
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [open, all], default: open } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/alerts/{id}/ack:
+    post:
+      summary: Acknowledge an alert
+      operationId: ackAlert
+      tags: [situation]
+      security: [{ bearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "409": { $ref: "#/components/responses/Error" } }
+  /api/intel/quality:
+    get:
+      summary: Intelligence evidence — forecast MAPE vs naive, decision mix, Jev vs rule, outbox outcomes
+      operationId: getQuality
+      tags: [situation]
+      parameters: [{ name: ticks, in: query, schema: { type: integer } }]
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/stream:
+    get:
+      summary: Server-Sent Events — tick, alerts, recommendations, allocations, commands (each says what changed; refetch it)
+      operationId: stream
+      tags: [situation]
+      responses: { "200": { description: text/event-stream, content: { text/event-stream: { schema: { type: string } } } } }
+  /api/me:
+    get:
+      summary: The caller's role (viewer|operator|admin) and whether auth is enabled
+      operationId: getMe
+      tags: [admin]
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/policy:
+    get:
+      summary: Active policy, auto-execute and Jev threshold, and the review rule
+      operationId: getPolicy
+      tags: [admin]
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+    put:
+      summary: Change auto-execute or the Jev threshold (admin)
+      operationId: putPolicy
+      tags: [admin]
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, properties: { auto_execute: { type: boolean }, jev_threshold: { type: number, minimum: 0, maximum: 1 } } } } }
+      responses: { "200": { $ref: "#/components/responses/Json" }, "401": { $ref: "#/components/responses/Error" } }
+  /api/admin/sim/step:
+    post:
+      summary: Advance the simulator N ticks, deciding and submitting after each (admin)
+      operationId: simStep
+      tags: [admin]
+      security: [{ bearer: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { count: { type: integer, minimum: 1, maximum: 96, default: 1 } } } } } }
+      responses: { "200": { $ref: "#/components/responses/Command" }, "202": { $ref: "#/components/responses/Command" }, "502": { $ref: "#/components/responses/Error" } }
+  /api/admin/sim/run:
+    post: { summary: Run the simulator in real time (admin), operationId: simRun, tags: [admin], security: [{ bearer: [] }], responses: { "200": { $ref: "#/components/responses/Command" } } }
+  /api/admin/sim/pause:
+    post: { summary: Pause the simulator (admin), operationId: simPause, tags: [admin], security: [{ bearer: [] }], responses: { "200": { $ref: "#/components/responses/Command" } } }
+  /api/admin/sim/reset:
+    post: { summary: "Reset the simulator to its scenario (admin). Opens a new epoch; pending work from the old world is expired.", operationId: simReset, tags: [admin], security: [{ bearer: [] }], responses: { "200": { $ref: "#/components/responses/Command" } } }
+  /api/admin/sim/events:
+    post:
+      summary: Inject a crisis event (admin)
+      description: Validated against the live world first. Rejects unknown ids, empty id lists for route/station/depot events (the simulator ignores them), and a demand_spike multiplier of 0 (it permanently crashes the simulator's tick loop).
+      operationId: simEvent
+      tags: [admin]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/EventRequest" } } } }
+      responses: { "200": { $ref: "#/components/responses/Command" }, "400": { $ref: "#/components/responses/Error" }, "502": { $ref: "#/components/responses/Error" } }
+  /api/admin/sim/faults:
+    post:
+      summary: Inject a simulator API fault (admin)
+      operationId: simFault
+      tags: [admin]
+      security: [{ bearer: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { $ref: "#/components/schemas/FaultRequest" } } } }
+      responses: { "200": { $ref: "#/components/responses/Command" }, "400": { $ref: "#/components/responses/Error" } }
+  /api/admin/sim/faults/clear:
+    post: { summary: Clear all simulator faults (admin), operationId: simFaultsClear, tags: [admin], security: [{ bearer: [] }], responses: { "200": { $ref: "#/components/responses/Command" } } }
+  /api/admin/commands:
+    get:
+      summary: Recent simulator commands and their results (admin)
+      operationId: listCommands
+      tags: [admin]
+      security: [{ bearer: [] }]
+      parameters: [{ name: limit, in: query, schema: { type: integer } }]
+      responses: { "200": { $ref: "#/components/responses/Json" } }
+  /api/admin/commands/{id}:
+    get:
+      summary: One simulator command — poll this after a 202 (admin)
+      operationId: getCommand
+      tags: [admin]
+      security: [{ bearer: [] }]
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses: { "200": { $ref: "#/components/responses/Command" }, "404": { $ref: "#/components/responses/Error" } }
   /healthz:
     get:
       summary: Liveness / readiness probe
@@ -76,7 +318,88 @@ paths:
             text/plain:
               schema: { type: string }
 components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      description: OPERATOR_TOKEN (approve, reject, allocate, cancel, ack) or ADMIN_TOKEN (all of that plus simulator control and policy). Reads need no token. With neither token configured, auth is off (local dev).
+  parameters:
+    Id: { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+  responses:
+    Json: { description: OK, content: { application/json: { schema: { type: object, additionalProperties: true } } } }
+    NoSnapshot: { description: The ingestor has not read the simulator yet., content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Error: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Command: { description: "Command result (200 done, 202 still running — poll /api/admin/commands/{id}, 502 the simulator refused it).", content: { application/json: { schema: { $ref: "#/components/schemas/Command" } } } }
   schemas:
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties: { code: { type: string, example: UNSAFE }, message: { type: string }, details: { type: array, items: { type: string } } }
+          required: [code, message]
+    Proposal:
+      type: object
+      properties:
+        station_id: { type: string, example: station-mirpur }
+        fuel_type: { type: string, enum: [DIESEL, PETROL, OCTANE] }
+        route_id: { type: string, example: route-gazipur-mirpur }
+        quantity: { type: number, example: 4000 }
+      required: [station_id, fuel_type, route_id, quantity]
+    Recommendation:
+      type: object
+      properties:
+        id: { type: integer }
+        epoch_id: { type: integer }
+        tick: { type: integer }
+        station_id: { type: string }
+        fuel_type: { type: string }
+        depot_id: { type: string, nullable: true }
+        route_id: { type: string }
+        quantity: { type: number }
+        policy_version: { type: string }
+        source: { type: string, enum: [intel, fallback, manual] }
+        risk_before: { type: number, nullable: true }
+        risk_after: { type: number, nullable: true }
+        rule_verdict: { type: string, enum: [auto, review], nullable: true }
+        jev_p_auto: { type: number, nullable: true, description: "Jev's P(safe to auto-execute); null when not asked (hard veto) or unavailable." }
+        jev_model: { type: string, nullable: true }
+        verdict: { type: string, enum: [auto, review], nullable: true }
+        status: { type: string, enum: [PROPOSED, APPROVED, REJECTED, SUBMITTED, EXPIRED, FAILED] }
+        created_at: { type: string, format: date-time }
+        explanation: { type: object, additionalProperties: true, description: "signals, binding_constraint, alternatives, review/rule reasons, Jev features" }
+        outbox:
+          type: object
+          nullable: true
+          properties: { status: { type: string }, attempts: { type: integer }, last_error: { type: string, nullable: true }, sim_allocation_id: { type: integer, nullable: true } }
+    EventRequest:
+      type: object
+      properties:
+        type: { type: string, enum: [demand_spike, shipment_delay, route_disruption, station_outage, depot_constraint, supply_shortfall] }
+        start_tick: { type: integer, description: "Absolute tick; omit to start at the current tick + start_in." }
+        start_in: { type: integer, default: 0 }
+        duration_ticks: { type: integer, minimum: 1, maximum: 2000 }
+        parameters: { type: object, additionalProperties: true, example: { multiplier: 1.8, region_ids: [region-dhaka] } }
+      required: [type, duration_ticks]
+    FaultRequest:
+      type: object
+      properties:
+        type: { type: string, enum: [latency, unavailable, error_rate, stale_data, stream_disconnect] }
+        duration_seconds: { type: integer, minimum: 1, maximum: 3600 }
+        parameters: { type: object, additionalProperties: true, example: { delay_ms: 1000 } }
+      required: [type, duration_seconds]
+    Command:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [step, run, pause, reset, event, fault, faults_clear, cancel_allocation] }
+        payload: { type: object, additionalProperties: true }
+        status: { type: string, enum: [PENDING, DONE, FAILED] }
+        result: { type: object, nullable: true, additionalProperties: true }
+        error: { type: string, nullable: true }
+        requested_by: { type: string }
+        created_at: { type: string, format: date-time }
+        done_at: { type: string, format: date-time, nullable: true }
     State:
       type: object
       properties:
@@ -92,12 +415,18 @@ components:
         tick: { type: "null" }
     Status:
       type: object
-      additionalProperties: { type: string }
+      description: 'Component values are "healthy", "degraded: <reason>" or "unhealthy: <reason>"; latency and error rate cover this replica over the last 5 minutes.'
+      additionalProperties: true
       example:
         backend_api: healthy
         database: healthy
         fuel_simulator: healthy
-        decision_engine: healthy
+        prediction_service: healthy
+        decision_engine: "degraded: fallback policy active (connection refused)"
+        jev: configured
+        p95_latency_ms: 12.4
+        error_rate: 0.004
+        requests_5m: 812
     Health:
       type: object
       properties:

@@ -88,6 +88,12 @@ func (c *Client) PostJSON(ctx context.Context, path string, body []byte, out any
 	return c.do(ctx, http.MethodPost, path, body, out)
 }
 
+// PostOnce POSTs without retrying: for non-idempotent calls (/admin/step, /admin/events, /admin/faults),
+// where a retry after a timeout could step twice or inject twice.
+func (c *Client) PostOnce(ctx context.Context, path string, body []byte, out any) (Meta, error) {
+	return c.once(ctx, http.MethodPost, path, body, out)
+}
+
 func (c *Client) do(ctx context.Context, method, path string, body []byte, out any) (Meta, error) {
 	var lastErr error
 	for attempt := 0; attempt < c.maxAttempts; attempt++ {

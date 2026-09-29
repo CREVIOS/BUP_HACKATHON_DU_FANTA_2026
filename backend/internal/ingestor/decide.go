@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/intel"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/obs"
@@ -62,6 +63,7 @@ func (i *ingestor) decide(ctx context.Context, w sim.World) error {
 
 	req := intel.PlanRequest{World: w, Demand: recent, JevThreshold: threshold}
 	resp, intelErr := i.callIntel(ctx, req)
+	i.fellBack, i.decidedAt = intelErr != nil, time.Now()
 	if intelErr != nil {
 		// Decision engine unavailable -> identical policy in-process, fixed review rule, no Jev (brief §11).
 		resp = intel.Evaluate(ctx, req, nil, "fallback")

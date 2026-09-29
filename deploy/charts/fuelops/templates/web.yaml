@@ -15,9 +15,10 @@ spec:
       containers:
         - name: web
           image: {{ .Values.web.repository }}:{{ .Values.web.tag }}
-          ports: [{ name: http, containerPort: 8080 }]
+          # Next.js standalone server: frontend/Dockerfile sets PORT=3000.
+          ports: [{ name: http, containerPort: 3000 }]
           readinessProbe: { httpGet: { path: /, port: http }, periodSeconds: 5 }
-          resources: { requests: { cpu: 50m, memory: 32Mi }, limits: { memory: 128Mi } }
+          resources: { requests: { cpu: 50m, memory: 96Mi }, limits: { memory: 256Mi } }
 ---
 apiVersion: v1
 kind: Service

@@ -2,7 +2,7 @@
 
 The configuration pins dependencies, orders namespace/controller creation, separates platform bootstrap from application activation, and keeps operator tools off the public ALB. The configuration is still one Terraform root. Splitting AWS and platform state requires an inventory of existing remote state first.
 
-Shared OIDC provider ownership, workload secret scope, rollback analysis, HPA/GitOps ownership, and release-status reporting still need the subsequent fixes in [the work plan](../docs/INFRA_WORK_PLAN.md). Passing the checks below does not establish readiness for public deployment.
+Shared OIDC provider reuse is supported, with a documented handoff for providers already in this state. Workload secret scope, rollback analysis, HPA/GitOps ownership, and release-status reporting still need the subsequent fixes in [the work plan](../docs/INFRA_WORK_PLAN.md). Passing the checks below does not establish readiness for public deployment.
 
 ## Dependency baseline
 
@@ -98,13 +98,51 @@ github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:ref:refs/heads/m
 
 For an immutable subject, use `repo:OWNER@OWNER_ID/REPO@REPO_ID:ref:refs/heads/main` with the actual names and IDs. GitHub documents both formats in its [OIDC reference](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims) and [AWS integration guide](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws). Custom subject templates need a separate policy change; do not broaden the subject to a wildcard to make a release pass.
 
-The release workflow also restricts its publication job to `main`, including manual dispatches. Protect that branch and workflow changes in GitHub. If releases later use a protected GitHub environment, update its deployment restrictions and the exact IAM subject together. The image-publisher role remains ECR-only, including layer-download permission for image scanning. The separate Terraform role introduced on `main` retains its AdministratorAccess policy and EKS access entry; narrowing that infrastructure role is separate work. Reusing an account-level OIDC provider safely is still pending: the current root owns the provider, so review its ownership before applying or destroying this stack.
+The release workflow also restricts its publication job to `main`, including manual dispatches. Protect that branch and workflow changes in GitHub. If releases later use a protected GitHub environment, update its deployment restrictions and the exact IAM subject together. The image-publisher role remains ECR-only, including layer-download permission for image scanning. The separate Terraform role introduced on `main` retains its AdministratorAccess policy and EKS access entry; narrowing that infrastructure role is separate work.
+
+## Shared GitHub OIDC ownership
+
+GitHub's IAM OIDC provider is account-level identity infrastructure and can serve multiple repositories. AWS rejects another provider with the same issuer URL in the same account; inspect ownership before bootstrap. See the [AWS provider API](https://docs.aws.amazon.com/IAM/latest/APIReference/API_CreateOpenIDConnectProvider.html).
+
+| Configuration | Provider ownership | Teardown behavior |
+|---|---|---|
+| `existing_github_oidc_provider_arn = ""` (default) | This root creates/manages the provider; preserves the previous bootstrap behavior | `prevent_destroy` blocks deletion until ownership is handed off |
+| Exact existing provider ARN | A data source reads the provider; its audiences, thumbprints, and tags stay with the external owner | Demo teardown has no managed OIDC provider to delete |
+
+For an existing account-owned provider, persist the following in the deployment's Terraform inputs, substituting the actual account ID:
+
+```hcl
+existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+```
+
+Also set the GitHub repository variable `AWS_GITHUB_OIDC_PROVIDER_ARN` to that ARN for the manual infra workflow. It is configuration, not a secret. The workflow passes the same setting on plan, apply, and destroy; an unset variable retains managed bootstrap. The data source requires the active AWS account/partition, GitHub's exact issuer, and an audience list containing `sts.amazonaws.com`. It accepts additional audiences without changing them. Both roles continue to require their exact `main`-branch subject and STS audience. A missing or incompatible provider fails the plan instead of falling back to creation.
+
+The outputs `github_oidc_provider_arn` and `github_oidc_provider_managed` show the selected provider and whether this root owns it. Reusing a provider does not make the image-publisher or Terraform roles externally owned; those remain demo resources.
+
+### Handoff when the provider is already in demo state
+
+This is a future account/state operation, not part of local validation. If an external owner already manages the provider and this demo state has no provider entry, set the ARN and skip the state-removal procedure.
+
+1. Pause infra runs and coordinate with the account owner. Verify the AWS identity, backend bucket/key, and workspace. Save a restricted state backup outside the repository; state contains secrets. Agree which account-level bootstrap or administrator will own the provider after handoff.
+2. Inspect `terraform -chdir=infra state list` and the provider entry to record its actual ARN and address. The old address is `aws_iam_openid_connect_provider.github`; after applying the new `moved` block it is `aws_iam_openid_connect_provider.github[0]`. The move preserves the existing object in managed mode. Check the live provider with `aws iam get-open-id-connect-provider --open-id-connect-provider-arn <actual-arn>`.
+3. Prepare the exact ARN in every persistent deployment input, including `AWS_GITHUB_OIDC_PROVIDER_ARN`. Keep workflow runs paused through the handoff. Simply setting the ARN while the provider remains managed would request deletion of the old managed instance; the guard rejects that plan.
+4. Remove only this provider's binding from demo state, using the address found in step 2. For the indexed address, preview and then execute:
+
+   ```bash
+   terraform -chdir=infra state rm -dry-run 'aws_iam_openid_connect_provider.github[0]'
+   terraform -chdir=infra state rm 'aws_iam_openid_connect_provider.github[0]'
+   ```
+
+   Use the old unindexed address instead if that is what state lists. This forgets the binding without deleting the AWS provider. If another Terraform root will own it, import it there under its reviewed configuration. Do not import it back into this demo root. See [Terraform state removal](https://developer.hashicorp.com/terraform/cli/commands/state/rm).
+5. Review a fresh demo plan with reuse configured: no OIDC provider create/update/delete, both role principals still use the same ARN, and the ownership output is false. Verify the shared owner's inventory, then resume infra runs. Keep the ARN configured through teardown and later redeployments.
+
+The guard deliberately blocks ordinary destroy while this root still owns the provider. Complete the handoff before the demo cleanup window; do not remove the guard to make cleanup pass. `prevent_destroy` only protects the object while its resource block remains in configuration; it is not a replacement for ownership discipline. See [Terraform lifecycle behavior](https://developer.hashicorp.com/terraform/language/meta-arguments/lifecycle#prevent_destroy). No live state handoff has been performed here.
 
 ## Terraform workflow and repository setup
 
 PRs run credential-free validation and mock plans through `ci.yml`; they do not attempt to assume the main-only Terraform role. The `infra` workflow runs live `plan`, `apply`, or `destroy` only by manual dispatch from `main`, with Terraform `1.13.5` and the read-only provider lockfile. Its `enable_application` input defaults to **true** to retain management of an existing app, matching the previous workflow's behavior. Select **false only for a fresh bootstrap**. Local Terraform still defaults to false. The `git_revision` input accepts a branch or an exact release commit; use the release commit for a fixed rehearsal.
 
-Before running workflows, register these GitHub repository variables: `AWS_REGION`, `AWS_ROLE_ARN` from `github_actions_role_arn`, `TF_ROLE_ARN` from `terraform_role_arn`, and `ECR_REGISTRY` matching the registry in `ecr_repositories`. Add `argocd_deploy_public_key` as a read-only repository deploy key. These settings are managed outside Terraform after `main` removed the GitHub provider. If an older state still contains GitHub-provider resources, review and transfer their ownership before applying; do not treat a proposed deploy-key deletion as routine cleanup. No state handoff has been performed here.
+Before running workflows, register these GitHub repository variables: `AWS_REGION`, `AWS_ROLE_ARN` from `github_actions_role_arn`, `TF_ROLE_ARN` from `terraform_role_arn`, and `ECR_REGISTRY` matching the registry in `ecr_repositories`. Set `AWS_GITHUB_OIDC_PROVIDER_ARN` when using shared identity infrastructure, following the handoff above if this root currently owns it. Add `argocd_deploy_public_key` as a read-only repository deploy key. These settings are managed outside Terraform after `main` removed the GitHub provider. If an older state still contains GitHub-provider resources, review and transfer their ownership before applying; do not treat a proposed deploy-key deletion as routine cleanup. No state handoff has been performed here.
 
 ## Adopting an existing environment
 
@@ -139,6 +177,8 @@ python3 -m venv /tmp/fuelops-infra-checks
 
 `terraform test` uses mocked providers and plan-only runs; it does not need AWS/GitHub credentials or a live cluster. The tests cover disabled/enabled application creation, namespace assignment, Git ownership of image tags, private/authenticated operator values, read-only dashboard configuration, exact legacy/immutable OIDC subjects, and rejection of wildcard, wrong-branch, wrong-repository, pull-request, and environment subjects. The additional observability plan supplies fake secrets and verifies Tempo's namespace, private Service, and ephemeral storage. The bootstrap Python check uses only the standard library and Helm: it lints/renders both local charts, rejects platform ingress resources, then proves either image's invalid tag/repository prevents rendering.
 
+OIDC ownership tests cover managed bootstrap, read-only reuse, both roles' unchanged trust conditions, and rejection of invalid/wildcard provider ARNs, a different account/partition, an incompatible issuer, or a missing STS audience. These mocks verify configuration behavior; provider existence and current state ownership still need account inspection.
+
 The observability check needs Python 3.12, pinned PyYAML, and initialized Terraform providers. It obtains the real Helm values from the dedicated mock plan, downloads and checksum-verifies the pinned Tempo/monitoring packages, and renders them with the local app chart. It checks Service selectors and ports, Collector pipelines, Grafana datasource discovery and RBAC, private Services, and tracing enabled/disabled behavior. Use `TERRAFORM` and `HELM` to override CLI paths; `--infra-dir` accepts an initialized temporary root and `--chart-cache` reuses packages while still checking their digests. No cloud credentials are used. CI disables the Terraform wrapper so the checker receives unmodified JSON output.
 
 Increment 2 validation: Terraform formatting/validation and all nine mock plan tests passed. Both local charts passed their checks. The three affected pinned upstream charts were rendered with values from the mock plan against Kubernetes `1.36.0`; the rendered manifests confirmed ClusterIP-only Services, no operator ingress, Argo CD TLS and authentication, Grafana authentication and root URL, port-forward Service ports, and read-only dashboard workload RBAC. The app still renders its single `/` and `/api` ingress. Live behavior has not been verified.
@@ -148,6 +188,8 @@ Merge validation against `main` at `cf0f21a`: read-only Terraform initialization
 The follow-up merge of `main` at `9d01920` preserves the new OpenTelemetry/Tempo implementation. Terraform validation and all 11 mock plans, local Helm checks, Compose configuration, and backend race tests/vet passed again for the affected files. Frontend and workflow configuration were unchanged by that follow-up.
 
 Tracing increment validation: Terraform formatting/validation, all 12 mock plans, bootstrap chart checks, the enabled/disabled observability render check, and actionlint passed. CI now runs the new mock plan and render check. The upstream chart renders include the pinned Tempo package and Grafana's cross-namespace datasource configuration. Live tracing remains a rehearsal gate.
+
+OIDC ownership increment validation: Terraform formatting/validation, all 20 mock plans, the observability render check, and infra workflow actionlint passed. A separate local fixture using the actual provider resource/moved block, synthetic state, disabled refresh, and loopback-only AWS endpoints confirmed a move with zero resource changes, rejection of a mode switch before handoff, and no provider destruction after synthetic handoff. This did not inspect or modify live AWS resources or remote state.
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

@@ -35,6 +35,18 @@ variable "git_revision" {
   default     = "main"
 }
 
+variable "existing_github_oidc_provider_arn" {
+  description = "Reuse an account-owned GitHub OIDC provider without managing it here. Empty retains managed creation for bootstrap; hand off any existing state entry before switching modes."
+  type        = string
+  default     = ""
+  nullable    = false
+
+  validation {
+    condition     = var.existing_github_oidc_provider_arn == "" || can(regex("^arn:[a-z0-9-]+:iam::[0-9]{12}:oidc-provider/token[.]actions[.]githubusercontent[.]com$", var.existing_github_oidc_provider_arn))
+    error_message = "Supply an exact GitHub OIDC provider ARN, or leave empty for managed bootstrap. Wildcards, other issuers, paths, and non-provider ARNs are not accepted."
+  }
+}
+
 variable "github_oidc_subject" {
   description = "Optional exact main-branch OIDC subject override. By default both AWS roles use github_oidc_sub_prefix plus :ref:refs/heads/main."
   type        = string

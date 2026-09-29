@@ -6,7 +6,7 @@ Status: v2.1 · 2026-09-29 · includes the independent review (fact-check with s
 > [infra/README.md](../infra/README.md). The ECS-era sections below remain historical
 > until the full reconciliation in [INFRA_WORK_PLAN.md](INFRA_WORK_PLAN.md). Use the
 > bootstrap guide for current pins, namespace ordering, the application-enable switch,
-> localhost operator access, tracing configuration, and exact GitHub release trust. Live deployment and trace delivery remain unverified.
+> localhost operator access, tracing configuration, exact GitHub release trust, and shared OIDC provider ownership. Live deployment and trace delivery remain unverified.
 
 Runtime on AWS: **≤ 8 hours** (spin up before the demo, destroy after).
 Fixed by the team: Go backend · AWS · RDS for the database · Terraform · CI/CD · automated rollback.

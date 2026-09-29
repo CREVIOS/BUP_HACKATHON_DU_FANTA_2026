@@ -23,6 +23,16 @@ output "github_actions_role_arn" {
   value = aws_iam_role.github_actions.arn
 }
 
+output "github_oidc_provider_arn" {
+  description = "GitHub OIDC provider used by both roles. Persist as AWS_GITHUB_OIDC_PROVIDER_ARN as part of any managed-state handoff."
+  value       = local.github_oidc_provider_arn
+}
+
+output "github_oidc_provider_managed" {
+  description = "True means this root owns the provider; hand off ownership before demo teardown."
+  value       = var.existing_github_oidc_provider_arn == ""
+}
+
 output "db_endpoint" {
   value = aws_db_instance.this.address
 }

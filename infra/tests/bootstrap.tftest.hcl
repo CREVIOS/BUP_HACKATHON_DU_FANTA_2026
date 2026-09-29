@@ -11,6 +11,15 @@ mock_provider "aws" {
   mock_data "aws_caller_identity" {
     defaults = { account_id = "123456789012" }
   }
+  mock_data "aws_partition" {
+    defaults = { partition = "aws" }
+  }
+  mock_data "aws_iam_openid_connect_provider" {
+    defaults = {
+      url            = "token.actions.githubusercontent.com"
+      client_id_list = ["sts.amazonaws.com", "another-existing-audience"]
+    }
+  }
   mock_resource "aws_iam_openid_connect_provider" {
     defaults = { arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com" }
   }
@@ -218,4 +227,117 @@ run "reject_environment_subject" {
     github_oidc_subject = "repo:CREVIOS/BUP_HACKATHON_DU_FANTA_2026:environment:production"
   }
   expect_failures = [var.github_oidc_subject]
+}
+
+run "managed_oidc_bootstrap" {
+  command = plan
+  assert {
+    condition = (
+      length(aws_iam_openid_connect_provider.github) == 1 &&
+      length(data.aws_iam_openid_connect_provider.github) == 0 &&
+      output.github_oidc_provider_managed &&
+      output.github_oidc_provider_arn == "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    )
+    error_message = "Empty ARN must preserve managed bootstrap and expose its ownership."
+  }
+  assert {
+    condition = alltrue([
+      for policy in [aws_iam_role.github_actions.assume_role_policy, aws_iam_role.terraform.assume_role_policy] :
+      jsondecode(policy).Statement[0].Principal.Federated == aws_iam_openid_connect_provider.github[0].arn
+    ])
+    error_message = "Both roles must trust the managed provider in bootstrap mode."
+  }
+}
+
+run "reuse_shared_oidc_without_ownership" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    github_oidc_subject               = null
+  }
+  assert {
+    condition = (
+      length(aws_iam_openid_connect_provider.github) == 0 &&
+      length(data.aws_iam_openid_connect_provider.github) == 1 &&
+      !output.github_oidc_provider_managed &&
+      output.github_oidc_provider_arn == var.existing_github_oidc_provider_arn
+    )
+    error_message = "Reuse must only read the shared provider, with no managed provider resource."
+  }
+  assert {
+    condition = alltrue([
+      for policy in [aws_iam_role.github_actions.assume_role_policy, aws_iam_role.terraform.assume_role_policy] :
+      jsondecode(policy).Statement[0].Principal.Federated == var.existing_github_oidc_provider_arn &&
+      jsondecode(policy).Statement[0].Action == "sts:AssumeRoleWithWebIdentity" &&
+      jsondecode(policy).Statement[0].Condition == {
+        StringEquals = {
+          "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          "token.actions.githubusercontent.com:sub" = "repo:CREVIOS@48938983/BUP_HACKATHON_DU_FANTA_2026@1394116440:ref:refs/heads/main"
+        }
+      }
+    ])
+    error_message = "Reusing identity infrastructure must preserve both roles' exact main-branch trust."
+  }
+}
+
+run "reject_wildcard_provider_arn" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com"
+  }
+  expect_failures = [var.existing_github_oidc_provider_arn]
+}
+
+run "reject_non_github_provider_arn" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/example.com"
+  }
+  expect_failures = [var.existing_github_oidc_provider_arn]
+}
+
+run "reject_cross_account_provider" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::999999999999:oidc-provider/token.actions.githubusercontent.com"
+  }
+  expect_failures = [data.aws_iam_openid_connect_provider.github]
+}
+
+run "reject_cross_partition_provider" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws-us-gov:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+  }
+  expect_failures = [data.aws_iam_openid_connect_provider.github]
+}
+
+run "reject_provider_without_sts_audience" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+  }
+  override_data {
+    target = data.aws_iam_openid_connect_provider.github[0]
+    values = {
+      url            = "token.actions.githubusercontent.com"
+      client_id_list = ["another-existing-audience"]
+    }
+  }
+  expect_failures = [data.aws_iam_openid_connect_provider.github]
+}
+
+run "reject_provider_with_wrong_issuer" {
+  command = plan
+  variables {
+    existing_github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+  }
+  override_data {
+    target = data.aws_iam_openid_connect_provider.github[0]
+    values = {
+      url            = "https://example.com"
+      client_id_list = ["sts.amazonaws.com"]
+    }
+  }
+  expect_failures = [data.aws_iam_openid_connect_provider.github]
 }

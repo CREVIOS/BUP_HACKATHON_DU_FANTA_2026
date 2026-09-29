@@ -18,17 +18,26 @@ jobs:
     defaults: { run: { working-directory: frontend } }
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.6.0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm install --no-audit --no-fund
-      - run: npm run build
+        with: { node-version: 22, cache: pnpm, cache-dependency-path: frontend/pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
 
   infra:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.13.5, terraform_wrapper: false }
       - run: terraform -chdir=infra fmt -check -recursive
-      - run: terraform -chdir=infra init -backend=false -input=false && terraform -chdir=infra validate
+      - run: terraform -chdir=infra init -backend=false -input=false -lockfile=readonly && terraform -chdir=infra validate
+      - run: terraform -chdir=infra test
       - uses: azure/setup-helm@v4
-      - run: helm lint deploy/charts/fuelops deploy/platform
+        with: { version: v3.19.0 }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: python3 -m pip install -r scripts/requirements-infra.txt
+      - run: python3 scripts/check_bootstrap_charts.py
+      - run: python3 scripts/check_observability.py

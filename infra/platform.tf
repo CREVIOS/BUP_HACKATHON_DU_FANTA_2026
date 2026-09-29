@@ -28,20 +28,36 @@ provider "helm" {
   }
 }
 
-# ALB IngressClass (Auto Mode), default gp3 StorageClass, shared ingresses for Argo CD + Grafana.
+# Helm must not race to create namespaces used by another release's resources.
+# Keep the existing fuelops namespace address below unchanged.
+resource "kubernetes_namespace_v1" "platform" {
+  for_each = toset(["argocd", "argo-rollouts", "monitoring"])
+  metadata { name = each.key }
+  depends_on = [module.eks]
+}
+
+# Shared HTTPS ALB for FuelOps and authenticated Argo CD, plus gp3 StorageClass.
+# The pinned controller releases use ephemeral storage, so they do not require this
+# StorageClass to start. Keep the application gate downstream of controller readiness.
 resource "helm_release" "platform" {
   name      = "platform"
   chart     = "${path.module}/../deploy/platform"
   namespace = "kube-system"
-  replace   = true # take over a release left in "failed" state by an earlier run
-  # Its ingresses live in the argocd / monitoring / argo-rollouts namespaces those releases create.
-  depends_on = [helm_release.argocd, helm_release.monitoring, helm_release.argo_rollouts]
+  replace   = true # Preserve recovery of releases left in a failed state.
+  values = [yamlencode({
+    alb = { certificateARNs = var.alb_certificate_arns }
+    argocd = {
+      ingress = { enabled = var.argocd_ingress_enabled, hostname = var.argocd_hostname }
+    }
+  })]
+  depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring]
 }
 
 resource "helm_release" "metrics_server" {
   name       = "metrics-server"
   repository = "https://kubernetes-sigs.github.io/metrics-server/"
   chart      = "metrics-server"
+  version    = "3.14.0"
   namespace  = "kube-system"
   depends_on = [module.eks]
 }
@@ -52,12 +68,12 @@ resource "random_password" "grafana" {
 }
 
 resource "helm_release" "monitoring" {
-  name             = "kps"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  namespace        = "monitoring"
-  create_namespace = true
-  timeout          = 900
+  name       = "kps"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  version    = "91.8.1"
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
+  timeout    = 900
   values = [yamlencode({
     prometheus = {
       prometheusSpec = {
@@ -74,13 +90,22 @@ resource "helm_release" "monitoring" {
     }
     grafana = {
       adminPassword = random_password.grafana.result
+      service       = { type = "ClusterIP" }
+      ingress       = { enabled = false }
       "grafana.ini" = {
-        server = { root_url = "%(protocol)s://%(domain)s/grafana", serve_from_sub_path = true }
+        server           = { root_url = "http://localhost:3000/", serve_from_sub_path = false }
+        "auth.anonymous" = { enabled = false }
+        users            = { allow_sign_up = false }
       }
       sidecar = {
         dashboards = { enabled = true, searchNamespace = "ALL" }
-        # Default Prometheus datasource (uid "prometheus"): exemplar trace_id -> Tempo.
-        datasources = { exemplarTraceIdDestinations = { datasourceUid = "tempo", traceIdLabelName = "trace_id" } }
+        # Terraform owns every datasource in monitoring; app dashboards remain in fuelops.
+        datasources = {
+          enabled                     = true
+          searchNamespace             = "monitoring"
+          resource                    = "configmap"
+          exemplarTraceIdDestinations = { datasourceUid = "tempo", traceIdLabelName = "trace_id" }
+        }
       }
       # One place for every observability datasource, cross-linked:
       # metrics <-> traces <-> logs, plus the Tempo service map.
@@ -136,14 +161,20 @@ resource "helm_release" "monitoring" {
 
 # Grafana Tempo (single-binary) as the trace backend. The fuelops OTel collector forwards
 # spans here over OTLP; Grafana (from kube-prometheus-stack) queries it via the Tempo datasource
-# our chart ships. Storage is the chart's default local filesystem: fine for the event, ephemeral.
+# provisioned by monitoring. Keep local, ephemeral storage explicit for the event.
 resource "helm_release" "tempo" {
   name       = "tempo"
-  repository = "https://grafana.github.io/helm-charts"
+  repository = "https://grafana-community.github.io/helm-charts"
   chart      = "tempo"
-  namespace  = "monitoring"
+  version    = "2.4.0" # Tempo 2.10.8; moving to Tempo 3 is a separate upgrade.
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
   values = [yamlencode({
+    fullnameOverride = "tempo"
+    replicas         = 1
+    persistence      = { enabled = false }
+    service          = { type = "ClusterIP" }
     tempo = {
+      retention = "24h"
       receivers = {
         otlp = {
           protocols = {
@@ -168,7 +199,8 @@ resource "helm_release" "loki" {
   name       = "loki"
   repository = "https://grafana.github.io/helm-charts"
   chart      = "loki"
-  namespace  = "monitoring"
+  version    = "7.3.0" # Preserve main's chart family; community-chart migration is separate.
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
   timeout    = 900
   values = [yamlencode({
     deploymentMode = "SingleBinary"
@@ -183,7 +215,7 @@ resource "helm_release" "loki" {
       limits_config    = { allow_structured_metadata = true, volume_enabled = true, retention_period = "48h" }
       pattern_ingester = { enabled = true }
     }
-    singleBinary = { replicas = 1, persistence = { enabled = true, size = "10Gi" } }
+    singleBinary = { replicas = 1, persistence = { enabled = true, size = "10Gi", storageClass = "gp3" } }
     backend      = { replicas = 0 }
     read         = { replicas = 0 }
     write        = { replicas = 0 }
@@ -203,7 +235,8 @@ resource "helm_release" "otel_logs" {
   name       = "otel-logs"
   repository = "https://open-telemetry.github.io/opentelemetry-helm-charts"
   chart      = "opentelemetry-collector"
-  namespace  = "monitoring"
+  version    = "0.173.1"
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
   values = [yamlencode({
     mode  = "daemonset"
     image = { repository = "otel/opentelemetry-collector-k8s" }
@@ -211,14 +244,27 @@ resource "helm_release" "otel_logs" {
       logsCollection       = { enabled = true }
       kubernetesAttributes = { enabled = true }
     }
+    # This agent tails files only; do not reserve the chart's default receiver host ports.
+    ports = {
+      otlp             = { enabled = false }
+      "otlp-http"      = { enabled = false }
+      "jaeger-compact" = { enabled = false }
+      "jaeger-grpc"    = { enabled = false }
+      "jaeger-thrift"  = { enabled = false }
+      zipkin           = { enabled = false }
+    }
     config = {
       receivers = {
-        filelog = { include = ["/var/log/pods/fuelops_*/*/*.log", "/var/log/pods/argocd_*/*/*.log", "/var/log/pods/argo-rollouts_*/*/*.log"] }
+        file_log   = { include = ["/var/log/pods/fuelops_*/*/*.log", "/var/log/pods/argocd_*/*/*.log", "/var/log/pods/argo-rollouts_*/*/*.log"] }
+        jaeger     = null
+        otlp       = null
+        prometheus = null
+        zipkin     = null
       }
-      exporters = { "otlphttp/loki" = { endpoint = "http://loki.monitoring.svc:3100/otlp" } }
+      exporters = { debug = null, "otlp_http/loki" = { endpoint = "http://loki.monitoring.svc:3100/otlp" } }
       service = {
         pipelines = {
-          logs    = { exporters = ["otlphttp/loki"] }
+          logs    = { receivers = ["file_log"], exporters = ["otlp_http/loki"] }
           traces  = null
           metrics = null
         }
@@ -229,31 +275,48 @@ resource "helm_release" "otel_logs" {
 }
 
 resource "helm_release" "argo_rollouts" {
-  name             = "argo-rollouts"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-rollouts"
-  namespace        = "argo-rollouts"
-  create_namespace = true
+  name       = "argo-rollouts"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-rollouts"
+  version    = "2.43.2"
+  namespace  = kubernetes_namespace_v1.platform["argo-rollouts"].metadata[0].name
   values = [yamlencode({
-    dashboard  = { enabled = true }
+    dashboard = {
+      enabled  = true
+      readonly = true
+      rootPath = "/"
+      service  = { type = "ClusterIP" }
+      ingress  = { enabled = false }
+    }
     controller = { metrics = { enabled = true, serviceMonitor = { enabled = true } } }
   })]
   depends_on = [module.eks, helm_release.monitoring]
 }
 
 resource "helm_release" "argocd" {
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  namespace        = "argocd"
-  create_namespace = true
-  timeout          = 900
+  name       = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = "10.9.2"
+  namespace  = kubernetes_namespace_v1.platform["argocd"].metadata[0].name
+  timeout    = 900
   values = [yamlencode({
     controller = { metrics = { enabled = true, serviceMonitor = { enabled = true } } }
-    server     = { metrics = { enabled = true, serviceMonitor = { enabled = true } } }
+    server = {
+      metrics = { enabled = true, serviceMonitor = { enabled = true } }
+      service = { type = "ClusterIP" }
+      ingress = { enabled = false } # The platform chart owns the shared-ALB Ingress.
+    }
     configs = {
+      cm = {
+        url                       = var.argocd_ingress_enabled ? "https://${var.argocd_hostname}" : "https://localhost:8443"
+        "admin.enabled"           = true
+        "users.anonymous.enabled" = false
+      }
       params = {
-        "server.insecure" = true
+        "server.insecure" = false
+        "server.basehref" = "/"
+        "server.rootpath" = ""
       }
       # Argo CD reads the private repo with a read-only deploy key.
       repositories = {
@@ -291,14 +354,16 @@ resource "kubernetes_secret" "fuelops_env" {
   }
 }
 
-# Root Argo CD Application: syncs the fuelops chart from git (CI bumps image tags there).
+# Keep this release address stable. During bootstrap it contains no Applications;
+# enabling it lets Argo render the git chart, whose schema rejects placeholder tags.
 resource "helm_release" "argocd_apps" {
   name       = "argocd-apps"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argocd-apps"
-  namespace  = "argocd"
+  version    = "2.0.5"
+  namespace  = kubernetes_namespace_v1.platform["argocd"].metadata[0].name
   values = [yamlencode({
-    applications = {
+    applications = var.enable_application ? {
       fuelops = {
         namespace = "argocd"
         project   = "default"
@@ -316,7 +381,7 @@ resource "helm_release" "argocd_apps" {
         # Argo Rollouts rewrites canary/stable Service selectors mid-rollout; don't let selfHeal fight it.
         ignoreDifferences = [{ group = "", kind = "Service", jsonPointers = ["/spec/selector"] }]
       }
-    }
+    } : {}
   })]
-  depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring, kubernetes_secret.fuelops_env]
+  depends_on = [helm_release.platform, helm_release.metrics_server, helm_release.tempo, helm_release.otel_logs, kubernetes_secret.fuelops_env]
 }

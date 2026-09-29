@@ -108,7 +108,7 @@ serving the last-known-good snapshot and `/api/status` shows `fuel_simulator: "u
         │ no                         │                         │  approve ─▶ APPROVED (decision APPROVE)
         └──────────▶ PROPOSED        │                         │  reject  ─▶ REJECTED (decision REJECT)
                                      ▼                         │  superseded / 8 ticks / reset ─▶ EXPIRED
-                         outbox (exact body stored)            
+                         outbox (exact body stored)
                                      │  pre-flight vs live world fails ─▶ FAILED (last_error "PREFLIGHT: …")
                                      │  simulator 4xx                   ─▶ FAILED (last_error "<CODE>: …")
                                      │  5xx/timeout ×5, key not visible ─▶ FAILED (FAILED_PERMANENT)

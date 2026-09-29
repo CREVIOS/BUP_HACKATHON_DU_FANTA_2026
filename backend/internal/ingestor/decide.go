@@ -143,6 +143,7 @@ func (i *ingestor) decide(ctx context.Context, w sim.World) error {
 		reviewQueue.Set(float64(queue))
 	}
 	i.updateForecastError(ctx)
+	i.shadowRL(ctx, w, resp)
 	return nil
 }
 

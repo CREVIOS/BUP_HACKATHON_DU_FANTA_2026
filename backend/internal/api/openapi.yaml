@@ -282,6 +282,20 @@ paths:
       security: [{ bearer: [] }]
       parameters: [{ $ref: "#/components/parameters/Id" }]
       responses: { "200": { $ref: "#/components/responses/Command" }, "404": { $ref: "#/components/responses/Error" } }
+  /api/rl:
+    get:
+      summary: RL policy card, verification evidence, offline held-out results and live shadow statistics
+      description: The trained Maskable PPO policy (Hugging Face crevious/fuelops-maskable-ppo-20260929, seed 11) runs in-process every tick in shadow mode — it decides against the live world but never submits.
+      operationId: getRL
+      tags: [intelligence]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
+  /api/rl/shadow:
+    get:
+      summary: Recent RL shadow decisions next to the planner baseline and greedy recommendations
+      operationId: getRLShadow
+      tags: [intelligence]
+      parameters: [{ name: limit, in: query, schema: { type: integer } }]
+      responses: { "200": { $ref: "#/components/responses/Json" }, "503": { $ref: "#/components/responses/NoSnapshot" } }
   /healthz:
     get:
       summary: Liveness / readiness probe

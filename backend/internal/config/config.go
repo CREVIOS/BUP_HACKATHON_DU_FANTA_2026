@@ -18,6 +18,7 @@ type Config struct {
 	TypesafeAPIKey string        // Jev; empty = rule-based fallback only
 	OperatorToken  string        // bearer token for operator actions (approve/reject/allocate/cancel); empty + no admin token = auth off
 	AdminToken     string        // bearer token for admin actions (sim control, crisis/fault injection, policy settings)
+	RLShadow       bool          // run the trained RL policy in shadow mode (never executes); default on
 	Chaos500Pct    int           // rollback demo: % of non-probe requests answered with 500
 	FailHealth     bool          // rollback demo: /healthz always 503
 }
@@ -34,6 +35,7 @@ func Load() Config {
 		TypesafeAPIKey: os.Getenv("TYPESAFE_API_KEY"),
 		OperatorToken:  os.Getenv("OPERATOR_TOKEN"),
 		AdminToken:     os.Getenv("ADMIN_TOKEN"),
+		RLShadow:       os.Getenv("RL_SHADOW") != "false",
 		Chaos500Pct:    min(envInt("CHAOS_500_PCT", 0), 100),
 		FailHealth:     os.Getenv("FAIL_HEALTH") == "true" || os.Getenv("FAIL_HEALTH") == "1",
 	}

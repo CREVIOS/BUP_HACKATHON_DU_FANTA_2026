@@ -1,0 +1,326 @@
+{
+    "depots": [
+        {
+            "dispatch_capacity_per_tick": 12000,
+            "dispatch_left_this_tick": 12000,
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 78000,
+                    "capacity": 90000,
+                    "fill": 0.8666666666666667
+                },
+                "OCTANE": {
+                    "inventory": 26000,
+                    "capacity": 45000,
+                    "fill": 0.5777777777777777
+                },
+                "PETROL": {
+                    "inventory": 59000,
+                    "capacity": 70000,
+                    "fill": 0.8428571428571429
+                }
+            },
+            "id": "depot-gazipur",
+            "name": "Gazipur Depot",
+            "region_id": "region-dhaka",
+            "status": "OPEN"
+        },
+        {
+            "dispatch_capacity_per_tick": 11000,
+            "dispatch_left_this_tick": 11000,
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 70000,
+                    "capacity": 85000,
+                    "fill": 0.8235294117647058
+                },
+                "OCTANE": {
+                    "inventory": 33000,
+                    "capacity": 40000,
+                    "fill": 0.825
+                },
+                "PETROL": {
+                    "inventory": 42000,
+                    "capacity": 65000,
+                    "fill": 0.6461538461538462
+                }
+            },
+            "id": "depot-patiya",
+            "name": "Patiya Depot",
+            "region_id": "region-chattogram",
+            "status": "OPEN"
+        }
+    ],
+    "regions": [
+        {
+            "id": "region-dhaka",
+            "name": "Dhaka Division",
+            "demand_factor": 1
+        },
+        {
+            "id": "region-chattogram",
+            "name": "Chattogram Division",
+            "demand_factor": 1.08
+        }
+    ],
+    "routes": [
+        {
+            "cross_region": false,
+            "destination_station_id": "station-mirpur",
+            "disruptions": [
+                {
+                    "end_tick": 52,
+                    "event_id": 2,
+                    "start_tick": 46,
+                    "status": "ACTIVE"
+                }
+            ],
+            "id": "route-gazipur-mirpur",
+            "max_shipment": 7000,
+            "source_depot_id": "depot-gazipur",
+            "status": "DISRUPTED",
+            "transit_ticks": 2,
+            "usable_now": false
+        },
+        {
+            "cross_region": false,
+            "destination_station_id": "station-tongi",
+            "disruptions": [],
+            "id": "route-gazipur-tongi",
+            "max_shipment": 6500,
+            "source_depot_id": "depot-gazipur",
+            "status": "AVAILABLE",
+            "transit_ticks": 2,
+            "usable_now": true
+        },
+        {
+            "cross_region": false,
+            "destination_station_id": "station-karnaphuli",
+            "disruptions": [],
+            "id": "route-patiya-karnaphuli",
+            "max_shipment": 7000,
+            "source_depot_id": "depot-patiya",
+            "status": "AVAILABLE",
+            "transit_ticks": 2,
+            "usable_now": true
+        },
+        {
+            "cross_region": false,
+            "destination_station_id": "station-coxsbazar",
+            "disruptions": [],
+            "id": "route-patiya-coxsbazar",
+            "max_shipment": 6000,
+            "source_depot_id": "depot-patiya",
+            "status": "AVAILABLE",
+            "transit_ticks": 3,
+            "usable_now": true
+        },
+        {
+            "cross_region": true,
+            "destination_station_id": "station-karnaphuli",
+            "disruptions": [],
+            "id": "route-gazipur-karnaphuli",
+            "max_shipment": 5000,
+            "source_depot_id": "depot-gazipur",
+            "status": "AVAILABLE",
+            "transit_ticks": 4,
+            "usable_now": true
+        },
+        {
+            "cross_region": true,
+            "destination_station_id": "station-mirpur",
+            "disruptions": [],
+            "id": "route-patiya-mirpur",
+            "max_shipment": 5000,
+            "source_depot_id": "depot-patiya",
+            "status": "AVAILABLE",
+            "transit_ticks": 4,
+            "usable_now": true
+        }
+    ],
+    "stations": [
+        {
+            "demand_multiplier": 1,
+            "demand_profile": "urban_high",
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 3247.229,
+                    "capacity": 15000,
+                    "fill": 0.21648193333333332,
+                    "in_transit": 1000,
+                    "stockout_prob": 0.9375,
+                    "time_to_stockout_ticks": 47,
+                    "time_to_stockout_hours": 11.75,
+                    "risk_level": "high",
+                    "demand_next_12h": 4303.124999999998,
+                    "room_after_in_transit": 10752.771
+                },
+                "OCTANE": {
+                    "inventory": 1178.881,
+                    "capacity": 9000,
+                    "fill": 0.13098677777777779,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 20,
+                    "time_to_stockout_hours": 5,
+                    "risk_level": "high",
+                    "demand_next_12h": 2835.000000000002,
+                    "room_after_in_transit": 7821.119
+                },
+                "PETROL": {
+                    "inventory": 1766.904,
+                    "capacity": 14000,
+                    "fill": 0.12620742857142858,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 17,
+                    "time_to_stockout_hours": 4.25,
+                    "risk_level": "high",
+                    "demand_next_12h": 5315.625,
+                    "room_after_in_transit": 12233.096
+                }
+            },
+            "id": "station-mirpur",
+            "name": "Mirpur Fuel Station",
+            "region_id": "region-dhaka",
+            "status": "OPEN"
+        },
+        {
+            "demand_multiplier": 1,
+            "demand_profile": "industrial",
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 0,
+                    "capacity": 18000,
+                    "fill": 0,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 0,
+                    "time_to_stockout_hours": 0,
+                    "risk_level": "critical",
+                    "demand_next_12h": 6518.75,
+                    "room_after_in_transit": 18000
+                },
+                "OCTANE": {
+                    "inventory": 1578.394,
+                    "capacity": 6000,
+                    "fill": 0.26306566666666664,
+                    "in_transit": 0,
+                    "stockout_prob": 0,
+                    "time_to_stockout_ticks": -1,
+                    "risk_level": "normal",
+                    "demand_next_12h": 1024.375,
+                    "room_after_in_transit": 4421.606
+                },
+                "PETROL": {
+                    "inventory": 2088.026,
+                    "capacity": 9000,
+                    "fill": 0.23200288888888887,
+                    "in_transit": 0,
+                    "stockout_prob": 0.640625,
+                    "time_to_stockout_ticks": 47,
+                    "time_to_stockout_hours": 11.75,
+                    "risk_level": "elevated",
+                    "demand_next_12h": 2095.3125,
+                    "room_after_in_transit": 6911.974
+                }
+            },
+            "id": "station-tongi",
+            "name": "Tongi Industrial Station",
+            "region_id": "region-dhaka",
+            "status": "OPEN"
+        },
+        {
+            "demand_multiplier": 1,
+            "demand_profile": "highway",
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 2842.164,
+                    "capacity": 14000,
+                    "fill": 0.2030117142857143,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 23,
+                    "time_to_stockout_hours": 5.75,
+                    "risk_level": "high",
+                    "demand_next_12h": 5670,
+                    "room_after_in_transit": 11157.836
+                },
+                "OCTANE": {
+                    "inventory": 1871.014,
+                    "capacity": 9000,
+                    "fill": 0.20789044444444443,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 25,
+                    "time_to_stockout_hours": 6.25,
+                    "risk_level": "high",
+                    "demand_next_12h": 3347.9999999999986,
+                    "room_after_in_transit": 7128.986
+                },
+                "PETROL": {
+                    "inventory": 3674.805,
+                    "capacity": 15000,
+                    "fill": 0.24498699999999998,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 27,
+                    "time_to_stockout_hours": 6.75,
+                    "risk_level": "high",
+                    "demand_next_12h": 5940,
+                    "room_after_in_transit": 11325.195
+                }
+            },
+            "id": "station-karnaphuli",
+            "name": "Karnaphuli Highway Station",
+            "region_id": "region-chattogram",
+            "status": "OPEN"
+        },
+        {
+            "demand_multiplier": 1,
+            "demand_profile": "regional",
+            "fuels": {
+                "DIESEL": {
+                    "inventory": 3691.247,
+                    "capacity": 12000,
+                    "fill": 0.30760391666666664,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 39,
+                    "time_to_stockout_hours": 9.75,
+                    "risk_level": "high",
+                    "demand_next_12h": 4131.000000000001,
+                    "room_after_in_transit": 8308.753
+                },
+                "OCTANE": {
+                    "inventory": 2317.654,
+                    "capacity": 7000,
+                    "fill": 0.3310934285714286,
+                    "in_transit": 0,
+                    "stockout_prob": 0,
+                    "time_to_stockout_ticks": -1,
+                    "risk_level": "normal",
+                    "demand_next_12h": 2065.5000000000005,
+                    "room_after_in_transit": 4682.346
+                },
+                "PETROL": {
+                    "inventory": 3427.838,
+                    "capacity": 12000,
+                    "fill": 0.2856531666666667,
+                    "in_transit": 0,
+                    "stockout_prob": 1,
+                    "time_to_stockout_ticks": 32,
+                    "time_to_stockout_hours": 8,
+                    "risk_level": "high",
+                    "demand_next_12h": 4360.499999999998,
+                    "room_after_in_transit": 8572.162
+                }
+            },
+            "id": "station-coxsbazar",
+            "name": "Cox's Bazar Regional Station",
+            "region_id": "region-chattogram",
+            "status": "OPEN"
+        }
+    ],
+    "tick": 51
+}

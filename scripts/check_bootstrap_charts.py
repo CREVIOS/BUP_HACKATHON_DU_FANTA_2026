@@ -75,6 +75,10 @@ def check_https(platform, app, certificates, argocd_hostname=None):
         "/api": {"name": "api", "port": {"number": "8080"}},
         "/": {"name": "web", "port": {"number": "80"}},
     }, "Preserve API and frontend host routing")
+    web = next(doc for doc in app if doc["kind"] == "Deployment" and doc["metadata"]["name"] == "web")
+    web_env = {item["name"]: item.get("value") for item in web["spec"]["template"]["spec"]["containers"][0]["env"]}
+    require(web_env.get("API_PROXY_TARGET") == "http://api:8080",
+            "Server-side frontend routes must reach the Kubernetes API Service port")
     if argocd_hostname:
         ingress = platform_ingresses[0]
         annotations = ingress["metadata"]["annotations"]

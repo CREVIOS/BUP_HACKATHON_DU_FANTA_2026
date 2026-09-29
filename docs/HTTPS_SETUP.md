@@ -32,6 +32,8 @@ hostname coverage, expiry, and live attachment still require verification.
 - The FuelOps hostname is Git-owned in `deploy/charts/fuelops/values.yaml` under
   `ingress.hostname`. The chart uses host-specific paths and forwards to the
   existing HTTP Services inside the VPC.
+- The web Deployment sets `API_PROXY_TARGET=http://api:8080` for its server-side
+  AI routes. Browser `/api` requests go directly through the ALB's API rule.
 - Both ingresses declare HTTP `80`, HTTPS `443`, and an HTTP-to-HTTPS redirect.
   They share the existing `alb` class and `fuelops` ALB group. The redirect affects
   the shared HTTP listener, so deploy these settings together in a controlled

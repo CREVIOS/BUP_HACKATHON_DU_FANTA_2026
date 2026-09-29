@@ -1,0 +1,27 @@
+{
+    "after": {
+        "position": 1766.904,
+        "risk_level": "high",
+        "stockout_prob": 1,
+        "time_to_stockout_hours": 10,
+        "time_to_stockout_ticks": 40
+    },
+    "arrival_tick": 55,
+    "before": {
+        "position": 1766.904,
+        "risk_level": "high",
+        "stockout_prob": 1,
+        "time_to_stockout_hours": 4.25,
+        "time_to_stockout_ticks": 17
+    },
+    "proposal": {
+        "station_id": "station-mirpur",
+        "fuel_type": "PETROL",
+        "route_id": "route-patiya-mirpur",
+        "quantity": 3000
+    },
+    "risk_reduction": 0,
+    "tick": 51,
+    "valid": true,
+    "violations": []
+}

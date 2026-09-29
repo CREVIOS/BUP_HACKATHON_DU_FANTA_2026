@@ -1,0 +1,76 @@
+{
+    "regions": [
+        {
+            "demand_factor": 1,
+            "fuels": {
+                "DIESEL": {
+                    "demand": 17950.269,
+                    "served": 16752.771,
+                    "unmet": 1197.498,
+                    "service_level": 0.9332880192491823,
+                    "forecast_next_12h": 10821.875000000002,
+                    "max_demand_multiplier": 1
+                },
+                "OCTANE": {
+                    "demand": 5742.724999999999,
+                    "served": 5742.724999999999,
+                    "unmet": 0,
+                    "service_level": 1,
+                    "forecast_next_12h": 3859.375000000005,
+                    "max_demand_multiplier": 1
+                },
+                "PETROL": {
+                    "demand": 11145.070000000002,
+                    "served": 11145.070000000002,
+                    "unmet": 0,
+                    "service_level": 1,
+                    "forecast_next_12h": 7410.9375,
+                    "max_demand_multiplier": 1
+                }
+            },
+            "name": "Dhaka Division",
+            "region_id": "region-dhaka",
+            "station_ids": [
+                "station-mirpur",
+                "station-tongi"
+            ]
+        },
+        {
+            "demand_factor": 1.08,
+            "fuels": {
+                "DIESEL": {
+                    "demand": 9466.589,
+                    "served": 9466.589,
+                    "unmet": 0,
+                    "service_level": 1,
+                    "forecast_next_12h": 9800.999999999995,
+                    "max_demand_multiplier": 1
+                },
+                "OCTANE": {
+                    "demand": 5211.332,
+                    "served": 5211.332,
+                    "unmet": 0,
+                    "service_level": 1,
+                    "forecast_next_12h": 5413.499999999995,
+                    "max_demand_multiplier": 1
+                },
+                "PETROL": {
+                    "demand": 9897.357,
+                    "served": 9897.357,
+                    "unmet": 0,
+                    "service_level": 1,
+                    "forecast_next_12h": 10300.500000000011,
+                    "max_demand_multiplier": 1
+                }
+            },
+            "name": "Chattogram Division",
+            "region_id": "region-chattogram",
+            "station_ids": [
+                "station-karnaphuli",
+                "station-coxsbazar"
+            ]
+        }
+    ],
+    "tick": 51,
+    "window_ticks": 96
+}

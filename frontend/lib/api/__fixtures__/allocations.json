@@ -1,0 +1,23 @@
+{
+    "allocations": [
+        {
+            "actual_arrival_tick": null,
+            "created_tick": 48,
+            "departure_tick": 48,
+            "destination_station_id": "station-mirpur",
+            "expected_arrival_tick": 52,
+            "failure_reason": null,
+            "fuel_type": "DIESEL",
+            "id": 1,
+            "idempotency_key": "fuelops-e2-r55",
+            "origin": "fuelops",
+            "quantity": 1000,
+            "recommendation_id": 55,
+            "route_id": "route-patiya-mirpur",
+            "source_depot_id": "depot-patiya",
+            "status": "IN_TRANSIT"
+        }
+    ],
+    "queued": [],
+    "tick": 51
+}

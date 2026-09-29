@@ -1,0 +1,43 @@
+{
+    "alerts_by_kind": {
+        "demand_anomaly": 6,
+        "disruption": 2,
+        "disruption_upcoming": 2,
+        "stockout_risk": 12
+    },
+    "forecast": {
+        "mape": 0.05529469403875241,
+        "naive_mape": 0.09587137634543011,
+        "note": "expected demand is recorded before each tick is simulated; naive = the previous tick's observed demand",
+        "observations": 612
+    },
+    "jev": {
+        "agreed_with_rule": 0,
+        "asked": 0,
+        "avg_p_auto": null,
+        "overrode_rule": 0
+    },
+    "outbox": {
+        "SENT": 1
+    },
+    "recommendations": {
+        "by_source_verdict": {
+            "intel:review": 65
+        },
+        "by_status": {
+            "EXPIRED": 58,
+            "PROPOSED": 5,
+            "REJECTED": 1,
+            "SUBMITTED": 1
+        }
+    },
+    "sim_metrics": {
+        "served_demand_liters": 55647.401,
+        "unmet_demand_liters": 342.498,
+        "service_level": 0.993883,
+        "allocation_liters": 0,
+        "allocation_failures": 0
+    },
+    "tick": 51,
+    "window_ticks": 96
+}

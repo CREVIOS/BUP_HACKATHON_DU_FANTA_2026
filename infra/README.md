@@ -1,6 +1,6 @@
 # Infrastructure bootstrap
 
-The configuration pins dependencies, orders namespace/controller creation, and separates platform bootstrap from application activation. The selected deployment uses a shared HTTPS ALB for `fuelops.hemal.me` and authenticated `argocd.hemal.me`; Grafana and Rollouts use private access. See [HTTPS setup](../docs/HTTPS_SETUP.md) for the two existing ACM certificates and Cloudflare DNS steps. The configuration is still one Terraform root. Splitting AWS and platform state requires an inventory of existing remote state first.
+The configuration pins dependencies, orders namespace/controller creation, and separates platform bootstrap from application activation. The selected deployment uses a shared HTTPS ALB for `fuelops.hemal.me`, authenticated Grafana at `fuelops.hemal.me/grafana/`, and authenticated `argocd.hemal.me`. Rollouts retains private access. See [HTTPS setup](../docs/HTTPS_SETUP.md) for the two existing ACM certificates and Cloudflare DNS steps. The configuration is still one Terraform root. Splitting AWS and platform state requires an inventory of existing remote state first.
 
 Shared OIDC provider reuse is supported, with a documented handoff for providers already in this state. Workload secret scope, rollback analysis, HPA/GitOps ownership, and release-status reporting still need the subsequent fixes in [the work plan](../docs/INFRA_WORK_PLAN.md). Passing the checks below does not establish readiness for public deployment.
 
@@ -36,7 +36,7 @@ Tempo uses the maintained community chart repository linked from [Grafana's inst
 
 App activation is a separate reviewed configuration change after the platform is ready:
 
-- Wire `OPERATOR_TOKEN` and `ADMIN_TOKEN` into the API workload before public activation. The operator API merged from `main` grants admin access to every caller when both are unset; the current Terraform Secret does not supply them. Existing `JWT_SECRET`/`SEED_USERS` entries do not configure this bearer-token authentication. This remains the next secret-wiring increment.
+- Verify nonempty `OPERATOR_TOKEN` and `ADMIN_TOKEN` keys in the operator-owned `fuelops-auth` Secret before activation. App chart `0.3.0` requires those keys only for the API and sets `REQUIRE_AUTH=true`; promote the new backend image too, so empty values fail startup. Existing `JWT_SECRET`/`SEED_USERS` entries do not configure bearer authentication. See [operator access and API auth](../docs/OPERATOR_ACCESS_AUTH.md) for preflight, import, and rollout steps.
 - Confirm both configured ACM certificates are Issued, unexpired, and cover their corresponding hostnames. Terraform validates ARN format/account/region, but does not inspect certificate issuance or hostname coverage. Follow [HTTPS setup](../docs/HTTPS_SETUP.md) for the controlled ingress transition and Cloudflare records.
 - Publish backend and web images, and verify their full 40-character commit SHA tags exist in the intended ECR repositories.
 - Commit those tags in `deploy/charts/fuelops/values.yaml` in the Git revision Argo will track. Include the new `values.schema.json` in that revision.
@@ -49,7 +49,9 @@ Do not use `enable_application = false` as a pause or teardown control for an ex
 
 ## Private operator access
 
-Argo CD, Grafana, and the Rollouts dashboard use `ClusterIP` Services. The selected deployment additionally publishes Argo CD at `https://argocd.hemal.me` through a platform-owned HTTPS ingress with login required; Grafana and Rollouts have no ingress. Argo port-forwarding remains available, and `argocd_ingress_enabled=false` restores private-only access. Configure `kubectl` with the `kubeconfig_command` Terraform output using an operator identity authorized for this EKS cluster; the image-publishing GitHub role has no cluster access. Port-forwarding requires Kubernetes permission to access the selected Pods and create `pods/portforward` requests.
+The optional `monitoring_operator_principal_arns` set manages STANDARD EKS access entries with `AmazonEKSEditPolicy` scoped only to `monitoring`. It preserves the manually established Grafana access, including Secret reads and port-forwarding; it grants no application/Argo access. Import both the existing entry and policy association before applying, and persist `MONITORING_OPERATOR_PRINCIPAL_ARNS` as a GitHub Actions repository variable containing the JSON array. See the [adoption runbook](../docs/OPERATOR_ACCESS_AUTH.md). This does not modify the existing root/Terraform-role entries.
+
+Argo CD, Grafana, and the Rollouts dashboard use `ClusterIP` Services. Platform-owned HTTPS ingresses publish Argo CD at `https://argocd.hemal.me` and Grafana at `https://fuelops.hemal.me/grafana/`, both with login required. Rollouts has no ingress. `argocd_ingress_enabled=false` and `grafana_ingress_enabled=false` independently restore private-only access. Configure `kubectl` with the `kubeconfig_command` Terraform output using an operator identity authorized for this EKS cluster; the image-publishing GitHub role has no cluster access. Port-forwarding requires permission to access selected Pods and create `pods/portforward` requests.
 
 Run each command in its own terminal and leave it running while using that tool:
 
@@ -62,7 +64,7 @@ kubectl -n argo-rollouts port-forward --address=127.0.0.1 svc/argo-rollouts-dash
 | Tool | Local URL | Authentication |
 |---|---|---|
 | Argo CD | `https://localhost:8443/` | `admin` and the initial Argo CD password; TLS uses Argo CD's generated certificate, so expect a certificate warning on first access |
-| Grafana | `http://localhost:3000/` | `admin` and the generated Grafana password |
+| Grafana | Public: `https://fuelops.hemal.me/grafana/`; private mode: `http://localhost:3000/` | `admin` and the existing/generated Grafana password; public-mode cookies require HTTPS |
 | Rollouts | `http://localhost:3100/` | No dashboard login; operator access uses the Kubernetes tunnel, and dashboard workload permissions are read-only |
 
 Retrieve passwords locally without saving them in the repository or CI logs:
@@ -72,7 +74,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 terraform -chdir=infra output -raw grafana_admin_password
 ```
 
-Use the current Argo CD password if the initial one has been rotated. Argo CD and Grafana anonymous access remain disabled. Each UI serves from `/`; the former `/argocd`, `/grafana`, and `/rollouts` ALB paths are removed. Stopping the port-forward process closes its local listener. `ClusterIP` does not isolate these tools from other in-cluster clients; the Rollouts dashboard has no independent authentication layer. Its pinned chart retains coordination Lease permissions, while its Rollout, Deployment, and analysis workload access is read-only.
+Use the current Argo CD password if the initial one has been rotated. Argo CD and Grafana anonymous access remain disabled. Grafana serves `/grafana/` in public mode, with matching probes and sidecar reload URLs; its HTTP tunnel is then for health checks, not browser login with Secure cookies. The legacy `/argocd` and `/rollouts` routes stay removed. Stopping the port-forward closes its listener. `ClusterIP` does not isolate these tools from in-cluster clients; Rollouts has no independent login. Its pinned chart retains coordination Lease permissions, while Rollout, Deployment, and analysis workload access is read-only.
 
 ## Tracing and metrics
 
@@ -88,7 +90,7 @@ During the deferred deployment rehearsal:
 
 1. Confirm the Tempo/Loki StatefulSets, Loki's PVC, app Collector Deployment, and log-agent DaemonSet are ready. Inspect their logs for configuration or export errors.
 2. Send a business API request and allow the ingestor to process a simulator tick. Record the request time and any trace ID from application logs.
-3. Open Grafana using the port-forward above. Confirm Prometheus, Tempo, and Loki datasources are present, find fresh traces and logs, and exercise their cross-links. Open the operations dashboard and check its panels against real data.
+3. Open Grafana at its HTTPS URL (or the port-forward in private mode). Confirm Prometheus, Tempo, and Loki datasources are present, find fresh traces and logs, and exercise their cross-links. Open the operations dashboard and check its panels against real data.
 4. Confirm Prometheus has healthy app/Collector targets and Argo CD/Rollouts ServiceMonitors, receives fresh samples and span metrics, and populates the service map.
 
 Local rendering verifies configuration and resource wiring. Successful ingestion, datasource provisioning, cross-links, dashboard queries, and metric scraping still require this live check.
@@ -163,7 +165,7 @@ terraform -chdir=infra import 'kubernetes_namespace_v1.platform["monitoring"]' m
 
 These are state-changing adoption commands, not prerequisites for an empty environment. Review the plan afterward for unexpected deletes/replacements and chart upgrades/downgrades. No live state inventory or migration has been performed as part of this increment.
 
-The local platform chart is now `0.4.0` and the application chart `0.2.0`. The earlier `0.3.0` operator-access increment removed the separate `alb-ops` class and legacy operator ingresses. The chosen HTTPS configuration now adds only the authenticated Argo CD hostname to the shared application ALB. Establish operator Kubernetes access first, then verify the port-forwards and confirm that only FuelOps and the enabled Argo ingress are public. Inspect ALB rules and cleanup of the old ops ALB. FuelOps now requires its explicit hostname; raw ALB URLs are not application entrypoints. Review the listener/host transition in [HTTPS setup](../docs/HTTPS_SETUP.md); live access changes only when these configurations are applied/synced.
+The local platform chart is now `0.5.0` and the application chart `0.3.0`. The earlier platform `0.3.0` increment removed the separate `alb-ops` class and legacy operator ingresses. The current selection adds authenticated Argo CD and Grafana to the shared application ALB. Grafana's `/grafana` rule precedes the application's catch-all and reuses the FuelOps certificate. Establish operator access first, then verify that only the configured FuelOps/Argo/Grafana routes are public. Inspect old ops-ALB cleanup. Raw ALB URLs are not application entrypoints. See [HTTPS setup](../docs/HTTPS_SETUP.md); live access changes only after apply/sync.
 
 The tracing increment retains the `helm_release.tempo` address and release name while changing its chart repository and pinning its version. Inspect the live plan and installed release before adopting this change; the previously unpinned version is unknown until that inventory. Ephemeral trace history is not guaranteed to survive the update.
 
@@ -207,6 +209,8 @@ HTTPS increment validation: Terraform formatting/validation and all 27 mock plan
 Merge validation against `main` at `1025c86`: resolved the web template conflict while preserving main's port 3000, 96 MiB memory request, 256 MiB limit, and published image pair. Bootstrap/HTTPS chart checks, backend race tests/vet, all 165 frontend tests, and the frontend production build passed. Terraform/platform configuration was unchanged by this merge. FuelOps token provisioning and live deployment checks remain pending.
 
 The follow-up merge of `main` at `4197a73` aligns the Kubernetes API listener, Services, ingress, and web `API_PROXY_TARGET` on port 8000. The bootstrap check now verifies that entire port path; its stale 8080 expectation caused the PR check failure. The merge retains main's optional `fuelops-web` secret and Node 22 type definitions, and removes a duplicate web `env` mapping introduced by the merge. Bootstrap/HTTPS and expanded observability checks, all 165 frontend tests, and the production build passed with the updated frozen lockfile. The web secret is separate from the backend's token provisioning requirement.
+
+Operator-access/auth and public-Grafana increment validation: Terraform formatting/validation and all 34 mock plans passed. Bootstrap/HTTPS checks verified API-only required Secret keys, protected auth settings, Grafana route precedence and private opt-out. The expanded observability render check verified the actual Terraform values against the pinned monitoring chart, including Grafana's root URL, secure cookies, disabled anonymous access, subpath probes, and local reload URLs. Backend race tests/vet passed, including empty-token startup rejection before database access. The infra workflow YAML parsed. No live import, apply, or Grafana ingress change was performed; use the [adoption and deployment runbook](../docs/OPERATOR_ACCESS_AUTH.md).
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

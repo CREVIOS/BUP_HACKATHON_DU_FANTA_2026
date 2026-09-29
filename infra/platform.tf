@@ -3,6 +3,7 @@
 # plus the ALB IngressClass and app secrets. App workloads themselves are synced by Argo CD from deploy/.
 
 locals {
+  grafana_subpath = var.grafana_ingress_enabled ? "/grafana" : ""
   kube_exec = {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
@@ -49,6 +50,9 @@ resource "helm_release" "platform" {
     argocd = {
       ingress = { enabled = var.argocd_ingress_enabled, hostname = var.argocd_hostname }
     }
+    grafana = {
+      ingress = { enabled = var.grafana_ingress_enabled }
+    }
   })]
   depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring]
 }
@@ -91,19 +95,30 @@ resource "helm_release" "monitoring" {
     grafana = {
       adminPassword = random_password.grafana.result
       service       = { type = "ClusterIP" }
-      ingress       = { enabled = false }
+      ingress       = { enabled = false } # The platform chart owns the shared-ALB /grafana ingress.
       "grafana.ini" = {
-        server           = { root_url = "http://localhost:3000/", serve_from_sub_path = false }
+        server = {
+          root_url            = var.grafana_ingress_enabled ? "https://fuelops.hemal.me/grafana/" : "http://localhost:3000/"
+          serve_from_sub_path = var.grafana_ingress_enabled
+        }
+        security         = { cookie_secure = var.grafana_ingress_enabled, cookie_samesite = "lax" }
         "auth.anonymous" = { enabled = false }
         users            = { allow_sign_up = false }
       }
+      readinessProbe = { httpGet = { path = "${local.grafana_subpath}/api/health", port = "grafana" } }
+      livenessProbe  = { httpGet = { path = "${local.grafana_subpath}/api/health", port = "grafana" } }
       sidecar = {
-        dashboards = { enabled = true, searchNamespace = "ALL" }
+        dashboards = {
+          enabled         = true
+          searchNamespace = "ALL"
+          reloadURL       = "http://localhost:3000${local.grafana_subpath}/api/admin/provisioning/dashboards/reload"
+        }
         # Terraform owns every datasource in monitoring; app dashboards remain in fuelops.
         datasources = {
           enabled                     = true
           searchNamespace             = "monitoring"
           resource                    = "configmap"
+          reloadURL                   = "http://localhost:3000${local.grafana_subpath}/api/admin/provisioning/datasources/reload"
           exemplarTraceIdDestinations = { datasourceUid = "tempo", traceIdLabelName = "trace_id" }
         }
       }

@@ -5,6 +5,18 @@
   "properties": {
     "image": { "$ref": "#/definitions/releaseImage" },
     "web": { "$ref": "#/definitions/releaseImage" },
+    "api": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "object",
+          "propertyNames": {
+            "not": { "enum": ["REQUIRE_AUTH", "OPERATOR_TOKEN", "ADMIN_TOKEN"] }
+          },
+          "description": "Authentication is required by the chart; tokens come only from fuelops-auth."
+        }
+      }
+    },
     "ingress": {
       "type": "object",
       "required": ["hostname"],

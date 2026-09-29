@@ -2,6 +2,13 @@
 
 Branch: `infra/deployment-readiness`, created from `main` at `533d814`.
 
+That original branch has merged. The next increment is on
+`infra/deployment-readiness`, based on `main` at `1384f46`: adopt existing monitoring
+operator access, require API-only token keys and reject empty tokens at startup,
+and publish authenticated Grafana at `https://fuelops.hemal.me/grafana/`. See the
+[adoption/rollout runbook](OPERATOR_ACCESS_AUTH.md). Import/apply and live
+verification of this increment remain pending.
+
 Scope: implement the deployment-readiness fixes in [DEPLOYMENT_REVIEW.md](DEPLOYMENT_REVIEW.md), reconcile the architecture docs, and prepare a reproducible deployment. Checked items are implemented and locally verified; live deployment/rehearsal gates remain separate.
 
 Keep EKS Auto Mode in Singapore, private RDS, Argo CD, basic Argo Rollouts canaries, and local Compose as the judging baseline. The chosen access update exposes FuelOps and authenticated Argo CD on their `hemal.me` HTTPS hostnames; see [HTTPS setup](HTTPS_SETUP.md). Implement the following in order as small commits.
@@ -24,23 +31,25 @@ Completion: each Terraform root validates, charts render with pinned dependencie
 
 Increment 1 implements the checked items above, with mocked Terraform bootstrap/activation tests and Helm image-validation checks in CI. It also fixes the app's Prometheus URL to match the pinned chart's rendered Service. See [infra/README.md](../infra/README.md) for exact versions, adoption steps, and validation commands. No live plan was run, so replacement risk still needs account/state inspection before applying. Root splitting remains pending.
 
-The latest observability merge centralizes all linked Grafana datasources in Terraform's monitoring release; app dashboards remain in `fuelops`. Collector ports match their listeners, and application activation waits for Tempo and platform logging. Tempo remains ephemeral with 24-hour retention; Loki uses a 10 GiB gp3 PVC. Merging the PR and deployment remain deferred. Step 2 supports shared GitHub OIDC provider reuse; workload secret scope is the next code increment, followed by deployment-specific image configuration.
+The observability merge centralizes all linked Grafana datasources in Terraform's monitoring release; app dashboards remain in `fuelops`. Collector ports match their listeners, and application activation waits for Tempo and platform logging. Tempo remains ephemeral with 24-hour retention; Loki uses a 10 GiB gp3 PVC. The original PR has merged; platform reconciliation and end-to-end telemetry checks remain pending. The current increment isolates API bearer tokens; the remaining shared workload secrets and deployment-specific image configuration still need follow-up.
 
 ## 2. Correct access defaults and resource ownership
 
 Files: `infra/github.tf`, `infra/platform.tf`, `infra/variables.tf`, `deploy/platform/templates/ops-ingress.yaml`, `deploy/charts/fuelops/templates/_helpers.tpl`, `README.md`.
 
-- [x] Remove legacy operator ingresses and document localhost access. The later user-selected HTTPS configuration publishes authenticated Argo CD on `argocd.hemal.me`; Grafana and Rollouts remain private.
+- [x] Remove legacy operator ingresses and document localhost access. Later user selections publish authenticated Argo CD on `argocd.hemal.me` and Grafana at `fuelops.hemal.me/grafana/`; Rollouts remains private.
 - [x] Wire the two existing ACM certificate ARNs to Auto Mode, with hostname routing and HTTP-to-HTTPS redirects for FuelOps/Argo CD. Support opting out of public Argo ingress and document Cloudflare records.
 - [ ] Verify certificate issuance/coverage, live SNI selection, redirects, DNS, and Argo login during the deployment rehearsal.
 - [x] Make the Rollouts dashboard read-only for workloads. Keep Argo CD/Grafana authentication enabled and restore Argo CD server TLS.
 - [x] Restrict both GitHub OIDC roles to the repository's exact `main`-branch subject. Preserve `main`'s configured immutable prefix, allow a validated exact-subject override, and restrict manual dispatches to `main` too.
 - [x] Support reuse of an existing account-level GitHub OIDC provider through a data source. Preserve existing managed state with a moved block, guard deletion, and document the handoff; actual account ownership and state handoff remain deployment prerequisites.
 - [ ] Document the current secret model: encrypted Terraform state plus Kubernetes Secrets. Limit each workload to secrets it uses; distinguish this from a future Secrets Manager integration.
-- [ ] Wire the operator API's `OPERATOR_TOKEN`/`ADMIN_TOKEN` into the API workload before public deployment. Both unset enables admin access for every caller; the current JWT/seed-user Secret entries do not configure these tokens.
+- [x] Require the existing `fuelops-auth` Secret's token keys only for the API. The chart sets `REQUIRE_AUTH=true` and the new backend rejects missing/empty token values before startup. Deploy the chart with its tested image; local development may still omit the requirement.
+- [x] Declare optional explicit monitoring operator access entries and namespace-scoped policy associations; pass the persistent principal list through the infra workflow. Existing entry/association import remains pending.
+- [x] Configure authenticated Grafana HTTPS under `/grafana`, correct rule precedence, subpath probes/sidecar reloads, secure cookies, and a private-mode opt-out. Live apply and browser checks remain pending.
 - [ ] Make account-specific image repositories/configuration derive from the chosen deployment inputs rather than assuming the hard-coded account everywhere.
 
-Completion: rendering publishes only the configured FuelOps/Argo HTTPS ingresses, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have authenticated public Argo access plus a working private access procedure.
+Completion: rendering publishes only the configured FuelOps/Argo/Grafana HTTPS routes, release trust is narrowly scoped, shared identity/state resources survive demo teardown, and operators have authenticated public UI access plus a working private access procedure.
 
 Increment 2 implements the three access items above. Mocked Terraform plans and chart rendering cover the configured defaults; live port-forward/login checks, ALB rule removal, and OIDC assumption still require the deployment rehearsal. The ownership follow-up adds an existing-provider ARN input, issuer/audience/account validation, both-role trust checks, deletion protection, and a persistent workflow repository variable. The [OIDC handoff procedure](../infra/README.md#shared-github-oidc-ownership) must be completed before teardown if the provider is already managed here. Workload secret scope and account-specific image configuration remain open, so this step is not yet complete. See [private operator access](../infra/README.md#private-operator-access) for commands and existing-environment effects.
 

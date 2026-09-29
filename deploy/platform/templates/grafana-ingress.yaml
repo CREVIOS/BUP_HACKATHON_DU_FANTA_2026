@@ -1,0 +1,30 @@
+{{- if .Values.grafana.ingress.enabled }}
+# Preserve /grafana in the upstream request: Grafana serves its own subpath.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    alb.ingress.kubernetes.io/target-type: ip
+    # Evaluate /grafana before the application's catch-all / rule (order 100).
+    alb.ingress.kubernetes.io/group.order: "20"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-path: /grafana/api/health
+spec:
+  ingressClassName: alb
+  rules:
+    - host: fuelops.hemal.me
+      http:
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: kps-grafana
+                port:
+                  number: 80
+{{- end }}

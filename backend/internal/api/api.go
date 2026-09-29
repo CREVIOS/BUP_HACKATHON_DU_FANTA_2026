@@ -21,6 +21,9 @@ import (
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
+	if err := cfg.ValidateAPIAuth(); err != nil {
+		return err
+	}
 	db, err := store.Connect(ctx, cfg.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("connect db: %w", err)

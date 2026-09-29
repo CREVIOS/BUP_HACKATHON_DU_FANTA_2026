@@ -6,6 +6,7 @@ Downloads the pinned observability Helm packages; never contacts AWS or Kubernet
 """
 
 import argparse
+import configparser
 import hashlib
 import json
 import os
@@ -152,6 +153,18 @@ def check_enabled(app, tempo, monitoring, tempo_namespace):
             by_uid["prometheus"]["jsonData"]["exemplarTraceIdDestinations"][0]["datasourceUid"] == "tempo",
             "Log and exemplar links must target the Tempo datasource")
     grafana = resource(monitoring, "Deployment", "kps-grafana")["spec"]["template"]["spec"]
+    grafana_ini = configparser.ConfigParser(interpolation=None)
+    grafana_ini.read_string(resource(monitoring, "ConfigMap", "kps-grafana")["data"]["grafana.ini"])
+    require(grafana_ini["server"]["root_url"] == "https://fuelops.hemal.me/grafana/" and
+            grafana_ini.getboolean("server", "serve_from_sub_path") and
+            grafana_ini.getboolean("security", "cookie_secure") and
+            not grafana_ini.getboolean("auth.anonymous", "enabled") and
+            not grafana_ini.getboolean("users", "allow_sign_up"),
+            "Public Grafana must use its HTTPS subpath, secure cookies, and authenticated login")
+    grafana_container = next(container for container in grafana["containers"] if container["name"] == "grafana")
+    for probe in ("readinessProbe", "livenessProbe"):
+        require(grafana_container[probe]["httpGet"]["path"] == "/grafana/api/health",
+                "Grafana probes must target the served subpath without a redirect")
     sidecars = [container for container in grafana["containers"] if container["name"].endswith("-sc-datasources")]
     require(len(sidecars) == 1, "Grafana must have a datasource sidecar")
     sidecar_env = {item["name"]: item.get("value") for item in sidecars[0]["env"]}
@@ -160,6 +173,8 @@ def check_enabled(app, tempo, monitoring, tempo_namespace):
     require(sidecar_env["RESOURCE"] == "configmap" and
             datasource_cm["metadata"]["labels"].get(sidecar_env["LABEL"]) == sidecar_env["LABEL_VALUE"],
             "Grafana's sidecar does not select the Tempo datasource ConfigMap")
+    require(sidecar_env["REQ_URL"] == "http://localhost:3000/grafana/api/admin/provisioning/datasources/reload",
+            "Datasource reloads must remain local and include Grafana's subpath")
     bindings = [doc for doc in monitoring if doc["kind"] == "ClusterRoleBinding" and any(
         subject.get("kind") == "ServiceAccount" and subject.get("name") == grafana["serviceAccountName"] and
         subject.get("namespace") == "monitoring" for subject in doc.get("subjects", []))]
@@ -172,6 +187,8 @@ def check_enabled(app, tempo, monitoring, tempo_namespace):
     require(json.loads(dashboard["data"]["fuelops-operations.json"])["panels"], "Main's operations dashboard is missing")
     dashboard_sidecar = next(container for container in grafana["containers"] if container["name"].endswith("-sc-dashboard"))
     dashboard_env = {item["name"]: item.get("value") for item in dashboard_sidecar["env"]}
+    require(dashboard_env["REQ_URL"] == "http://localhost:3000/grafana/api/admin/provisioning/dashboards/reload",
+            "Dashboard reloads must remain local and include Grafana's subpath")
     require(dashboard_env["NAMESPACE"] == "ALL" and
             dashboard["metadata"]["labels"].get(dashboard_env["LABEL"]) == dashboard_env["LABEL_VALUE"],
             "Grafana cannot discover the application's dashboard")
@@ -255,7 +272,7 @@ def main():
         platform = render("platform", "deploy/platform", "kube-system", "-f", str(platform_values_file))
         app = render("fuelops", APP, "fuelops", *tags)
         check_https(platform, app, platform_values["alb"]["certificateARNs"],
-                    platform_values["argocd"]["ingress"]["hostname"])
+                    platform_values["argocd"]["ingress"]["hostname"], platform_values["grafana"]["ingress"]["enabled"])
         check_enabled(app, manifests["tempo"],
                       manifests["monitoring"], releases["tempo"]["namespace"])
         check_logs(manifests["loki"], manifests["otel_logs"], platform)

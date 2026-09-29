@@ -1,10 +1,10 @@
 # CI rewrites the two image tags below on every main build (GitOps); Argo CD syncs them.
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
+  tag: 9d0192005904c2d34dca7a2c828cbcb090679617
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
+  tag: 9d0192005904c2d34dca7a2c828cbcb090679617
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0

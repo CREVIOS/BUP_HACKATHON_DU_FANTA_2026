@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 )
 
 // ErrTickMoved means a tick committed while the snapshot was being read on every attempt.
@@ -23,11 +24,16 @@ func (c *Client) FetchWorld(ctx context.Context) (World, error) {
 
 func (c *Client) fetchOnce(ctx context.Context) (World, error) {
 	var w World
+	// Fence first: the tick every other read must still match.
+	meta, err := c.GetJSON(ctx, "/v1/instance", &w.Instance)
+	if err != nil {
+		return World{}, fmt.Errorf("GET /v1/instance: %w", err)
+	}
+	w.Stale = meta.Stale
 	reads := []struct {
 		path string
 		out  any
 	}{
-		{"/v1/instance", &w.Instance},
 		{"/v1/regions", &w.Regions},
 		{"/v1/depots", &w.Depots},
 		{"/v1/stations", &w.Stations},
@@ -36,12 +42,29 @@ func (c *Client) fetchOnce(ctx context.Context) (World, error) {
 		{"/v1/allocations", &w.Allocations},
 		{"/v1/supply-arrivals", &w.Supply},
 	}
+	// In parallel: the client's semaphore still caps simulator requests at SIM_MAX_INFLIGHT, so a slow simulator
+	// (latency fault) costs one round trip per 4 reads instead of one per read.
+	var (
+		wg    sync.WaitGroup
+		mu    sync.Mutex
+		first error
+	)
 	for _, r := range reads {
-		meta, err := c.GetJSON(ctx, r.path, r.out)
-		if err != nil {
-			return World{}, fmt.Errorf("GET %s: %w", r.path, err)
-		}
-		w.Stale = w.Stale || meta.Stale
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m, err := c.GetJSON(ctx, r.path, r.out)
+			mu.Lock()
+			defer mu.Unlock()
+			if err != nil && first == nil {
+				first = fmt.Errorf("GET %s: %w", r.path, err)
+			}
+			w.Stale = w.Stale || m.Stale
+		}()
+	}
+	wg.Wait()
+	if first != nil {
+		return World{}, first
 	}
 	var after Instance
 	if _, err := c.GetJSON(ctx, "/v1/instance", &after); err != nil {

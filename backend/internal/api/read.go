@@ -73,7 +73,7 @@ func (s *server) overview(w http.ResponseWriter, r *http.Request) {
 		"simulation_only": true,
 		"epoch_id":        snap.EpochID, "tick": wd.Instance.Tick, "sim_time": wd.Instance.SimTime, "sim_status": wd.Instance.Status,
 		"tick_minutes": wd.Instance.TickMinutes, "scenario_id": wd.Instance.ScenarioID,
-		"stale": snap.Stale, "data_age_seconds": age, "degraded": snap.Stale || fallback || age > 10,
+		"stale": snap.Stale, "data_age_seconds": age, "degraded": snap.Stale || fallback || age > staleAfterSeconds,
 		"sim_metrics":     snap.Metrics,
 		"open_alerts":     map[string]int{"critical": crit, "warn": warn, "info": info},
 		"review_queue":    queue,

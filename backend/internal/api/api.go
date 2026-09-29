@@ -205,7 +205,7 @@ func (s *server) status(w http.ResponseWriter, r *http.Request) {
 	err := s.db.QueryRow(ctx, `SELECT EXTRACT(EPOCH FROM now() - last_ok_at) FROM ingestor_heartbeat WHERE id = 1`).Scan(&age)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = errors.New("ingestor has not polled the simulator yet")
-	} else if err == nil && age > 10 {
+	} else if err == nil && age > staleAfterSeconds {
 		err = fmt.Errorf("no successful simulator poll for %.0fs", age)
 	}
 	sim := health(err)
@@ -246,6 +246,10 @@ func (s *server) ping(ctx context.Context, url string) error {
 	}
 	return nil
 }
+
+// staleAfterSeconds: no successful simulator read for this long means the feed is down. A simulator under a latency
+// fault still delivers a snapshot within a few seconds (parallel reads, 5 s timeout), so this only trips on real loss.
+const staleAfterSeconds = 20
 
 func health(err error) string {
 	if err != nil {

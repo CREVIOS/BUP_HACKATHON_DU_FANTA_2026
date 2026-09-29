@@ -14,7 +14,7 @@ type Config struct {
 	DatabaseURL    string        // Postgres DSN
 	SimBaseURL     string        // simulator base URL; only the ingestor may call it
 	SimMaxInflight int           // hard cap on concurrent simulator requests (sim wedges at ~15, see docs/PLAN.md §2 #1)
-	SimTimeout     time.Duration // per-request timeout to the simulator
+	SimTimeout     time.Duration // per-request timeout to the simulator (5 s: a slow simulator is degraded, not down)
 	PollInterval   time.Duration // ingestor fallback poll interval
 	IntelURL       string        // intel service base URL (api -> intel)
 	TypesafeAPIKey string        // Jev; empty = rule-based fallback only
@@ -35,7 +35,7 @@ func Load() Config {
 		DatabaseURL:    env("DATABASE_URL", "postgres://fuelops:fuelops@localhost:5432/fuelops?sslmode=disable"),
 		SimBaseURL:     env("SIM_BASE_URL", "http://localhost:8000"),
 		SimMaxInflight: envInt("SIM_MAX_INFLIGHT", 4),
-		SimTimeout:     envDuration("SIM_TIMEOUT", 1500*time.Millisecond),
+		SimTimeout:     envDuration("SIM_TIMEOUT", 5*time.Second),
 		PollInterval:   envDuration("POLL_INTERVAL", time.Second),
 		IntelURL:       env("INTEL_URL", "http://localhost:8082"),
 		TypesafeAPIKey: os.Getenv("TYPESAFE_API_KEY"),

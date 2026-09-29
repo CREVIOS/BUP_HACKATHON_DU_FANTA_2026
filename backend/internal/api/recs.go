@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/genai"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/policy"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/sim"
@@ -143,6 +144,82 @@ func (s *server) getRecommendation(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// explainTimeout bounds the outbound LLM call. On expiry the explainer returns
+// its deterministic fallback, so this endpoint never hangs on the model.
+const explainTimeout = 20 * time.Second
+
+// explainRecommendation returns a human-readable, operator-facing explanation of
+// one recommendation (brief §7 GenAI: "human-readable decision explanations",
+// §9: inspectable decisions). The hard numbers are computed deterministically;
+// the LLM only writes the narrative, and falls back cleanly when unavailable.
+func (s *server) explainRecommendation(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r)
+	if !ok {
+		return
+	}
+	rec, err := s.loadRec(r.Context(), s.db, id, false)
+	if errors.Is(err, pgx.ErrNoRows) {
+		writeErr(w, http.StatusNotFound, "NOT_FOUND", "no such recommendation")
+		return
+	}
+	if err != nil {
+		internalErr(w, err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), explainTimeout)
+	defer cancel()
+	ex := s.explain.Explain(ctx, decisionInput(rec))
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"recommendation_id": id, "explanation": ex})
+}
+
+// decisionInput maps a stored recommendation to the grounded facts the explainer
+// needs. The authoritative scalars come from the recommendation's own columns;
+// the richer evidence (binding constraint, review reasons, rejected routes,
+// signals) is read from the explanation JSON the planner wrote (a marshaled
+// intel.Triaged). Missing fields (e.g. for a manual allocation) are simply left
+// zero — the explainer handles that.
+func decisionInput(rec recommendation) genai.DecisionInput {
+	in := genai.DecisionInput{
+		StationID: rec.StationID, FuelType: rec.FuelType, RouteID: rec.RouteID,
+		DepotID: deref(rec.DepotID), Quantity: rec.Quantity, TimeToStockout: -1,
+		RiskBefore: derefF(rec.RiskBefore), RiskAfter: derefF(rec.RiskAfter),
+		Verdict: deref(rec.Verdict),
+	}
+	if len(rec.Explanation) > 0 {
+		var ev struct {
+			TimeToStockout    *int           `json:"time_to_stockout"`
+			BindingConstraint string         `json:"binding_constraint"`
+			ReviewReasons     []string       `json:"review_reasons"`
+			RuleReasons       []string       `json:"rule_reasons"`
+			Signals           map[string]any `json:"signals"`
+			Alternatives      []struct {
+				RouteID  string `json:"route_id"`
+				DepotID  string `json:"depot_id"`
+				Rejected string `json:"rejected"`
+			} `json:"alternatives"`
+		}
+		if json.Unmarshal(rec.Explanation, &ev) == nil {
+			if ev.TimeToStockout != nil {
+				in.TimeToStockout = *ev.TimeToStockout
+			}
+			in.BindingConstraint = ev.BindingConstraint
+			in.Signals = ev.Signals
+			// rule_reasons is the full set the verdict was based on (hard + soft);
+			// fall back to the planner's review_reasons if it is absent.
+			in.ReviewReasons = ev.RuleReasons
+			if len(in.ReviewReasons) == 0 {
+				in.ReviewReasons = ev.ReviewReasons
+			}
+			for _, a := range ev.Alternatives {
+				if a.Rejected != "" {
+					in.RejectedAlts = append(in.RejectedAlts, fmt.Sprintf("%s via %s — rejected: %s", a.RouteID, a.DepotID, a.Rejected))
+				}
+			}
+		}
+	}
+	return in
 }
 
 func (s *server) loadRec(ctx context.Context, q store.Querier, id int64, lock bool) (recommendation, error) {
@@ -556,6 +633,13 @@ func deref(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+func derefF(f *float64) float64 {
+	if f == nil {
+		return 0
+	}
+	return *f
 }
 
 func simIDOr0(p *int) int {

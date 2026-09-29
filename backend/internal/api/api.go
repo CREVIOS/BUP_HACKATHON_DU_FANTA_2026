@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/config"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/genai"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/llm"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,9 +29,22 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer db.Close()
 
+	// GenAI decision explainer (brief §7). Optional: with no OPENAI_API_KEY the
+	// explainer runs deterministic-only, so the endpoint still works.
+	var explainer *genai.Explainer
+	if c, err := llm.New(cfg); err == nil {
+		explainer = genai.NewExplainer(c)
+		slog.InfoContext(ctx, "genai decision explainer enabled", "model", c.Model())
+	} else {
+		if !errors.Is(err, llm.ErrNoAPIKey) {
+			slog.WarnContext(ctx, "openai client unavailable; explainer runs deterministic-only", "err", err)
+		}
+		explainer = genai.NewExplainer(nil)
+	}
+
 	// otelhttp.NewTransport propagates trace context to intel and emits client spans.
 	s := &server{
-		db: db, intelURL: cfg.IntelURL, jevConfigured: cfg.TypesafeAPIKey != "",
+		db: db, intelURL: cfg.IntelURL, jevConfigured: cfg.TypesafeAPIKey != "", explain: explainer,
 		http: &http.Client{Timeout: time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)},
 		auth: auth{operator: cfg.OperatorToken, admin: cfg.AdminToken}, hub: newHub(),
 	}
@@ -74,6 +89,7 @@ func (s *server) routes(mux *http.ServeMux) []string {
 	// Decisions (brief §9: inspectable recommendations, human review).
 	handle("GET /api/recommendations", s.listRecommendations)
 	handle("GET /api/recommendations/{id}", s.getRecommendation)
+	handle("GET /api/recommendations/{id}/explain", s.explainRecommendation)
 	handle("POST /api/recommendations/{id}/approve", op(s.approve))
 	handle("POST /api/recommendations/{id}/reject", op(s.reject))
 	handle("POST /api/simulate", s.simulate)
@@ -100,6 +116,7 @@ type server struct {
 	db            *pgxpool.Pool
 	intelURL      string
 	jevConfigured bool
+	explain       *genai.Explainer
 	http          *http.Client
 	auth          auth
 	latency       window

@@ -102,8 +102,6 @@ resource "helm_release" "argocd" {
     configs = {
       params = {
         "server.insecure" = true
-        "server.basehref" = "/argocd"
-        "server.rootpath" = "/argocd"
       }
       # Argo CD reads the private repo with a read-only deploy key.
       repositories = {

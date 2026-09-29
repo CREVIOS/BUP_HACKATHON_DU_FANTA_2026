@@ -1,5 +1,5 @@
 {{- range $i := list
-  (dict "name" "argocd" "ns" "argocd" "path" "/argocd" "svc" "argocd-server" "port" 80 "health" "/argocd/healthz" "order" "10")
+  (dict "name" "argocd" "ns" "argocd" "path" "/" "svc" "argocd-server" "port" 80 "health" "/healthz" "order" "10" "class" "alb-ops")
   (dict "name" "grafana" "ns" "monitoring" "path" "/grafana" "svc" "kps-grafana" "port" 80 "health" "/grafana/api/health" "order" "20")
   (dict "name" "rollouts" "ns" "argo-rollouts" "path" "/rollouts" "svc" "argo-rollouts-dashboard" "port" 3100 "health" "/rollouts/" "order" "30")
 }}
@@ -15,7 +15,7 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: {{ $i.health }}
     alb.ingress.kubernetes.io/success-codes: "200-399"
 spec:
-  ingressClassName: alb
+  ingressClassName: {{ $i.class | default "alb" }}
   rules:
     - http:
         paths:

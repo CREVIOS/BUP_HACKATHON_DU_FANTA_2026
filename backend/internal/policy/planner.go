@@ -3,7 +3,6 @@ package policy
 import (
 	"fmt"
 	"math"
-	"math/rand/v2"
 	"sort"
 	"strings"
 
@@ -62,31 +61,19 @@ type Plan struct {
 func MakePlan(w sim.World, o Options) Plan {
 	now := w.Instance.Tick
 	f := NewForecaster(w)
-	rng := rand.New(rand.NewPCG(uint64(w.Instance.Seed), uint64(now)))
-	routes := map[string]sim.Route{}
-	for _, r := range w.Routes {
-		routes[r.ID] = r
-	}
-	arrivals, doomed := inbound(w, routes)
+	rng := seededRNG(w)
+	arrivals, doomed := inbound(w, routeMap(w))
 	plan := Plan{Tick: now, PolicyVersion: Version, Cancel: doomed}
 
 	// Budgets for this tick.
 	depotInv := map[string]map[string]float64{}
-	dispatchLeft := map[string]float64{}
-	depots := map[string]sim.Depot{}
 	for _, d := range w.Depots {
-		depots[d.ID] = d
 		depotInv[d.ID] = map[string]float64{}
 		for k, v := range d.Inventory {
 			depotInv[d.ID][k] = v
 		}
-		dispatchLeft[d.ID] = d.DispatchCapacityPerTick
 	}
-	for _, a := range w.Allocations {
-		if a.CreatedTick == now && (a.Status == "PENDING" || a.Status == "IN_TRANSIT") {
-			dispatchLeft[a.SourceDepotID] -= a.Quantity
-		}
-	}
+	dispatchLeft := dispatchLeft(w)
 
 	// Project every open series.
 	byStation := map[string]sim.Station{}

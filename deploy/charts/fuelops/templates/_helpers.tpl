@@ -24,7 +24,9 @@ containers:
     image: {{ include "fuelops.image" $root }}
     args: [{{ .name | quote }}]
     ports: [{ name: http, containerPort: {{ .port }} }]
-    envFrom: [{ secretRef: { name: fuelops-env } }]
+    # fuelops-env: Terraform-managed (DB, JWT, Jev). fuelops-auth: OPERATOR_TOKEN/ADMIN_TOKEN for the operator API,
+    # created with kubectl (docs/API.md §2); optional so pods start without it (auth is then off).
+    envFrom: [{ secretRef: { name: fuelops-env } }, { secretRef: { name: fuelops-auth, optional: true } }]
     env:
       - { name: HTTP_ADDR, value: ":{{ .port }}" }
       - { name: INTEL_URL, value: "http://intel:8082" }

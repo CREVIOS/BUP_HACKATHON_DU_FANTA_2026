@@ -46,6 +46,7 @@ export interface Brief {
   source: "ai" | "rules"; // who wrote the summary and notes: the model, or nobody (rules only)
   tick: number; // the figures are from this tick
   notesTick?: number; // the model wrote the summary and notes at this tick
+  notesPending?: boolean; // the model is writing new notes; ask again shortly
 }
 
 export type BriefResponse = Brief;

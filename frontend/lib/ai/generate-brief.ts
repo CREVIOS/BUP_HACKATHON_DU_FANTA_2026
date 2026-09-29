@@ -3,9 +3,9 @@ import { z } from "zod";
 import type { Brief } from "@/lib/ai/brief";
 import { BRIEF_INSTRUCTIONS, buildBriefPrompt, type BriefPromptInput } from "@/lib/ai/prompts";
 
-// Reasoning models spend time on hidden reasoning before the structured answer, so the call needs more
-// than a few seconds. On timeout the briefing simply shows without notes.
-const BRIEF_TIMEOUT_MS = 18000;
+// Reasoning models spend time on hidden reasoning before the structured answer (about 17 s observed).
+// The call runs in the background, so nobody waits on it; on timeout the briefing keeps its old notes.
+const BRIEF_TIMEOUT_MS = 30_000;
 const SUMMARY_MAX = 320;
 const NOTE_MAX = 240;
 const MAX_NOTES = 8;
@@ -74,8 +74,12 @@ export async function generateNotes(input: BriefPromptInput, model: LanguageMode
   }
 }
 
+// Attach notes to the problems they were written for; a note for a problem that has since cleared is
+// dropped. With nothing attached, the briefing stays the computed one.
 export function applyNotes(brief: Brief, notes: BriefNotes | undefined, notesTick: number): Brief {
   if (!notes) return brief;
+  const attached = brief.items.filter((item) => notes.notes[item.id]).length;
+  if (!notes.summary && attached === 0) return brief;
   return {
     ...brief,
     summary: notes.summary,

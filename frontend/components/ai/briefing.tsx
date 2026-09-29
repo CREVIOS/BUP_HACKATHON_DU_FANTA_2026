@@ -22,6 +22,9 @@ const SEVERITY_ICON = {
 } as const;
 
 const REFRESH_CHECK_MS = 20_000;
+// While the model writes notes in the background, ask again this often, for about a minute at most.
+const NOTES_POLL_MS = 5_000;
+const NOTES_POLL_MAX = 12;
 const MAX_CHANGES = 4;
 const TAB_LABEL: Record<Tab, string> = { live: "Live", overview: "Overview", decisions: "Decisions", network: "Network", control: "Control" };
 const linkLabel = (target: Target) => (target.seriesKey ? "Review" : `Open ${TAB_LABEL[target.tab]}`);
@@ -54,13 +57,14 @@ export function useBrief(tick: number | undefined) {
   const tickRef = useRef<number | undefined>(tick);
   const shownTick = useRef<number | undefined>(undefined);
   const inflight = useRef<AbortController | undefined>(undefined);
+  const notesPoll = useRef<{ timer?: ReturnType<typeof setTimeout>; count: number }>({ count: 0 });
 
   useEffect(() => {
     tickRef.current = tick;
   }, [tick]);
 
   const run = useCallback(
-    (refresh: boolean) => {
+    function load(refresh: boolean) {
       inflight.current?.abort();
       const controller = new AbortController();
       inflight.current = controller;
@@ -69,7 +73,11 @@ export function useBrief(tick: number | undefined) {
           if (controller.signal.aborted) return;
           setBrief(next);
           setFailed(false);
-          shownTick.current = next.tick; // the server may have answered from its short cache
+          shownTick.current = next.tick;
+          const poll = notesPoll.current;
+          clearTimeout(poll.timer);
+          poll.count = next.notesPending ? poll.count + 1 : 0;
+          if (next.notesPending && poll.count <= NOTES_POLL_MAX) poll.timer = setTimeout(() => load(false), NOTES_POLL_MS);
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted) return;
@@ -88,8 +96,10 @@ export function useBrief(tick: number | undefined) {
     const timer = setInterval(() => {
       if (tickRef.current !== shownTick.current) run(false);
     }, REFRESH_CHECK_MS);
+    const poll = notesPoll.current;
     return () => {
       clearInterval(timer);
+      clearTimeout(poll.timer);
       inflight.current?.abort();
     };
   }, [run]);
@@ -195,6 +205,7 @@ export function Briefing({ tick }: { tick?: number }) {
             {brief.source === "ai" && brief.notesTick !== undefined
               ? ` Summary and notes (marked with a bar) written by AI at tick ${brief.notesTick}; any that quoted a figure not in the data were discarded.`
               : ""}
+            {brief.notesPending ? " AI is writing notes for the latest state…" : ""}
           </p>
           {failed ? <p className="mt-3 text-xs text-warn-fg">Showing the previous briefing. Refresh failed.</p> : null}
         </div>

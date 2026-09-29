@@ -516,6 +516,1228 @@
   },
   {
    "type": "row",
+   "title": "Decisions, RL & crises",
+   "id": 35,
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 5
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Crises active",
+   "description": "Crisis events running now in the simulator (route disruption, station outage, demand spike, supply delay/shortfall, depot constraint).",
+   "id": 36,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(sim_events{status=\"ACTIVE\"}) or vector(0)",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       },
+       {
+        "color": "#fab219",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "RL decisions / min",
+   "description": "How often the trained RL policy decided (one per simulator tick).",
+   "id": 37,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(rate(rl_shadow_decisions_total[5m])) * 60 or vector(0)",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "RL refusals (15 min)",
+   "description": "Ticks the RL policy refused (untrusted data); greedy decided those.",
+   "id": 38,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(rl_shadow_errors_total[15m])) or vector(0)",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       },
+       {
+        "color": "#fab219",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Waiting for review",
+   "description": "Recommendations waiting for an operator.",
+   "id": 39,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(review_queue_depth) or vector(0)",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       },
+       {
+        "color": "#fab219",
+        "value": 10
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Critical alerts",
+   "description": "Open CRITICAL alerts (stockout within 2 h, disruption, outage, failed allocation).",
+   "id": 40,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(alerts_open{severity=\"CRITICAL\"}) or vector(0)",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "none",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       },
+       {
+        "color": "#d03b3b",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 0
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Forecast error",
+   "description": "Mean absolute % error of next-tick demand over the last 96 ticks (naive baseline in the chart below).",
+   "id": 41,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 6
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(forecast_mape{model=\"forecast\"})",
+     "legendFormat": "__auto",
+     "refId": "A",
+     "range": false,
+     "instant": true
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "#0ca30c",
+        "value": null
+       },
+       {
+        "color": "#fab219",
+        "value": 0.1
+       },
+       {
+        "color": "#d03b3b",
+        "value": 0.2
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     },
+     "decimals": 1
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "value",
+    "graphMode": "area",
+    "textMode": "auto",
+    "justifyMode": "auto",
+    "orientation": "auto"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Crisis events",
+   "description": "Each injected or scheduled crisis while it is scheduled or active; resolved ones drop out.",
+   "id": 42,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 10
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (type, status) (sim_events)",
+     "legendFormat": "{{type}} · {{status}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Route availability",
+   "description": "1 = available, 0 = disrupted. A route disruption shows as a drop to 0 until it resolves.",
+   "id": 43,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 10
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "min by (route) (route_available)",
+     "legendFormat": "{{route}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Open alerts by severity",
+   "description": "Standing alerts from the ingestor (shortage risk, anomalies, disruptions, supply, fallbacks).",
+   "id": 44,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 10
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (severity) (alerts_open)",
+     "legendFormat": "{{severity}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "stepAfter",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "RL decisions: ship vs wait",
+   "description": "Per minute. 'baseline' = whether the RL chose the same plan as the planner's rule baseline.",
+   "id": 45,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 18
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (kind, baseline) (rate(rl_shadow_decisions_total[5m])) * 60",
+     "legendFormat": "{{kind}} · {{baseline}} baseline",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Recommendations by verdict",
+   "description": "Shipments proposed per minute and how triage routed them (auto-execute or human review).",
+   "id": 46,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 18
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (source, verdict) (rate(decisions_total[5m])) * 60",
+     "legendFormat": "{{source}} · {{verdict}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Outbox results",
+   "description": "What happened to approved shipments: sent, rejected, retried, pre-flight rejected, recovered.",
+   "id": 47,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 18
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (result) (rate(outbox_results_total[5m])) * 60",
+     "legendFormat": "{{result}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Fuel in stations (L)",
+   "description": "Sum of diesel, petrol and octane per station.",
+   "id": 48,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 26
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (station) (station_inventory_liters)",
+     "legendFormat": "{{station}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Fuel in depots (L)",
+   "description": "Per depot and fuel.",
+   "id": 49,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 26
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (depot, fuel) (depot_inventory_liters)",
+     "legendFormat": "{{depot}} · {{fuel}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Stockout probability, next 12 h",
+   "description": "Per station and fuel, from the projection ensemble.",
+   "id": 50,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 26
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (station, fuel) (stockout_probability)",
+     "legendFormat": "{{station}} · {{fuel}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Forecast error vs naive",
+   "description": "Mean absolute % error: our forecast vs 'same as last tick'.",
+   "id": 51,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 34
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (model) (forecast_mape)",
+     "legendFormat": "{{model}}",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "RL decision time (p95)",
+   "description": "Planner + network time per decision.",
+   "id": 52,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 34
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "histogram_quantile(0.95, sum by (le) (rate(rl_shadow_inference_seconds_bucket[5m])))",
+     "legendFormat": "p95",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Fallbacks & losses prevented",
+   "description": "Intel down (in-process fallback), RL refusals, and pending shipments cancelled before a disruption destroyed their fuel.",
+   "id": 53,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 34
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(decision_fallback_total[15m]))",
+     "legendFormat": "intel fallback (15 min)",
+     "refId": "A",
+     "range": true,
+     "instant": false
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(rl_shadow_errors_total[15m]))",
+     "legendFormat": "RL refusals (15 min)",
+     "refId": "B",
+     "range": true,
+     "instant": false
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(allocations_cancelled_to_prevent_loss_total[1h]))",
+     "legendFormat": "losses prevented (1 h)",
+     "refId": "C",
+     "range": true,
+     "instant": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "lineInterpolation": "linear",
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "axisSoftMin": 0,
+      "gradientMode": "none",
+      "thresholdsStyle": {
+       "mode": "off"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
+   "type": "row",
    "title": "Traffic & latency",
    "id": 8,
    "collapsed": false,
@@ -523,7 +1745,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 5
+    "y": 42
    },
    "panels": []
   },
@@ -540,7 +1762,7 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 6
+    "y": 43
    },
    "targets": [
     {
@@ -690,7 +1912,7 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 6
+    "y": 43
    },
    "targets": [
     {
@@ -845,7 +2067,7 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 6
+    "y": 43
    },
    "targets": [
     {
@@ -992,7 +2214,7 @@
     "h": 7,
     "w": 12,
     "x": 0,
-    "y": 14
+    "y": 51
    },
    "targets": [
     {
@@ -1064,7 +2286,7 @@
     "h": 7,
     "w": 12,
     "x": 12,
-    "y": 14
+    "y": 51
    },
    "targets": [
     {
@@ -1124,7 +2346,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 21
+    "y": 58
    },
    "panels": []
   },
@@ -1141,7 +2363,7 @@
     "h": 7,
     "w": 6,
     "x": 0,
-    "y": 22
+    "y": 59
    },
    "targets": [
     {
@@ -1231,7 +2453,7 @@
     "h": 7,
     "w": 6,
     "x": 6,
-    "y": 22
+    "y": 59
    },
    "targets": [
     {
@@ -1351,7 +2573,7 @@
     "h": 7,
     "w": 6,
     "x": 12,
-    "y": 22
+    "y": 59
    },
    "targets": [
     {
@@ -1446,7 +2668,7 @@
     "h": 7,
     "w": 6,
     "x": 18,
-    "y": 22
+    "y": 59
    },
    "targets": [
     {
@@ -1577,6 +2799,92 @@
    }
   },
   {
+   "type": "timeseries",
+   "title": "Simulator error rate vs failed polls",
+   "id": 54,
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "description": "Share of simulator calls that failed (an injected error_rate of 0.5 shows here as ~50%), and failed ingestor polls per minute. Each read is retried up to 6 times, so a 50% fault costs only the occasional poll and the feed stays live.",
+   "gridPos": {
+    "h": 7,
+    "w": 24,
+    "x": 0,
+    "y": 66
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "refId": "A",
+     "legendFormat": "simulator calls failing",
+     "range": true,
+     "instant": false,
+     "expr": "(sum(rate(sim_requests_total{app=\"ingestor\",code!~\"2..\"}[1m])) or vector(0)) / clamp_min(sum(rate(sim_requests_total{app=\"ingestor\"}[1m])), 1e-9)"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "refId": "B",
+     "legendFormat": "failed polls / min",
+     "range": true,
+     "instant": false,
+     "expr": "sum(rate(ingestor_poll_errors_total{app=\"ingestor\"}[1m])) * 60 or vector(0)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "min": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 2,
+      "fillOpacity": 6,
+      "showPoints": "never",
+      "spanNulls": true,
+      "axisSoftMin": 0
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "failed polls / min"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "short"
+       },
+       {
+        "id": "custom.axisPlacement",
+        "value": "right"
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   }
+  },
+  {
    "type": "row",
    "title": "Delivery & automatic rollback",
    "id": 19,
@@ -1585,7 +2893,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 29
+    "y": 73
    },
    "panels": []
   },
@@ -1602,7 +2910,7 @@
     "h": 7,
     "w": 6,
     "x": 0,
-    "y": 30
+    "y": 74
    },
    "targets": [
     {
@@ -1716,7 +3024,7 @@
     "h": 7,
     "w": 8,
     "x": 6,
-    "y": 30
+    "y": 74
    },
    "targets": [
     {
@@ -1790,7 +3098,7 @@
     "h": 7,
     "w": 5,
     "x": 14,
-    "y": 30
+    "y": 74
    },
    "targets": [
     {
@@ -1854,7 +3162,7 @@
     "h": 7,
     "w": 5,
     "x": 19,
-    "y": 30
+    "y": 74
    },
    "targets": [
     {
@@ -1966,7 +3274,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 37
+    "y": 81
    },
    "panels": []
   },
@@ -1983,7 +3291,7 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 38
+    "y": 82
    },
    "targets": [
     {
@@ -2133,7 +3441,7 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 38
+    "y": 82
    },
    "targets": [
     {
@@ -2283,7 +3591,7 @@
     "h": 7,
     "w": 4,
     "x": 16,
-    "y": 38
+    "y": 82
    },
    "targets": [
     {
@@ -2414,7 +3722,7 @@
     "h": 7,
     "w": 4,
     "x": 20,
-    "y": 38
+    "y": 82
    },
    "targets": [
     {
@@ -2482,7 +3790,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 45
+    "y": 89
    },
    "panels": []
   },
@@ -2499,7 +3807,7 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 46
+    "y": 90
    },
    "targets": [
     {
@@ -2632,7 +3940,7 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 46
+    "y": 90
    },
    "targets": [
     {
@@ -2659,7 +3967,7 @@
     "h": 7,
     "w": 8,
     "x": 16,
-    "y": 46
+    "y": 90
    },
    "targets": [
     {
@@ -2701,7 +4009,7 @@
     "h": 10,
     "w": 24,
     "x": 0,
-    "y": 53
+    "y": 97
    },
    "targets": [
     {

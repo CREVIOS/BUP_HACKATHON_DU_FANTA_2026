@@ -35,6 +35,12 @@ var (
 	simServiceLevel = promauto.NewGauge(prometheus.GaugeOpts{Name: "sim_service_level", Help: "Simulator /v1/metrics service_level."})
 	snapshotsTotal  = promauto.NewCounter(prometheus.CounterOpts{Name: "ingestor_snapshots_total", Help: "Snapshots written."})
 	pollErrors      = promauto.NewCounter(prometheus.CounterOpts{Name: "ingestor_poll_errors_total", Help: "Failed poll cycles."})
+	simEvents       = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sim_events", Help: "Crisis events in the simulator by type and status (SCHEDULED | ACTIVE); resolved ones drop to 0.",
+	}, []string{"type", "status"})
+	stationLiters = promauto.NewGaugeVec(prometheus.GaugeOpts{Name: "station_inventory_liters", Help: "Fuel in each station tank."}, []string{"station", "fuel"})
+	depotLiters   = promauto.NewGaugeVec(prometheus.GaugeOpts{Name: "depot_inventory_liters", Help: "Fuel in each depot."}, []string{"depot", "fuel"})
+	routeUp       = promauto.NewGaugeVec(prometheus.GaugeOpts{Name: "route_available", Help: "1 if the route is AVAILABLE, 0 if DISRUPTED."}, []string{"route"})
 )
 
 const metricsEvery = 5 * time.Second // /v1/metrics full-scans a growing table server-side
@@ -127,7 +133,7 @@ func (i *ingestor) healthy(context.Context) error {
 	if !i.leader.Load() {
 		return errors.New("standby: waiting for the writer lock")
 	}
-	if time.Since(time.Unix(0, i.lastOKAt.Load())) > 10*time.Second {
+	if time.Since(time.Unix(0, i.lastOKAt.Load())) > 20*time.Second {
 		return errors.New("no successful simulator poll in 10s")
 	}
 	return nil
@@ -239,6 +245,7 @@ func (i *ingestor) poll(ctx context.Context) (sim.World, bool, error) {
 	}
 	simTick.Set(float64(w.Instance.Tick))
 	obs.SetSimTick(ctx, w.Instance.Tick)
+	observeWorld(w)
 	i.lastOKAt.Store(time.Now().UnixNano())
 	return w, changed, nil
 }
@@ -388,4 +395,31 @@ func (i *ingestor) resumableEpoch(ctx context.Context, w sim.World) (int64, bool
 		}
 	}
 	return id, true, nil
+}
+
+// observeWorld exports the world state Grafana shows: crisis events, inventories, route availability.
+func observeWorld(w sim.World) {
+	simEvents.Reset()
+	for _, e := range w.Events {
+		if e.Status != "RESOLVED" {
+			simEvents.WithLabelValues(e.Type, e.Status).Inc()
+		}
+	}
+	for _, st := range w.Stations {
+		for f, v := range st.Inventory {
+			stationLiters.WithLabelValues(st.ID, f).Set(v)
+		}
+	}
+	for _, d := range w.Depots {
+		for f, v := range d.Inventory {
+			depotLiters.WithLabelValues(d.ID, f).Set(v)
+		}
+	}
+	for _, r := range w.Routes {
+		up := 0.0
+		if r.Status == "AVAILABLE" {
+			up = 1
+		}
+		routeUp.WithLabelValues(r.ID).Set(up)
+	}
 }

@@ -64,9 +64,10 @@ func New(baseURL string, maxInflight int, timeout time.Duration) *Client {
 		base: baseURL,
 		// otelhttp.NewTransport injects W3C traceparent so the simulator call joins the
 		// ingestor's trace, and emits a client span. No-op until obs.Setup runs.
-		http:        &http.Client{Timeout: timeout, Transport: otelhttp.NewTransport(http.DefaultTransport)},
-		sem:         make(chan struct{}, maxInflight),
-		maxAttempts: 3,
+		http: &http.Client{Timeout: timeout, Transport: otelhttp.NewTransport(http.DefaultTransport)},
+		sem:  make(chan struct{}, maxInflight),
+		// 6 tries ride out an injected error_rate of 0.5 (1.6% of reads still fail) without failing the poll.
+		maxAttempts: 6,
 		backoff:     100 * time.Millisecond,
 	}
 }
@@ -98,7 +99,7 @@ func (c *Client) do(ctx context.Context, method, path string, body []byte, out a
 	var lastErr error
 	for attempt := 0; attempt < c.maxAttempts; attempt++ {
 		if attempt > 0 {
-			wait := c.backoff<<(attempt-1) + time.Duration(rand.Int64N(int64(c.backoff)))
+			wait := min(c.backoff<<(attempt-1), time.Second) + time.Duration(rand.Int64N(int64(c.backoff)))
 			select {
 			case <-ctx.Done():
 				return Meta{}, errors.Join(ctx.Err(), lastErr)

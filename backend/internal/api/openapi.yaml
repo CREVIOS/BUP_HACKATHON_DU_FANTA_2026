@@ -13,7 +13,7 @@ paths:
   /api/state:
     get:
       summary: Latest world snapshot
-      description: The most recent tick-fenced snapshot the ingestor persisted. Returns `{ "tick": null }` before the first snapshot exists.
+      description: 'The most recent tick-fenced snapshot the ingestor persisted. Returns `{ "tick": null }` before the first snapshot exists.'
       operationId: getState
       responses:
         "200":
@@ -36,7 +36,7 @@ paths:
       operationId: getStatus
       responses:
         "200":
-          description: Per-component health. A component is either "healthy" or "unhealthy: <reason>".
+          description: 'Per-component health. A component is either "healthy" or "unhealthy: <reason>".'
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Status" }

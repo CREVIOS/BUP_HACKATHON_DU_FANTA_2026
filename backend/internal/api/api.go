@@ -32,7 +32,7 @@ func Run(ctx context.Context, cfg config.Config) error {
 	mux.HandleFunc("GET /api/state", s.state)
 	mux.HandleFunc("GET /api/status", s.status)
 	registerDocs(mux) // /openapi.yaml, /docs (Swagger UI), /redoc
-	logChaos(cfg)
+	logChaos(ctx, cfg)
 	return httpx.Serve(ctx, cfg.HTTPAddr, httpx.Instrument(mux, cfg.Chaos500Pct))
 }
 
@@ -106,8 +106,8 @@ func health(err error) string {
 	return "healthy"
 }
 
-func logChaos(cfg config.Config) {
+func logChaos(ctx context.Context, cfg config.Config) {
 	if c := httpx.ChaosEnabled(cfg.Chaos500Pct, cfg.FailHealth); c != "" {
-		slog.Warn("chaos flags enabled", "flags", c)
+		slog.WarnContext(ctx, "chaos flags enabled", "flags", c)
 	}
 }

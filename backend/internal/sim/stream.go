@@ -60,7 +60,7 @@ func (s *Stream) Run(ctx context.Context, wake chan<- struct{}) {
 			return
 		}
 		sseReconnects.WithLabelValues(reason).Inc()
-		slog.Warn("sse disconnected", "reason", reason, "retry_in", backoff)
+		slog.WarnContext(ctx, "sse disconnected", "reason", reason, "retry_in", backoff)
 		select {
 		case <-ctx.Done():
 			return

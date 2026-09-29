@@ -1,11 +1,13 @@
 # Next.js operator UI — built to a standalone Node server (output: "standalone").
 # Multi-stage: install deps, build, then run a minimal image as non-root.
-# pnpm is installed via npm (pinned to the lockfile's major, v9) rather than
-# corepack: the corepack path tried to fetch an arch-specific pnpm 12 binary,
-# which is both wrong for a v9 lockfile and unreliable over emulation.
+# pnpm installed via npm, pinned to the version this project uses (12.6.0),
+# rather than corepack: corepack fetched pnpm's arch-specific standalone binary
+# which failed to download under emulation. The npm package is platform-neutral
+# and reliable. (pnpm 9 also rejects this repo's pnpm-workspace.yaml, whose
+# `allowBuilds` key + package-less layout are pnpm 10+/12 semantics.)
 FROM node:22-alpine AS base
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm install -g pnpm@9
+RUN npm install -g pnpm@12.6.0
 
 FROM base AS deps
 WORKDIR /app

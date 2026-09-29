@@ -9,6 +9,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // No service/app label: Prometheus adds `app` from the pod label (deploy/ owns that).
@@ -23,8 +26,10 @@ var (
 
 // Instrument records RED metrics labelled by the ServeMux pattern (low cardinality) and,
 // when chaos500Pct > 0, fails that share of non-operational requests with 500 (rollback demo).
+// It is wrapped in otelhttp so every request also produces a server span (named by the
+// matched route, not the raw path, to keep trace cardinality bounded) and OTel HTTP metrics.
 func Instrument(mux *http.ServeMux, chaos500Pct int) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	core := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		if chaos500Pct > 0 && !operational(r.URL.Path) && rand.IntN(100) < chaos500Pct {
@@ -37,9 +42,16 @@ func Instrument(mux *http.ServeMux, chaos500Pct int) http.Handler {
 		if route == "" {
 			route = "unmatched"
 		}
+		// Now that the route is known, tighten the otelhttp span name and tag the route.
+		if span := trace.SpanFromContext(r.Context()); span.IsRecording() {
+			span.SetName(r.Method + " " + route)
+			span.SetAttributes(semconv.HTTPRoute(route))
+		}
 		httpRequests.WithLabelValues(route, r.Method, strconv.Itoa(rec.status)).Inc()
 		httpDuration.WithLabelValues(route, r.Method).Observe(time.Since(start).Seconds())
 	})
+	// otelhttp is a no-op tracer/meter until obs.Setup installs real providers.
+	return otelhttp.NewHandler(core, "http.server")
 }
 
 // operational endpoints are never chaos-failed, so probes and scrapes stay truthful.

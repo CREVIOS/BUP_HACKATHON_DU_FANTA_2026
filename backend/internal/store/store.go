@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"embed"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver "pgx", used by goose only
 	"github.com/pressly/goose/v3"
@@ -15,7 +16,13 @@ import (
 var migrations embed.FS
 
 func Connect(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	// otelpgx traces each query as a child span (no-op until obs.Setup installs a provider).
+	cfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}

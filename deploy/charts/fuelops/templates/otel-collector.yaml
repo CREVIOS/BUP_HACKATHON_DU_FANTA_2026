@@ -1,0 +1,107 @@
+{{- if .Values.otel.endpoint }}
+# OpenTelemetry Collector: the OTLP hub for the fuelops namespace. Backend pods export here
+# (OTEL_EXPORTER_OTLP_ENDPOINT, set in _helpers.tpl); it forwards traces to Grafana Tempo and
+# re-exposes OTel metrics in Prometheus format for the kube-prometheus-stack to scrape.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector
+  labels:
+    {{- include "fuelops.labels" "otel-collector" | nindent 4 }}
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          http: { endpoint: 0.0.0.0:4318 }
+    processors:
+      batch: {}
+    exporters:
+      otlp/tempo:
+        endpoint: {{ .Values.otel.tempoEndpoint | quote }}
+        tls: { insecure: true }
+      prometheus:
+        endpoint: 0.0.0.0:8889
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [otlp/tempo]
+        metrics:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [prometheus]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  labels:
+    {{- include "fuelops.labels" "otel-collector" | nindent 4 }}
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: otel-collector } }
+  template:
+    metadata:
+      labels:
+        {{- include "fuelops.labels" "otel-collector" | nindent 8 }}
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001 }
+      nodeSelector: { kubernetes.io/arch: amd64 }
+      containers:
+        - name: otel-collector
+          image: {{ .Values.otel.image | quote }}
+          args: ["--config=/etc/otel/collector.yaml"]
+          ports:
+            - { name: grpc-otlp, containerPort: 4317 }
+            - { name: metrics, containerPort: 8889 }
+          volumeMounts:
+            - { name: config, mountPath: /etc/otel }
+          resources:
+            requests: { cpu: "50m", memory: 128Mi }
+            limits: { memory: 512Mi }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+      volumes:
+        - name: config
+          configMap: { name: otel-collector }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  labels:
+    {{- include "fuelops.labels" "otel-collector" | nindent 4 }}
+spec:
+  selector: { app: otel-collector }
+  ports:
+    - { name: grpc-otlp, port: 4317, targetPort: grpc-otlp }
+    - { name: metrics, port: 8889, targetPort: metrics }
+---
+# Scrape the OTel metrics the collector re-exposes (fuelops_* and otelhttp/otel client metrics).
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: otel-collector
+spec:
+  selector: { matchLabels: { app: otel-collector } }
+  podMetricsEndpoints: [{ port: metrics, path: /metrics, interval: 15s }]
+---
+# Grafana Tempo datasource so judges open a trace straight from Grafana (/grafana).
+# The kube-prometheus-stack Grafana sidecar imports any ConfigMap with this label.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fuelops-tempo-datasource
+  labels: { grafana_datasource: "1" }
+data:
+  tempo-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring.svc:3200
+        uid: tempo
+{{- end }}

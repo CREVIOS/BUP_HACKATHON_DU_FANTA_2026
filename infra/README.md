@@ -20,11 +20,13 @@ Shared OIDC provider ownership, workload secret scope, rollback analysis, HPA/Gi
 
 The Kubernetes target remains `1.36`. All five external charts were rendered locally against `1.36.0` using the configured Helm values with mock secrets; live compatibility must still be proved in the rehearsal. The app's Prometheus URL was checked against the rendered monitoring Service. Keep `.terraform.lock.hcl`: provider versions are unchanged, Linux package hashes have been added, and existing hashes retained. Module and chart versions are pinned separately because the provider lockfile does not pin them.
 
+The subsequent OpenTelemetry merge from `main` also adds a Tempo Helm release and an application OTel Collector. Those changes are preserved; the inherited Tempo release is not yet version-pinned or package-render-verified. Trace delivery and Grafana datasource discovery still need a live check.
+
 ## Creation order
 
 1. AWS resources: VPC, EKS, RDS, ECR, and separate GitHub image-publisher/Terraform roles. Repository variables and Argo's read-only deploy key are registered separately; Terraform no longer uses the GitHub provider.
 2. Explicitly managed `argocd`, `argo-rollouts`, and `monitoring` namespaces; the existing `fuelops` namespace retains its Terraform address.
-3. Argo CD, Argo Rollouts, monitoring, and metrics-server releases. The pinned controller values use ephemeral storage.
+3. Argo CD, Argo Rollouts, monitoring, and metrics-server releases; Tempo depends on monitoring. The pinned controller values use ephemeral storage.
 4. The local platform chart, including the Auto Mode IngressClass and gp3 StorageClass. It retains the dependency on controller releases so the application gate waits for them. It creates no operator ingresses. If controller persistence is added later, install the StorageClass in a separate earlier stage to avoid this dependency cycle.
 5. The `argocd-apps` Helm release. With `enable_application = false` (default), it has **no Application objects**, so a fresh bootstrap cannot launch app migrations/workloads. The release itself retains its existing Terraform address.
 
@@ -117,6 +119,8 @@ python3 scripts/check_bootstrap_charts.py
 Increment 2 validation: Terraform formatting/validation and all nine mock plan tests passed. Both local charts passed their checks. The three affected pinned upstream charts were rendered with values from the mock plan against Kubernetes `1.36.0`; the rendered manifests confirmed ClusterIP-only Services, no operator ingress, Argo CD TLS and authentication, Grafana authentication and root URL, port-forward Service ports, and read-only dashboard workload RBAC. The app still renders its single `/` and `/api` ingress. Live behavior has not been verified.
 
 Merge validation against `main` at `cf0f21a`: read-only Terraform initialization and validation passed, along with all 11 mock plans, Helm checks, application/platform render assertions, Compose configuration, backend race tests/vet, frontend production build using pnpm `12.6.0`, and actionlint. The new assertions cover both roles using the existing immutable subject prefix; render inspection confirms the Next.js Service/probe target matches its image's port 3000 and preserves the published image tags.
+
+The follow-up merge of `main` at `9d01920` preserves the new OpenTelemetry/Tempo implementation. Terraform validation and all 11 mock plans, local Helm checks, Compose configuration, and backend race tests/vet passed again for the affected files. Frontend and workflow configuration were unchanged by that follow-up.
 
 The merged app values retain the full SHA image tags published on `main`; schema validation still rejects bootstrap placeholders. For a one-off local render, synthetic full SHA tags can be supplied without publishing images:
 

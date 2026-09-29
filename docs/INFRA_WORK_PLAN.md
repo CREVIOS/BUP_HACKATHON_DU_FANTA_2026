@@ -12,6 +12,7 @@ Files: `infra/main.tf`, `infra/platform.tf`, `infra/variables.tf`, `infra/versio
 
 - [x] Exact-pin the EKS module to `21.26.0` and VPC module to `6.7.3`, the versions resolved during the static review. These still need a live rehearsal.
 - [x] Pin and render metrics-server `3.14.0`, kube-prometheus-stack `91.8.1`, argo-rollouts `2.43.2`, argo-cd `10.9.2`, and argocd-apps `2.0.5` against Kubernetes `1.36.0`. Live compatibility remains unverified.
+- [ ] Pin and render the Tempo chart added by the subsequent OpenTelemetry merge on `main`; verify Collector → Tempo delivery and Grafana datasource discovery during rehearsal.
 - [x] Retain existing provider hashes and add Linux checksums. Pin CI to Terraform `1.13.5` / Helm `3.19.0`; initialize with a read-only lockfile.
 - [x] Create namespaces explicitly and make releases depend on them. Keep the application gate downstream of controller readiness; step 2 removes operator ingress from the platform chart.
 - [x] Default the Argo application to disabled. Require full SHA tags through schema validation when Argo renders the Git chart; actual ECR image existence remains a preflight check.

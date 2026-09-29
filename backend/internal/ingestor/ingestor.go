@@ -13,6 +13,7 @@ import (
 
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/config"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/obs"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/sim"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/store"
 	"github.com/jackc/pgx/v5"
@@ -79,6 +80,7 @@ func (i *ingestor) loop(ctx context.Context, every time.Duration, wake <-chan st
 	for {
 		if err := i.poll(ctx); err != nil && ctx.Err() == nil {
 			pollErrors.Inc()
+			obs.RecordPollError(ctx)
 			slog.Warn("poll failed", "err", err)
 		}
 		select {
@@ -110,6 +112,7 @@ func (i *ingestor) poll(ctx context.Context) error {
 		if m, err := i.sim.FetchMetrics(ctx); err == nil {
 			i.metrics, i.metricsAt = &m, time.Now()
 			simServiceLevel.Set(m.ServiceLevel)
+			obs.SetServiceLevel(ctx, m.ServiceLevel)
 		}
 	}
 
@@ -127,6 +130,7 @@ func (i *ingestor) poll(ctx context.Context) error {
 		return fmt.Errorf("heartbeat: %w", err)
 	}
 	simTick.Set(float64(w.Instance.Tick))
+	obs.SetSimTick(ctx, w.Instance.Tick)
 	i.lastOKAt.Store(time.Now().UnixNano())
 	return nil
 }
@@ -148,6 +152,7 @@ func (i *ingestor) writeSnapshot(ctx context.Context, w sim.World) error {
 		i.epochID, w.Instance.Tick, simTime, w.Stale, payload)
 	if err == nil {
 		snapshotsTotal.Inc()
+		obs.RecordSnapshot(ctx)
 	}
 	return err
 }

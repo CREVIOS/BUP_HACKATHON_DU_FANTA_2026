@@ -1,0 +1,1562 @@
+{
+ "decisions": [
+  {
+   "action": 9,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:58:56.725506+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2000,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi",
+     "review_required": false
+    }
+   ],
+   "latency_us": 407,
+   "logits": [
+    -0.15498525,
+    -3.9842684,
+    -5.3352275,
+    -1.1202554,
+    -5.1468277,
+    -2.8184764,
+    -1.8756603,
+    -1.4322916,
+    -2.598307,
+    1.3914891,
+    1.0268308,
+    4.836766,
+    -6.1408834
+   ],
+   "mask": [
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 5402.048,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1228.159,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 3983.454,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 386.338,
+     "route_id": "route-patiya-mirpur",
+     "fuel_type": "OCTANE",
+     "station_id": "station-mirpur"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2326.783,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 4895.881,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 435.31,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "PETROL",
+     "station_id": "station-tongi"
+    }
+   ],
+   "strategy": "12h cover, urgency",
+   "tick": 89
+  },
+  {
+   "action": 9,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:58:47.243527+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2000,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi",
+     "review_required": false
+    }
+   ],
+   "latency_us": 413,
+   "logits": [
+    0.66994816,
+    -4.07021,
+    -5.491266,
+    -1.0697172,
+    -5.193954,
+    -2.874031,
+    -2.7050233,
+    -1.5500815,
+    -1.6542628,
+    1.1132066,
+    0.19728522,
+    6.2779646,
+    -6.729457
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 5319.711,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1176.37,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 3891.742,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 612.176,
+     "route_id": "route-patiya-mirpur",
+     "fuel_type": "OCTANE",
+     "station_id": "station-mirpur"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2279.374,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 4653.615,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 355.854,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "PETROL",
+     "station_id": "station-tongi"
+    }
+   ],
+   "strategy": "12h cover, urgency",
+   "tick": 88
+  },
+  {
+   "action": 9,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:58:44.725779+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2000,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi",
+     "review_required": false
+    }
+   ],
+   "latency_us": 454,
+   "logits": [
+    0.52675635,
+    -4.032587,
+    -5.402013,
+    -1.0803884,
+    -5.174313,
+    -2.8079588,
+    -2.6388426,
+    -1.5291384,
+    -1.8215563,
+    1.2538005,
+    0.2722005,
+    6.044893,
+    -6.6144223
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 5138.229,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1123.91,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 3734.992,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1002.868,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 4407.737,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 278.789,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "PETROL",
+     "station_id": "station-tongi"
+    }
+   ],
+   "strategy": "12h cover, urgency",
+   "tick": 87
+  },
+  {
+   "action": 9,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:57:16.132376+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    }
+   ],
+   "latency_us": 450,
+   "logits": [
+    0.57302856,
+    -4.0734944,
+    -5.436081,
+    -1.0817184,
+    -5.2027807,
+    -2.810125,
+    -2.721832,
+    -1.543979,
+    -1.7981247,
+    1.2419852,
+    0.24951003,
+    6.1561265,
+    -6.6758637
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4957.925,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1069.192,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 3568.228,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1404.654,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "PETROL",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 2085.045,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 4162.884,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 202.282,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "PETROL",
+     "station_id": "station-tongi"
+    }
+   ],
+   "strategy": "12h cover, urgency",
+   "tick": 86
+  },
+  {
+   "action": 9,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:57.130975+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 5000,
+     "route_id": "route-gazipur-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli",
+     "review_required": false
+    }
+   ],
+   "latency_us": 520,
+   "logits": [
+    0.6679824,
+    -4.01558,
+    -5.4273276,
+    -1.0538955,
+    -5.116359,
+    -2.8553324,
+    -2.6517165,
+    -1.5302325,
+    -1.5843712,
+    1.0759889,
+    0.20061658,
+    6.214146,
+    -6.6712523
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4781.147,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1014.262,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 3394.417,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "DIESEL",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 1810.173,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "OCTANE",
+     "station_id": "station-karnaphuli"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 3919.196,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "DIESEL",
+     "station_id": "station-tongi"
+    },
+    {
+     "depot_id": "depot-gazipur",
+     "quantity": 123.719,
+     "route_id": "route-gazipur-tongi",
+     "fuel_type": "PETROL",
+     "station_id": "station-tongi"
+    }
+   ],
+   "strategy": "12h cover, urgency",
+   "tick": 85
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:56.877948+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    }
+   ],
+   "latency_us": 417,
+   "logits": [
+    1.2255176,
+    -3.9728532,
+    -5.3749766,
+    -1.0148125,
+    -5.0226226,
+    -2.800713,
+    -3.3108883,
+    -1.5797876,
+    -1.0416751,
+    0.94470763,
+    -0.42824206,
+    7.0361915,
+    -6.937613
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 84
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:56.628397+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    }
+   ],
+   "latency_us": 411,
+   "logits": [
+    1.3104812,
+    -3.9565232,
+    -5.3712206,
+    -1.003588,
+    -4.9928026,
+    -2.8153589,
+    -3.368166,
+    -1.5825896,
+    -0.93254834,
+    0.87780124,
+    -0.50446826,
+    7.14027,
+    -6.9661045
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 83
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:56.378593+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    },
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 4000,
+     "route_id": "route-patiya-coxsbazar",
+     "fuel_type": "OCTANE",
+     "station_id": "station-coxsbazar",
+     "review_required": false
+    }
+   ],
+   "latency_us": 406,
+   "logits": [
+    1.3701549,
+    -3.943653,
+    -5.364386,
+    -0.9931736,
+    -4.964959,
+    -2.8297267,
+    -3.3972733,
+    -1.582958,
+    -0.8480884,
+    0.8227956,
+    -0.5539691,
+    7.2089686,
+    -6.9843497
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 82
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:56.128141+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 368,
+   "logits": [
+    1.0993719,
+    -3.9970326,
+    -5.4034815,
+    -1.0235283,
+    -5.0496535,
+    -2.833996,
+    -3.1223533,
+    -1.5699334,
+    -1.152309,
+    0.95026463,
+    -0.26018652,
+    6.8655624,
+    -6.8986745
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 81
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:55.882586+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 384,
+   "logits": [
+    1.0651885,
+    -3.9999583,
+    -5.413471,
+    -1.0263113,
+    -5.0571866,
+    -2.8434126,
+    -3.064779,
+    -1.5666417,
+    -1.183936,
+    0.95399547,
+    -0.21578278,
+    6.816611,
+    -6.8880305
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 80
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:55.628633+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 393,
+   "logits": [
+    1.0365169,
+    -3.9790003,
+    -5.384645,
+    -1.0259506,
+    -5.0410833,
+    -2.8264287,
+    -3.0406635,
+    -1.5589036,
+    -1.2051196,
+    0.97990555,
+    -0.20515457,
+    6.7568836,
+    -6.8547077
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 79
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:55.38005+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 409,
+   "logits": [
+    1.0472758,
+    -3.9561749,
+    -5.3591886,
+    -1.0209117,
+    -5.014879,
+    -2.8189747,
+    -3.0364552,
+    -1.5532118,
+    -1.1766545,
+    0.97247696,
+    -0.22482619,
+    6.7479143,
+    -6.8398237
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 78
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:55.129211+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 387,
+   "logits": [
+    1.0562762,
+    -3.932418,
+    -5.332035,
+    -1.0156991,
+    -4.9872847,
+    -2.810809,
+    -3.0300853,
+    -1.5468957,
+    -1.1492198,
+    0.96583354,
+    -0.24311496,
+    6.7349358,
+    -6.8226647
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 77
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:54.87906+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 396,
+   "logits": [
+    1.0480747,
+    -3.9077072,
+    -5.306083,
+    -1.010815,
+    -4.9594564,
+    -2.8084128,
+    -2.9879258,
+    -1.5377331,
+    -1.135802,
+    0.95817244,
+    -0.23881274,
+    6.69209,
+    -6.79663
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 76
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:54.629704+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 389,
+   "logits": [
+    1.090309,
+    -3.8863697,
+    -5.2842298,
+    -1.0026063,
+    -4.9281106,
+    -2.8052425,
+    -3.0123267,
+    -1.5345849,
+    -1.0750185,
+    0.9294699,
+    -0.28380704,
+    6.72675,
+    -6.7965064
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 75
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:54.379977+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 391,
+   "logits": [
+    1.0933228,
+    -3.8600616,
+    -5.2520547,
+    -0.997879,
+    -4.898718,
+    -2.7927103,
+    -3.002068,
+    -1.5270952,
+    -1.0540003,
+    0.9295072,
+    -0.30008787,
+    6.70263,
+    -6.772949
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 74
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:54.128525+06:00",
+   "error": null,
+   "greedy": [
+    {
+     "depot_id": "depot-patiya",
+     "quantity": 7000,
+     "route_id": "route-patiya-karnaphuli",
+     "fuel_type": "PETROL",
+     "station_id": "station-karnaphuli",
+     "review_required": true
+    }
+   ],
+   "latency_us": 388,
+   "logits": [
+    1.1035763,
+    -3.8320239,
+    -5.219513,
+    -0.9920461,
+    -4.866191,
+    -2.7825863,
+    -2.993,
+    -1.5195707,
+    -1.0231867,
+    0.9228529,
+    -0.32216457,
+    6.6862803,
+    -6.7519712
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 73
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:53.87736+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 388,
+   "logits": [
+    1.2237364,
+    -3.8032315,
+    -5.2124953,
+    -0.97209734,
+    -4.819961,
+    -2.8133993,
+    -3.0776453,
+    -1.5225418,
+    -0.8602677,
+    0.81853074,
+    -0.42667297,
+    6.8241,
+    -6.788616
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 72
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:53.644894+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 383,
+   "logits": [
+    1.3289464,
+    -3.7759144,
+    -5.1921167,
+    -0.9569138,
+    -4.774094,
+    -2.821397,
+    -3.1605597,
+    -1.5235211,
+    -0.7255643,
+    0.7465921,
+    -0.5290711,
+    6.943212,
+    -6.8132925
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 71
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:53.379437+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 378,
+   "logits": [
+    2.2500758,
+    -3.5271409,
+    -5.03842,
+    -0.8255512,
+    -4.3617344,
+    -2.8647578,
+    -3.958505,
+    -1.5248942,
+    0.38248795,
+    0.048281517,
+    -1.3980938,
+    7.9475827,
+    -6.9349484
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 70
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:53.127894+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 373,
+   "logits": [
+    2.329096,
+    -3.4993157,
+    -5.0199575,
+    -0.81386656,
+    -4.318849,
+    -2.8683805,
+    -4.0121217,
+    -1.5223135,
+    0.48008117,
+    -0.018302571,
+    -1.4695209,
+    8.0215645,
+    -6.9376473
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 69
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:52.88064+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 442,
+   "logits": [
+    2.469751,
+    -3.490688,
+    -5.0404415,
+    -0.79755646,
+    -4.2846575,
+    -2.9026542,
+    -4.116944,
+    -1.5284488,
+    0.6305567,
+    -0.15801132,
+    -1.5635086,
+    8.190994,
+    -6.97652
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 68
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:52.628966+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 663,
+   "logits": [
+    2.5094273,
+    -3.4748333,
+    -5.025752,
+    -0.7919989,
+    -4.260591,
+    -2.8996165,
+    -4.146523,
+    -1.5264843,
+    0.6767337,
+    -0.18658192,
+    -1.6018615,
+    8.225072,
+    -6.975136
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 67
+  },
+  {
+   "action": 0,
+   "baseline_action": 0,
+   "baseline_strategy": "wait",
+   "created_at": "2026-09-29T13:56:52.379754+06:00",
+   "error": null,
+   "greedy": [],
+   "latency_us": 369,
+   "logits": [
+    2.564265,
+    -3.4595141,
+    -5.0156884,
+    -0.78385955,
+    -4.2333784,
+    -2.9049597,
+    -4.1822977,
+    -1.5248588,
+    0.738973,
+    -0.23652454,
+    -1.645531,
+    8.274882,
+    -6.977132
+   ],
+   "mask": [
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    true
+   ],
+   "shipments": [],
+   "strategy": "wait",
+   "tick": 66
+  }
+ ],
+ "tick": 89
+}

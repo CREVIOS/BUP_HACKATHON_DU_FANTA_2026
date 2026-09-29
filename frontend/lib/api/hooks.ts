@@ -36,6 +36,8 @@ export const useAllocations = () => useRead(keys.allocations, (api, signal) => a
 export const useIntelQuality = () => useRead(keys.intelQuality, (api, signal) => api.intelQuality(signal));
 export const usePolicy = () => useRead(keys.policy, (api, signal) => api.policy(signal));
 export const useMe = () => useRead(keys.me, (api, signal) => api.me(signal));
+export const useRL = () => useRead(keys.rl, (api, signal) => api.rl(signal));
+export const useRLShadow = (limit = 24) => useRead(keys.rlShadow({ limit }), (api, signal) => api.rlShadow({ limit }, signal));
 
 export const useDecisions = (limit = 50) =>
   useRead([...keys.decisions, limit], (api, signal) => api.decisions({ limit }, signal));

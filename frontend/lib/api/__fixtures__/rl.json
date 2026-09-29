@@ -1,0 +1,62 @@
+{
+    "architecture": {
+        "actions": "0 = wait; 1\u201312 = coverage target (2h/6h/12h) \u00d7 mode (urgency, captive-priority, depot-headroom, scarcity-aware)",
+        "actor": "600 \u2192 128 tanh \u2192 128 tanh \u2192 13 (masked)",
+        "algorithm": "Maskable PPO (sb3-contrib)",
+        "parameters": 95117,
+        "planner": "shared Go planner (internal/planner, identical to the training commit a81e90c) builds candidates, mask and features"
+    },
+    "decision_policy": "rl",
+    "live": {
+        "agrees_with_planner_baseline": 83,
+        "avg_latency_us": 396.7,
+        "epoch_id": 1,
+        "errors": 0,
+        "ticks_baseline_ships": 0,
+        "ticks_decided": 90,
+        "ticks_rl_ships": 7
+    },
+    "mode": "active",
+    "model": {
+        "repo": "crevious/fuelops-maskable-ppo-20260929",
+        "revision": "7be470b48653017e2d79195c848c2e89fdfe035b",
+        "checkpoint": "model.zip",
+        "seed": 11,
+        "promotion": false,
+        "source_sha256": "e947b922c2f4f4c8339f41f15bde53ed33e25b857c48440e552799414647c307",
+        "actor_sha256": "8b3b3084820f63fd7e11bbe4e3f900835417a4421c6c963cf5f45c04d3718190",
+        "activation": "tanh",
+        "tie_break": "lowest valid action whose masked logit is within 1e-4 of the maximum"
+    },
+    "offline_heldout": [
+        {
+            "policy": "greedy baseline",
+            "requests": 165.01,
+            "service_pct": 71.7757,
+            "unmet_liters": 158396.172
+        },
+        {
+            "policy": "seed 11 (this model)",
+            "requests": 187.255,
+            "service_pct": 71.7995,
+            "unmet_liters": 158263.003
+        },
+        {
+            "policy": "seed 23",
+            "requests": 161.725,
+            "service_pct": 71.7398,
+            "unmet_liters": 158596.802
+        },
+        {
+            "policy": "seed 37",
+            "requests": 162.305,
+            "service_pct": 71.7819,
+            "unmet_liters": 158361.438
+        }
+    ],
+    "verification": {
+        "actor_parity": "2,304/2,304 decisions identical to SB3 choose() (4 exact scenarios \u00d7 576 ticks)",
+        "end_to_end_parity": "real simulator, 4 exact scenarios \u00d7 576 ticks: 2,304/2,304 actions and masks identical, max feature diff 1.2e-7, 785 shipments posted, 0 rejected, 0 failed",
+        "package": "171/171 files SHA-256 verified; packaged unit tests and 12-episode smoke test passed"
+    }
+}

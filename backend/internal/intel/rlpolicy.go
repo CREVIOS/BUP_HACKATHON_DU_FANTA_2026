@@ -84,6 +84,7 @@ func rlRecommendations(req PlanRequest) ([]policy.Recommendation, *RLInfo, error
 			StationID: s.StationID, FuelType: s.FuelType, DepotID: s.DepotID, RouteID: s.RouteID, Quantity: s.Quantity,
 			TransitTicks: rt.TransitTicks, ArrivalTick: w.Instance.Tick + rt.TransitTicks,
 			RiskBefore: before.StockoutProb, RiskAfter: after.StockoutProb, TimeToStockout: before.TimeToStockout,
+			ShortfallBefore: math.Round(before.ExpectedShortfall), ShortfallAfter: math.Round(after.ExpectedShortfall),
 			Binding: "RL plan: " + d.Strategy + " (quantity set by the shared planner within stock, dispatch, route and room limits)",
 			Signals: map[string]any{
 				"on_hand": before.OnHand, "in_transit": before.InTransit, "capacity": before.Capacity,

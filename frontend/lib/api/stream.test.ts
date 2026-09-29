@@ -5,13 +5,14 @@ import { createInvalidator, invalidationsFor, reconnectDelay } from "@/lib/api/s
 describe("invalidationsFor", () => {
   it("maps each stream event to the data it changes (docs/API.md section 6)", () => {
     expect(invalidationsFor("tick")).toEqual(
-      expect.arrayContaining([keys.overview, keys.network, keys.risk, keys.supply, keys.events, keys.demandAll]),
+      expect.arrayContaining([keys.overview, keys.network, keys.risk, keys.supply, keys.events, keys.demandAll, keys.rl, keys.rlShadowAll]),
     );
     expect(invalidationsFor("alerts")).toEqual(expect.arrayContaining([keys.alertsAll, keys.overview]));
     expect(invalidationsFor("recommendations")).toEqual(
       expect.arrayContaining([keys.recommendationsAll, keys.decisions, keys.overview]),
     );
-    expect(invalidationsFor("allocations")).toEqual([keys.allocations]);
+    // an allocation changing also moves the RL panel's shadow log (what it shipped this tick)
+    expect(invalidationsFor("allocations")).toEqual([keys.allocations, keys.rlShadowAll]);
     expect(invalidationsFor("commands")).toEqual([keys.commands]);
   });
 

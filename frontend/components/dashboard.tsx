@@ -8,16 +8,17 @@ import { ICON } from "@/components/icon-props";
 import { StreamIndicator } from "@/components/stream-indicator";
 import { ControlTab } from "@/components/tabs/control-tab";
 import { DecisionsTab } from "@/components/tabs/decisions-tab";
+import { LiveTab } from "@/components/tabs/live-tab";
 import { NetworkTab } from "@/components/tabs/network-tab";
 import { OverviewTab } from "@/components/tabs/overview-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNetwork, useOverview, useStatus } from "@/lib/api/hooks";
 import { deriveNetworkView } from "@/lib/view";
 
-type Tab = "overview" | "decisions" | "network" | "control";
+type Tab = "live" | "overview" | "decisions" | "network" | "control";
 
 export function Dashboard() {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>("live");
   const overview = useOverview();
   const network = useNetwork();
   const status = useStatus();
@@ -42,6 +43,9 @@ export function Dashboard() {
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as Tab)}>
         <TabsList variant="line" className="mb-2 w-full justify-start gap-4 overflow-x-auto">
+          <TabsTrigger value="live" className="flex-none px-0">
+            Live
+          </TabsTrigger>
           <TabsTrigger value="overview" className="flex-none px-0">
             Overview
             {critical > 0 ? <span className="rounded-full bg-bad-bg px-1.5 text-[0.6875rem] text-bad-fg">{critical}</span> : null}
@@ -57,6 +61,9 @@ export function Dashboard() {
             Control
           </TabsTrigger>
         </TabsList>
+        <TabsContent value="live">
+          <LiveTab names={names} />
+        </TabsContent>
         <TabsContent value="overview">
           <OverviewTab names={names} />
         </TabsContent>

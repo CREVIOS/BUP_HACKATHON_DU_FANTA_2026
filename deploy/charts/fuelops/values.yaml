@@ -21,6 +21,14 @@ intel:
 ingestor:
   env: {}
 prometheusURL: http://kps-kube-prometheus-prometheus.monitoring.svc:9090
+# OpenTelemetry: backend pods export OTLP to the in-namespace collector, which sends
+# traces to Grafana Tempo (monitoring ns) and re-exposes OTel metrics for Prometheus.
+# Set endpoint to "" to disable tracing without redeploying the collector.
+otel:
+  endpoint: http://otel-collector.fuelops.svc:4317
+  environment: prod
+  image: otel/opentelemetry-collector-contrib:0.161.0
+  tempoEndpoint: tempo.monitoring.svc:4317
 rollback:
   maxErrorRate: 0.02 # canary 5xx ratio that aborts the rollout
   maxP95Seconds: 0.8

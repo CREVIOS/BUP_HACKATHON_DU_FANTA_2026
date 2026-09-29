@@ -13,6 +13,10 @@ x-backend: &backend
   environment: &backend-env
     DATABASE_URL: postgres://fuelops:fuelops@postgres:5432/fuelops?sslmode=disable
     INTEL_URL: http://intel:8082
+    # OpenTelemetry: export traces + OTel metrics to the collector. Defaults on; set
+    # OTEL_EXPORTER_OTLP_ENDPOINT= (empty) in .env or the shell to run without tracing.
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT-http://otel-collector:4317}
+    OTEL_EXPORTER_OTLP_PROTOCOL: grpc
 
 services:
   simulator:
@@ -79,6 +83,22 @@ services:
       API_PROXY_TARGET: http://api:8000
     ports: ["3000:3000"]
     depends_on: [api]
+
+  # --- Observability: OpenTelemetry traces + metrics ---------------------------
+  # Backend exports OTLP to the collector, which sends traces to Jaeger and re-exposes
+  # OTel metrics on :8889. Both are optional: unset OTEL_EXPORTER_OTLP_ENDPOINT above
+  # and the backend runs with tracing off (Prometheus /metrics is unaffected either way).
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    command: ["--config=/etc/otel/collector.yaml"]
+    volumes: ["./deploy/otel/collector-local.yaml:/etc/otel/collector.yaml:ro"]
+    ports: ["8889:8889"]        # OTel metrics in Prometheus format: http://localhost:8889/metrics
+    depends_on: [jaeger]
+
+  jaeger:                        # trace UI at http://localhost:16686
+    image: jaegertracing/all-in-one:1.62.0
+    environment: { COLLECTOR_OTLP_ENABLED: "true" }
+    ports: ["16686:16686"]      # UI. OTLP 4317/4318 stay internal (only the collector calls them).
 
 volumes:
   pgdata:

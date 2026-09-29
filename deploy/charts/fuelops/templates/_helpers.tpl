@@ -28,6 +28,11 @@ containers:
     env:
       - { name: HTTP_ADDR, value: ":{{ .port }}" }
       - { name: INTEL_URL, value: "http://intel:8082" }
+      {{- with $root.Values.otel }}{{- if .endpoint }}
+      - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: {{ .endpoint | quote }} }
+      - { name: OTEL_EXPORTER_OTLP_PROTOCOL, value: "grpc" }
+      - { name: OTEL_RESOURCE_ATTRIBUTES, value: "deployment.environment={{ .environment | default "prod" }}" }
+      {{- end }}{{- end }}
       {{- range $k, $v := .env }}
       - { name: {{ $k }}, value: {{ $v | quote }} }
       {{- end }}

@@ -20,6 +20,9 @@ Brief §15 System Status. Each value is `"healthy"` or `"unhealthy: <reason>"`. 
 ## Metrics (every process)
 `http_requests_total{route,method,code}` and `http_request_duration_seconds{route,method}`, where `route` = the mux pattern (e.g. `GET /api/state`, `unmatched`). The ingestor also exports `sim_requests_total{path,code}`, `sim_inflight`, `sim_request_duration_seconds{path}`, `sim_stale_responses_total` and `sim_tick`.
 
+## Tracing & OTel metrics (every process)
+Enabled when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (OTLP/gRPC; also honors `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_RESOURCE_ATTRIBUTES`). Spans: HTTP server + client (`otelhttp`, span named by route), Postgres queries (`otelpgx`); W3C trace context propagates api→intel and ingestor→simulator. OTel metrics (exported via OTLP, in addition to the Prometheus `/metrics` above): `fuelops_snapshots_total`, `fuelops_poll_errors_total`, `fuelops_fallback_activations_total{component}`, `fuelops_sim_service_level`, `fuelops_sim_tick`. Local: Jaeger UI `:16686`, collector metrics `:8889`. Unset the env var and the SDK is a no-op.
+
 ## Chaos flags (api, intel)
 `CHAOS_500_PCT` (0–100) and `FAIL_HEALTH` (true/1). Probes, `/metrics` and `/version` are never chaos-failed.
 

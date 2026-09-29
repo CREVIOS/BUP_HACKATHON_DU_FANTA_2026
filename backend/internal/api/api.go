@@ -16,6 +16,7 @@ import (
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/store"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 func Run(ctx context.Context, cfg config.Config) error {
@@ -25,7 +26,8 @@ func Run(ctx context.Context, cfg config.Config) error {
 	}
 	defer db.Close()
 
-	s := &server{db: db, intelURL: cfg.IntelURL, http: &http.Client{Timeout: time.Second}}
+	// otelhttp.NewTransport propagates trace context to intel and emits client spans.
+	s := &server{db: db, intelURL: cfg.IntelURL, http: &http.Client{Timeout: time.Second, Transport: otelhttp.NewTransport(http.DefaultTransport)}}
 	mux := httpx.NewMux("api", func(ctx context.Context) error { return db.Ping(ctx) }, cfg.FailHealth)
 	mux.HandleFunc("GET /api/state", s.state)
 	mux.HandleFunc("GET /api/status", s.status)

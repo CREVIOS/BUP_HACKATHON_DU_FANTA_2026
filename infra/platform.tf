@@ -79,6 +79,29 @@ resource "helm_release" "monitoring" {
   depends_on = [module.eks]
 }
 
+# Grafana Tempo (single-binary) as the trace backend. The fuelops OTel collector forwards
+# spans here over OTLP; Grafana (from kube-prometheus-stack) queries it via the Tempo datasource
+# our chart ships. Storage is the chart's default local filesystem: fine for the event, ephemeral.
+resource "helm_release" "tempo" {
+  name       = "tempo"
+  repository = "https://grafana.github.io/helm-charts"
+  chart      = "tempo"
+  namespace  = "monitoring"
+  values = [yamlencode({
+    tempo = {
+      receivers = {
+        otlp = {
+          protocols = {
+            grpc = { endpoint = "0.0.0.0:4317" }
+            http = { endpoint = "0.0.0.0:4318" }
+          }
+        }
+      }
+    }
+  })]
+  depends_on = [helm_release.monitoring]
+}
+
 resource "helm_release" "argo_rollouts" {
   name             = "argo-rollouts"
   repository       = "https://argoproj.github.io/argo-helm"

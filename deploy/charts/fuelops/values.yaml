@@ -20,7 +20,7 @@ intel:
   env: {}
 ingestor:
   env: {}
-prometheusURL: http://kps-kube-prometheus-prometheus.monitoring.svc:9090
+prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 rollback:
   maxErrorRate: 0.02 # canary 5xx ratio that aborts the rollout
   maxP95Seconds: 0.8

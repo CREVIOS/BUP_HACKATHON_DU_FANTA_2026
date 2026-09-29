@@ -13,9 +13,12 @@ web:
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
-  speed: "1" # ticks/s; default 8 outruns the pipeline (docs/INFRA_DECISIONS.md §3)
+  # ticks/s. 0.25 = one 15-minute tick every 4 s: a 12-tick crisis stays on screen ~48 s and a scenario's fuel lasts
+  # ~35 min (at 1 tick/s events vanished in seconds and the world ran dry in ~9 min). Changing it recreates the
+  # simulator, i.e. a fresh world.
+  speed: "0.25"
   tickMinutes: "15"
-  startMode: paused # demo is step-driven via /admin/step
+  startMode: running # live and realtime; the Control tab still has Pause / Step / Reset
 api:
   replicas: 4
   hpa: {min: 4, max: 10, cpu: 60}

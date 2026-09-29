@@ -1,10 +1,10 @@
 # CI rewrites the two image tags below on every main build (GitOps); Argo CD syncs them.
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
-  tag: 4518348fcd293857e1ec9ffa7c8e66d7e911a929
+  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
 web:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops-web
-  tag: 4518348fcd293857e1ec9ffa7c8e66d7e911a929
+  tag: 4a5d95cfcb44788dfdb2dc10ced382d1e77322e8
   replicas: 2
 simulator:
   image: asifmahmoud414/bup-fuel-supply-simulator:1.0.0
@@ -20,7 +20,7 @@ intel:
   env: {}
 ingestor:
   env: {}
-prometheusURL: http://kps-kube-prometheus-prometheus.monitoring.svc:9090
+prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 # OpenTelemetry: backend pods export OTLP to the in-namespace collector, which sends
 # traces to Grafana Tempo (monitoring ns) and re-exposes OTel metrics for Prometheus.
 # Set endpoint to "" to disable tracing without redeploying the collector.

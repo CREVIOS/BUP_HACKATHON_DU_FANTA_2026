@@ -1,6 +1,6 @@
 import { openai } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
-import type { BriefContent } from "@/lib/ai/brief";
+import type { ModelNotes } from "@/lib/ai/generate-brief";
 import { createMockModel } from "@/lib/ai/mock-model";
 
 const DEFAULT_MODEL_ID = "gpt-6-luna";
@@ -15,7 +15,7 @@ export interface ModelChoice {
 //   OPENAI_BASE_URL  optional -> an OpenAI-compatible gateway (read by @ai-sdk/openai)
 //   LLM_MODEL        optional -> model id, defaults to gpt-6-luna
 //   AI_MOCK=1                 -> force the mock even when a key is present
-export function getModel(options: { brief?: BriefContent } = {}): ModelChoice {
+export function getModel(options: { notes?: ModelNotes } = {}): ModelChoice {
   const key = process.env.OPENAI_API_KEY;
   if (process.env.AI_MOCK === "1" || !key) {
     return { model: createMockModel(options), mock: true };

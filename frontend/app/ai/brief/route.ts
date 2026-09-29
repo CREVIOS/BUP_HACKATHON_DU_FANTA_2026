@@ -1,18 +1,30 @@
-import { buildTemplateBrief, type BriefResponse } from "@/lib/ai/brief";
-import { loadContext } from "@/lib/ai/backend";
-import { generateBrief } from "@/lib/ai/generate-brief";
+import { buildTemplateBrief, type Brief, type BriefResponse } from "@/lib/ai/brief";
+import { listRecommendations, loadContext } from "@/lib/ai/backend";
+import { briefSignature, createBriefHistory } from "@/lib/ai/brief-changes";
+import { applyNotes, generateNotes, type BriefNotes } from "@/lib/ai/generate-brief";
 import { clientKey, json } from "@/lib/ai/http";
 import { getModel } from "@/lib/ai/model";
 import { createRateLimiter } from "@/lib/ai/rate-limit";
-import { createTtlCache } from "@/lib/ai/ttl-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// The simulator can tick many times a second, so cache by time, not by tick: repeated page loads and
-// several operators share one model call. ?refresh=1 (the refresh button) bypasses it.
-const BRIEF_TTL_MS = 20_000;
-const cache = createTtlCache<BriefResponse>({ ttlMs: BRIEF_TTL_MS });
+// The figures are rebuilt from live data on every request (cheap). The model is asked again only when
+// the set of problems changes, or when its notes are older than this, so a steady network costs no calls
+// and the text does not churn while the operator reads it.
+const NOTES_MAX_AGE_MS = 5 * 60_000;
+const PROPOSALS_READ = 50;
+
+interface CachedNotes {
+  signature: string;
+  notes: BriefNotes;
+  tick: number;
+  at: number;
+}
+
+const history = createBriefHistory();
+const notesCache = new Map<string, CachedNotes>();
+const inflight = new Map<string, Promise<BriefNotes | undefined>>(); // one model call per state, however many viewers
 const perClient = createRateLimiter({ limit: 12, windowMs: 60_000 });
 const everyone = createRateLimiter({ limit: 60, windowMs: 60_000 }); // hard ceiling on model spend
 
@@ -25,21 +37,38 @@ export async function GET(req: Request): Promise<Response> {
     return json({ error: "The operational data is unavailable." }, 502);
   }
   const { snapshot, quality } = loaded;
-
-  // Without a language model the briefing is the rules brief itself: no cache or rate limit needed.
-  const { model, mock } = getModel();
-  if (mock) return json(buildTemplateBrief(snapshot, quality) satisfies BriefResponse);
+  // Proposals only add the review item and links; the briefing still works without them.
+  const pending = await listRecommendations({ status: "PROPOSED", limit: PROPOSALS_READ }).catch((error: unknown) => {
+    console.warn("ai brief: proposals unavailable", { error: String(error) });
+    return [];
+  });
 
   const key = snapshot.instance.scenario_id;
-  const hit = cache.get(key);
-  if (hit && new URL(req.url).searchParams.get("refresh") !== "1") return json(hit);
+  const base = buildTemplateBrief(snapshot, quality, pending);
+  const brief: Brief = { ...base, changes: history.track(key, base) };
 
-  // Only a model call costs money, so only that is rate limited. Cache hits are free.
-  if (!perClient.allow(clientKey(req)) || !everyone.allow("all")) {
-    return hit ? json(hit) : json({ error: "Too many requests." }, 429);
+  // Without a language model the briefing is the computed one: no notes, no model spend.
+  const { model, mock } = getModel();
+  if (mock) return json(brief satisfies BriefResponse);
+
+  const signature = briefSignature(brief);
+  const cached = notesCache.get(key);
+  const current = cached?.signature === signature ? cached : undefined;
+  const withCached = () => json(current ? applyNotes(brief, current.notes, current.tick) : brief);
+  const refresh = new URL(req.url).searchParams.get("refresh") === "1";
+  if (current && !refresh && Date.now() - current.at < NOTES_MAX_AGE_MS) return withCached();
+
+  // Only a model call costs money, so only that is rate limited.
+  if (!perClient.allow(clientKey(req)) || !everyone.allow("all")) return withCached();
+
+  const flight = `${key}|${signature}`;
+  let call = inflight.get(flight);
+  if (!call) {
+    call = generateNotes({ snapshot, quality, brief, pending }, model).finally(() => inflight.delete(flight));
+    inflight.set(flight, call);
   }
-
-  const brief = await generateBrief(snapshot, model, quality);
-  cache.set(key, brief);
-  return json(brief);
+  const notes = await call;
+  if (!notes) return withCached();
+  notesCache.set(key, { signature, notes, tick: brief.tick, at: Date.now() });
+  return json(applyNotes(brief, notes, brief.tick));
 }

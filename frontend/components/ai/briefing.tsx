@@ -1,11 +1,13 @@
 "use client";
 
-import { ArrowClockwise, CheckCircle, Info, Warning, WarningCircle, WarningOctagon } from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowRight, CheckCircle, Info, Warning, WarningCircle, WarningOctagon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ICON } from "@/components/icon-props";
+import { ICON, ICON_SM } from "@/components/icon-props";
+import { useNavigate } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { BriefResponse } from "@/lib/ai/brief";
+import type { BriefChanges, BriefItem, BriefResponse } from "@/lib/ai/brief";
+import type { Tab, Target } from "@/lib/targets";
 
 const STATUS_ICON = {
   stable: { Icon: CheckCircle, className: "text-ok-fg" },
@@ -20,12 +22,15 @@ const SEVERITY_ICON = {
 } as const;
 
 const REFRESH_CHECK_MS = 20_000;
+const MAX_CHANGES = 4;
+const TAB_LABEL: Record<Tab, string> = { live: "Live", overview: "Overview", decisions: "Decisions", network: "Network", control: "Control" };
+const linkLabel = (target: Target) => (target.seriesKey ? "Review" : `Open ${TAB_LABEL[target.tab]}`);
 
 function SourceChip({ brief }: { brief: BriefResponse }) {
   const ai = brief.source === "ai";
   return (
     <span
-      title={ai ? "Written by the language model from computed facts" : "Built from computed facts by rules; no language model is connected"}
+      title={ai ? "Summary and notes written by the language model; every problem and figure is computed by code" : "Computed from live data; no language model notes"}
       className="rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wider text-muted-foreground"
     >
       {ai ? "AI" : "Rules"}
@@ -97,6 +102,49 @@ export function useBrief(tick: number | undefined) {
   return { brief, loading, failed, refresh };
 }
 
+// What changed since the previous briefing: problems that appeared, got worse, or cleared.
+function Changes({ changes }: { changes: BriefChanges }) {
+  const rows = [
+    ...changes.added.map((title) => ({ kind: "New", tone: "text-bad-fg", title })),
+    ...changes.worse.map((title) => ({ kind: "Worse", tone: "text-warn-fg", title })),
+    ...changes.resolved.map((title) => ({ kind: "Cleared", tone: "text-ok-fg", title })),
+  ];
+  if (rows.length === 0) return null;
+  return (
+    <div className="mt-4 rounded-md bg-muted/60 px-3 py-2 text-xs">
+      <p className="font-medium text-muted-foreground">Since tick {changes.sinceTick}</p>
+      <ul className="mt-1 space-y-0.5">
+        {rows.slice(0, MAX_CHANGES).map((row) => (
+          <li key={`${row.kind}:${row.title}`}>
+            <span className={`font-medium ${row.tone}`}>{row.kind}</span> {row.title}
+          </li>
+        ))}
+        {rows.length > MAX_CHANGES ? <li className="text-muted-foreground">and {rows.length - MAX_CHANGES} more</li> : null}
+      </ul>
+    </div>
+  );
+}
+
+// One problem: computed title and figures, the model's note (marked with a bar), and a link to act on it.
+function Item({ item }: { item: BriefItem }) {
+  const go = useNavigate();
+  const { Icon, className } = SEVERITY_ICON[item.severity];
+  return (
+    <li className="flex gap-3">
+      <Icon {...ICON} weight="fill" className={`mt-0.5 shrink-0 ${className}`} role="img" aria-label={item.severity} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{item.title}</p>
+        {item.detail ? <p className="text-sm text-muted-foreground">{item.detail}</p> : null}
+        {item.note ? <p className="mt-1 border-l-2 border-foreground/25 pl-2 text-sm">{item.note}</p> : null}
+      </div>
+      <Button variant="ghost" size="xs" className="shrink-0 self-start" onClick={() => go(item.target)} aria-label={`${linkLabel(item.target)}: ${item.title}`}>
+        {linkLabel(item.target)}
+        <ArrowRight {...ICON_SM} aria-hidden />
+      </Button>
+    </li>
+  );
+}
+
 export function Briefing({ tick }: { tick?: number }) {
   const { brief, loading, failed, refresh } = useBrief(tick);
 
@@ -133,22 +181,21 @@ export function Briefing({ tick }: { tick?: number }) {
               </Button>
             </span>
           </div>
+          {brief.summary ? <p className="mt-2 max-w-prose text-sm">{brief.summary}</p> : null}
+          {brief.changes ? <Changes changes={brief.changes} /> : null}
           {brief.items.length > 0 ? (
             <ul className="mt-4 space-y-3">
-              {brief.items.map((item, index) => {
-                const { Icon, className } = SEVERITY_ICON[item.severity];
-                return (
-                  <li key={`${index}-${item.title}`} className="flex gap-3">
-                    <Icon {...ICON} weight="fill" className={`mt-0.5 shrink-0 ${className}`} role="img" aria-label={item.severity} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{item.title}</p>
-                      {item.detail ? <p className="text-sm text-muted-foreground">{item.detail}</p> : null}
-                    </div>
-                  </li>
-                );
-              })}
+              {brief.items.map((item) => (
+                <Item key={item.id} item={item} />
+              ))}
             </ul>
           ) : null}
+          <p className="mt-4 text-xs text-muted-foreground">
+            Figures from tick {brief.tick}, computed from live data.
+            {brief.source === "ai" && brief.notesTick !== undefined
+              ? ` Summary and notes (marked with a bar) written by AI at tick ${brief.notesTick}; any that quoted a figure not in the data were discarded.`
+              : ""}
+          </p>
           {failed ? <p className="mt-3 text-xs text-warn-fg">Showing the previous briefing. Refresh failed.</p> : null}
         </div>
       )}

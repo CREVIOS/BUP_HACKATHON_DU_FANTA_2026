@@ -3,7 +3,7 @@
 // result. It never invents numbers: every figure comes from the tool output it is handed.
 import { simulateReadableStream } from "ai";
 import { MockLanguageModelV4 } from "ai/test";
-import type { BriefContent } from "@/lib/ai/brief";
+import type { ModelNotes } from "@/lib/ai/generate-brief";
 import { formatNumber, humanize } from "@/lib/format";
 
 type Prompt = Parameters<MockLanguageModelV4["doStream"]>[0]["prompt"];
@@ -18,7 +18,7 @@ const finish = (unified: "stop" | "tool-calls") => ({
   usage,
 });
 
-const STABLE_BRIEF: BriefContent = { headline: "Network stable", status: "stable", items: [] };
+const NO_NOTES: ModelNotes = { summary: "", notes: [] };
 
 function lastUserText(prompt: Prompt): string {
   for (const message of [...prompt].reverse()) {
@@ -92,15 +92,15 @@ function words(text: string): string[] {
   return text.match(/\S+\s*/g) ?? [text];
 }
 
-export function createMockModel(options: { brief?: BriefContent; chunkDelayMs?: number } = {}) {
-  const { brief = STABLE_BRIEF, chunkDelayMs = 25 } = options;
+export function createMockModel(options: { notes?: ModelNotes; chunkDelayMs?: number } = {}) {
+  const { notes = NO_NOTES, chunkDelayMs = 25 } = options;
   let calls = 0;
 
   return new MockLanguageModelV4({
     modelId: "fuelops-mock",
     provider: "mock",
     doGenerate: async () => ({
-      content: [{ type: "text", text: JSON.stringify(brief) }],
+      content: [{ type: "text", text: JSON.stringify(notes) }],
       finishReason: { unified: "stop", raw: undefined },
       usage,
       warnings: [],

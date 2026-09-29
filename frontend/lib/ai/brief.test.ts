@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { briefSchema, buildTemplateBrief, findings, MAX_ITEMS } from "@/lib/ai/brief";
+import type { RecommendationSummary } from "@/lib/ai/backend";
+import { buildTemplateBrief, DETAIL_MAX, findings, MAX_ITEMS, TITLE_MAX, type Brief } from "@/lib/ai/brief";
+import { createBriefHistory } from "@/lib/ai/brief-changes";
 import { HEALTHY_DATA } from "@/lib/ai/quality";
 import { BASELINE } from "@/lib/mock/baseline";
 import { crisisSnapshot } from "@/lib/mock/scenarios";
@@ -32,7 +34,7 @@ describe("buildTemplateBrief", () => {
     const rank = { high: 0, medium: 1, low: 2 } as const;
     const ranks = brief.items.map((i) => rank[i.severity]);
     expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
-    expect(briefSchema.safeParse({ headline: brief.headline, status: brief.status, items: brief.items }).success).toBe(true);
+    expect(brief.items.every((i) => i.title.length <= TITLE_MAX && i.detail.length <= DETAIL_MAX)).toBe(true);
   });
 
   it("does not mutate its input", () => {
@@ -67,12 +69,12 @@ describe("buildTemplateBrief", () => {
     expect(brief.items.map((i) => i.title).join(" ")).toMatch(/metrics unavailable/i);
   });
 
-  it("clips long text so a large dataset cannot break the schema", () => {
+  it("clips long text so a large dataset cannot overflow the panel", () => {
     const long = "Very ".repeat(60) + "Long Station";
     const crisis = crisisSnapshot();
     const snapshot = { ...crisis, stations: crisis.stations.map((s) => ({ ...s, name: long })) };
     const brief = buildTemplateBrief(snapshot);
-    expect(briefSchema.safeParse({ headline: brief.headline, status: brief.status, items: brief.items }).success).toBe(true);
+    expect(brief.items.every((i) => i.title.length <= TITLE_MAX && i.detail.length <= DETAIL_MAX)).toBe(true);
   });
 
   it("caps the number of items", () => {
@@ -81,12 +83,18 @@ describe("buildTemplateBrief", () => {
 });
 
 describe("findings", () => {
-  it("attaches lowercase subjects used to check a model did not omit a problem", () => {
+  it("gives each problem a stable id and a page to act on", () => {
     const list = findings(crisisSnapshot(), HEALTHY_DATA);
-    const high = list.filter((f) => f.severity === "high");
-    expect(high.length).toBeGreaterThanOrEqual(3);
-    expect(high.every((f) => f.subjects.length > 0 && f.subjects.every((x) => x === x.toLowerCase()))).toBe(true);
-    expect(high[0].subjects).toContain("mirpur fuel station");
+    expect(new Set(list.map((f) => f.id)).size).toBe(list.length);
+    expect(list.find((f) => f.id === "stock:station-mirpur")?.target).toEqual({ tab: "network", section: "stations" });
+    expect(list.find((f) => f.id === "routes")?.target).toEqual({ tab: "network", section: "routes" });
+  });
+
+  it("links a station to its waiting proposal and lists the proposals to review", () => {
+    const proposal: RecommendationSummary = { id: 7, station_id: "station-mirpur", fuel_type: "DIESEL", quantity: 5000.9, verdict: "review", status: "PROPOSED", risk_before: 1, risk_after: 0.2 };
+    const list = findings(crisisSnapshot(), HEALTHY_DATA, [proposal]);
+    expect(list.find((f) => f.id === "stock:station-mirpur")?.target).toEqual({ tab: "decisions", seriesKey: "station-mirpur:DIESEL" });
+    expect(list.find((f) => f.id === "review")).toMatchObject({ title: "1 proposal waiting for review", detail: "Mirpur Fuel Station diesel, 5,000 L", target: { tab: "decisions" } });
   });
 
   it("groups a station's critical fuels into one item instead of repeating the station", () => {
@@ -98,5 +106,18 @@ describe("findings", () => {
     expect(stationItems).toHaveLength(snapshot.stations.length);
     expect(stationItems[0].title).toMatch(/^.+: diesel, petrol and octane empty$/);
     expect(new Set(stationItems.map((i) => i.title.split(":")[0])).size).toBe(snapshot.stations.length);
+  });
+});
+
+describe("createBriefHistory", () => {
+  const item = (id: string, severity: "high" | "medium" = "high") => ({ id, severity, title: `${id} title`, detail: "", target: { tab: "network" as const } });
+  const brief = (tick: number, items: ReturnType<typeof item>[]): Brief => ({ headline: "", status: "critical", items, source: "rules", tick });
+
+  it("reports what appeared, cleared and got worse, and keeps it while nothing material changes", () => {
+    const history = createBriefHistory();
+    expect(history.track("s", brief(1, [item("a"), item("b", "medium")]))).toBeUndefined();
+    const changes = history.track("s", brief(5, [item("b"), item("c")]));
+    expect(changes).toEqual({ sinceTick: 1, added: ["c title"], resolved: ["a title"], worse: ["b title"] });
+    expect(history.track("s", brief(9, [item("b"), item("c")]))).toEqual(changes);
   });
 });

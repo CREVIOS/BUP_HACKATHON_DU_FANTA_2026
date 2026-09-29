@@ -67,6 +67,7 @@ so exactly one careful process talks to it; everything the UI needs is served fr
 
 - Optional `X-Actor: <name>` (1–64 chars `[A-Za-z0-9 ._@-]`) is recorded with the role in audit fields, e.g. `"operator:asif"`. Tokens are per role, so the name is informational, not authenticated.
 - If **neither** token is set, auth is off and every caller is admin (local dev; the api logs a warning). `GET /api/me` reports it.
+- On EKS the tokens live in the kubectl-created secret `fuelops-auth` (`OPERATOR_TOKEN`, `ADMIN_TOKEN`), loaded by the backend pods as an optional `envFrom`; `fuelops-env` is Terraform-owned. Rotate: `kubectl create secret generic fuelops-auth -n fuelops --from-literal=OPERATOR_TOKEN=… --from-literal=ADMIN_TOKEN=… --dry-run=client -o yaml | kubectl apply -f -`, then restart the api.
 - Missing or insufficient role → **401** `UNAUTHORIZED`.
 
 ### Errors
@@ -95,8 +96,9 @@ serving the last-known-good snapshot and `/api/status` shows `fuel_simulator: "u
 
 ### 3.2 Recommendation lifecycle
 ```
- ingestor decides a tick
-        │
+ ingestor decides a tick ── decision_policy = rl (default): the trained RL policy proposes
+        │                         (if it cannot decide: greedy proposes, alert rl_fallback)
+        │                         decision_policy = greedy: the greedy heuristic proposes
         ▼
    triage ── hard veto? ──yes──────────────────────────────┐
         │ no                                               │
@@ -116,10 +118,12 @@ serving the last-known-good snapshot and `/api/status` shows `fuel_simulator: "u
                          POST /v1/allocations ─▶ SUBMITTED  (sim allocation PENDING → IN_TRANSIT → ARRIVED)
 ```
 - **Hard vetoes** (always review, never sent to Jev): stale data; quantity > `review_above_liters` (5000); an unresolved event whose
-  `route_ids`/`station_ids`/`depot_ids` touch the shipment; rerouted around a disrupted faster route.
+  `route_ids`/`station_ids`/`depot_ids`/`region_ids` touch the shipment; rerouted around a disrupted faster route (greedy); the RL policy's
+  probability for its chosen plan below `rl_low_confidence` (0.5) (brief §11: low confidence → human review).
 - **Fixed rule** (used when Jev is disabled or fails): review if any crisis event is ACTIVE, if stockout risk after the shipment is > 25 %,
   or if the series has an unexplained demand anomaly; otherwise auto.
-- A new recommendation for the same station+fuel expires the older PROPOSED one. PROPOSED ones older than 8 ticks expire.
+- A new recommendation for the same station+fuel expires the older PROPOSED one. PROPOSED ones older than 8 ticks expire, and so does any
+  PROPOSED one the live world no longer allows (e.g. a disruption now blocks its route), so the queue only holds executable cards.
 - Approval is re-validated against the live world (422 `UNSAFE` with details) and again by the outbox before the first send.
 
 ### 3.3 Operator approves a shipment
@@ -177,7 +181,7 @@ POST /api/admin/sim/events {"type":"route_disruption","duration_ticks":6,"parame
   "id": 130, "epoch_id": 2, "tick": 64,
   "station_id": "station-mirpur", "fuel_type": "OCTANE",
   "depot_id": "depot-patiya", "route_id": "route-patiya-mirpur", "quantity": 4000,
-  "policy_version": "greedy-v1",
+  "policy_version": "ppo-seed11-7be470b",   // the trained RL policy; "greedy-v1" = greedy heuristic; "manual" = operator
   "source": "intel",                     // intel | fallback | manual
   "risk_before": 1, "risk_after": 0,     // P(stockout in 12 h) without / with this shipment
   "rule_verdict": "review",              // what the fixed rule says
@@ -252,7 +256,7 @@ Manual allocations carry `{"manual": true, "reason": "...", "what_if": {…§5.1
 | 5.21 | `GET /api/me` | viewer | caller's role |
 | 5.22 | `GET /api/state` | viewer | raw latest snapshot (debug) |
 | 5.23 | `GET /api/stream` | viewer | SSE ([§6](#6-live-stream-sse)) |
-| 5.24 | `GET /api/rl` · `GET /api/rl/shadow` | viewer | trained RL policy, shadow decisions |
+| 5.24 | `GET /api/rl` · `GET /api/rl/shadow` | viewer | trained RL policy: model card, per-tick decisions vs baseline and greedy |
 
 ### 5.1 `GET /api/overview`
 Dashboard header. No parameters. `503 NO_SNAPSHOT` before the first poll.
@@ -269,7 +273,9 @@ Dashboard header. No parameters. `503 NO_SNAPSHOT` before the first poll.
   "open_alerts": { "critical": 1, "warn": 11, "info": 7 },
   "review_queue": 6,              // PROPOSED recommendations waiting for a human
   "disruptions": { "active": 1, "scheduled": 1 },
-  "decision_source": "intel",     // intel | fallback
+  "decision_source": "intel",     // intel | fallback (intel unreachable; decided in-process)
+  "decision_policy": "rl",        // configured policy: rl | greedy
+  "rl_fallback": false,           // true while greedy stands in for the RL policy
   "auto_execute": true,
   "inventory_liters": { "depots": {"DIESEL": 149000, "PETROL": 101000, "OCTANE": 59000},
                         "stations": {"DIESEL": 8133.563, "PETROL": 9689.253, "OCTANE": 6313.914},
@@ -501,12 +507,13 @@ Evidence for judges. Query `ticks` (window for forecast error, default 96).
 ### 5.16 Policy
 **`GET /api/policy`**
 ```json
-{ "policy_version": "greedy-v1", "auto_execute": true, "jev_threshold": 0.8, "jev_configured": true,
+{ "decision_policy": "rl", "policy_versions": { "rl": "ppo-seed11-7be470b", "greedy": "greedy-v1" }, "rl_low_confidence": 0.5,
+  "policy_version": "greedy-v1", "auto_execute": true, "jev_threshold": 0.8, "jev_configured": true,
   "updated_by": "admin", "updated_at": "…",
   "options": { "horizon_ticks": 48, "monte_carlo_runs": 64, "safety_ticks": 24, "min_lot_liters": 500, "review_above_liters": 5000 },
   "review_rule": [ "hard veto (always review): …", "otherwise Jev decides: …", "if Jev is off or fails, the fixed rule decides: …" ] }
 ```
-**`PUT /api/policy`** (admin) — `{"auto_execute": false}` and/or `{"jev_threshold": 0.85}` (0 < x ≤ 1). Omitted fields keep their value.
+**`PUT /api/policy`** (admin) — `{"decision_policy": "rl"|"greedy"}`, `{"auto_execute": false}` and/or `{"jev_threshold": 0.85}` (0 < x ≤ 1). Omitted fields keep their value.
 → 200 same shape as GET. Takes effect at the next decided tick.
 
 ### 5.17 Simulator control (admin)
@@ -567,21 +574,27 @@ re-decides immediately (e.g. cancels PENDING allocations the event dooms).
 ### 5.22 `GET /api/state`
 Raw latest snapshot for debugging: `{"tick", "stale", "captured_at", "age_seconds", "snapshot": {instance, regions, depots, stations, routes, events, allocations, supply_arrivals, stale, metrics}}`, or `{"tick": null}` before the first poll.
 
-### 5.24 `GET /api/rl` · `GET /api/rl/shadow` — the trained RL policy (shadow mode)
-The Maskable PPO policy trained for this project (Hugging Face `crevious/fuelops-maskable-ppo-20260929`, pinned
-`7be470b`, seed 11, `model.zip`) runs **inside the ingestor on every decided tick**. The exact exported actor weights
-(95,117 parameters, SHA-256 in the response) are executed in Go through the same Go planner the model was trained with:
-live world → `rl.Snapshot` → planner (13 candidate plans, mask, 600 features) → actor → chosen plan. It is **shadow**:
-the plan is recorded next to the planner's rule baseline and our greedy recommendations, never submitted
-(`promotion: false`, handoff §13). Disable with `RL_SHADOW=false`.
+### 5.24 `GET /api/rl` · `GET /api/rl/shadow` — the trained RL policy
+The Maskable PPO policy trained for this project (Hugging Face `crevious/fuelops-maskable-ppo-20260929`, pinned `7be470b`,
+seed 11, `model.zip`) runs **inside the backend** (intel, and in-process in the ingestor when intel is down). The exact exported actor
+weights (95,117 parameters, SHA-256 in the response) run in Go through the same Go planner the model was trained with:
+live world → `rl.Snapshot` → planner (13 candidate plans, mask, 600 features) → actor → chosen plan.
 
-`GET /api/rl` → `{mode:"shadow", model:{repo, revision, seed, promotion, source_sha256, actor_sha256, …}, architecture,
-verification, offline_heldout:[…4 policies…], live:{ticks_decided, errors, ticks_rl_ships, ticks_baseline_ships,
+**It is the default decision policy** (`decision_policy: rl`, `PUT /api/policy` to switch). Each tick its plan's shipments become
+recommendation cards (`policy_version: "ppo-seed11-7be470b"`) and follow the normal path: live-world validation, triage (hard vetoes,
+Jev or fixed rule), auto-execute or human review, outbox, simulator. Each card's `explanation.rl` (brief §9) holds: `strategy` it
+picked (e.g. `"12h cover, urgency"`), `confidence` (the policy's probability for that plan), `options` (every valid plan with its
+probability), the planner baseline's choice, the plan's shipment count and liters; `signals` add `model_confidence`, and
+`risk_before/risk_after` are per shipment. If it cannot decide (stale snapshot, untrusted clock, topology it was not trained on)
+greedy proposes that tick and alert `rl_fallback` opens (brief §11). Greedy is always computed beside it for comparison (brief §8).
+
+`GET /api/rl` → `{mode:"active"|"comparison-only", decision_policy, model:{repo, revision, seed, promotion, source_sha256, actor_sha256, …},
+architecture, verification, offline_heldout:[…4 policies…], live:{ticks_decided, errors, ticks_rl_ships, ticks_baseline_ships,
 agrees_with_planner_baseline, avg_latency_us}}`.
 
-`GET /api/rl/shadow?limit=50` → `{tick, decisions:[{tick, action, strategy, baseline_action, baseline_strategy,
-shipments:[{station_id, fuel_type, depot_id, route_id, quantity}], baseline_shipments, greedy:[…], mask, logits, error, latency_us}]}`.
-`error` is set when the policy refuses to run (stale snapshot, untrusted clock, topology it was not trained on).
+`GET /api/rl/shadow?limit=50` → per decided tick, whichever policy is active: `{tick, decisions:[{tick, action, strategy, baseline_action,
+baseline_strategy, shipments:[{station_id, fuel_type, depot_id, route_id, quantity}], baseline_shipments, greedy:[…], mask, logits,
+error, latency_us}]}`. `error` is set when the policy refused to run. `RL_SHADOW=false` stops this per-tick log (not the policy).
 
 **Verification** (reproducible with `fuelops replay -policy rl -scenario <name> -reference parity-full.json`):
 actor parity 2,304/2,304 decisions vs SB3 `choose()`; end to end against the real simulator on the 4 exact scenarios
@@ -629,6 +642,7 @@ Events carry no payload beyond what changed; a slow client may miss one, and its
 | `stale_data` | `simulator` | WARN | simulator flags data stale | `message` |
 | `decision_engine_fallback` | `intel` | WARN | intel unreachable; fallback decided | `error, message` |
 | `jev_unavailable` | `jev` | INFO | Jev call failed; fixed rule decided | `error, message` |
+| `rl_fallback` | `rl` | WARN | the RL policy could not decide this tick; greedy proposed | `error, message` |
 | `loss_prevented` *(one-shot)* | `allocation-ID` | INFO | a doomed PENDING allocation was cancelled | `allocation_id, route_id, liters, fuel_type, message` |
 
 ---

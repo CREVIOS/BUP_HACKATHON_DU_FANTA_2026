@@ -237,6 +237,11 @@ func captiveReserve(w sim.World, f *Forecaster, proj map[seriesKey]Projection, o
 	return out
 }
 
+// ReviewReasons is the deterministic hard-veto rule for any shipment, whichever policy proposed it.
+func ReviewReasons(w sim.World, r Recommendation, o Options) []string {
+	return reviewReasons(w, r, w.Stale, o)
+}
+
 // reviewReasons is the deterministic human-review rule (brief §11/§24). Jev may only relax the default
 // "auto" path; these hard reasons always force review.
 func reviewReasons(w sim.World, r Recommendation, stale bool, o Options) []string {
@@ -247,13 +252,20 @@ func reviewReasons(w sim.World, r Recommendation, stale bool, o Options) []strin
 	if r.Quantity > o.ReviewQty {
 		why = append(why, fmt.Sprintf("large shipment (%.0f L > %.0f L)", r.Quantity, o.ReviewQty))
 	}
+	region := ""
+	for _, s := range w.Stations {
+		if s.ID == r.StationID {
+			region = s.RegionID
+		}
+	}
 	for _, e := range w.Events {
 		if e.Status == "RESOLVED" {
 			continue
 		}
 		if contains(strParam(e.Parameters, "route_ids"), r.RouteID) ||
 			contains(strParam(e.Parameters, "station_ids"), r.StationID) ||
-			contains(strParam(e.Parameters, "depot_ids"), r.DepotID) {
+			contains(strParam(e.Parameters, "depot_ids"), r.DepotID) ||
+			(region != "" && contains(strParam(e.Parameters, "region_ids"), region)) {
 			why = append(why, fmt.Sprintf("%s event %d affects this shipment", e.Type, e.ID))
 		}
 	}

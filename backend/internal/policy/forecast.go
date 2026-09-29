@@ -51,6 +51,7 @@ type Forecaster struct {
 	tickMinutes int
 	region      map[string]float64 // region id -> demand_factor
 	spikes      []sim.Event        // SCHEDULED demand_spike events (future multiplier changes)
+	active      []sim.Event        // ACTIVE demand_spike events (already in demand_multiplier until they expire)
 }
 
 func NewForecaster(w sim.World) *Forecaster {
@@ -63,17 +64,26 @@ func NewForecaster(w sim.World) *Forecaster {
 		if e.Type == "demand_spike" && e.Status == "SCHEDULED" {
 			f.spikes = append(f.spikes, e)
 		}
+		if e.Type == "demand_spike" && e.Status == "ACTIVE" {
+			f.active = append(f.active, e)
+		}
 	}
 	return f
 }
 
-// Expected demand at tick t (>= now) for station s. ACTIVE spikes are already in s.DemandMultiplier;
-// SCHEDULED spikes are applied over their inclusive [start, end] window.
+// Expected demand at tick t (>= now) for station s. ACTIVE spikes are already in s.DemandMultiplier and are
+// removed after their end tick (the engine resolves them after demand on end_tick); SCHEDULED spikes are applied
+// over their inclusive [start, end] window.
 func (f *Forecaster) Expected(s sim.Station, fuel string, t int) float64 {
 	m := s.DemandMultiplier
 	for _, e := range f.spikes {
 		if t >= e.StartTick && t <= e.EndTick && spikeApplies(e, s) {
 			m *= floatParam(e.Parameters, "multiplier", 1.5)
+		}
+	}
+	for _, e := range f.active {
+		if t > e.EndTick && spikeApplies(e, s) {
+			m /= floatParam(e.Parameters, "multiplier", 1.5)
 		}
 	}
 	return f.Baseline(s, fuel, t) * m

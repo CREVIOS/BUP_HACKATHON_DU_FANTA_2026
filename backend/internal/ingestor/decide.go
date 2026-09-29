@@ -45,23 +45,31 @@ func (i *ingestor) decide(ctx context.Context, w sim.World) error {
 	now := w.Instance.Tick
 	var autoExec bool
 	var threshold float64
-	if err := i.db.QueryRow(ctx, `SELECT auto_execute, jev_threshold FROM settings WHERE id = 1`).Scan(&autoExec, &threshold); err != nil {
+	var decisionPolicy string
+	if err := i.db.QueryRow(ctx, `SELECT auto_execute, jev_threshold, decision_policy FROM settings WHERE id = 1`).
+		Scan(&autoExec, &threshold, &decisionPolicy); err != nil {
 		return fmt.Errorf("settings: %w", err)
 	}
-	rows, err := i.db.Query(ctx, `SELECT station_id, fuel_type, tick, demand_liters FROM demand_observations
-		WHERE epoch_id = $1 AND tick >= $2`, i.epochID, now-policy.DetectWindow)
+	// 8 ticks: the RL observation uses the last 8, anomaly detection the last policy.DetectWindow.
+	rows, err := i.db.Query(ctx, `SELECT station_id, fuel_type, tick, demand_liters, served_liters, unmet_liters
+		FROM demand_observations WHERE epoch_id = $1 AND tick >= $2`, i.epochID, now-8)
 	if err != nil {
 		return err
 	}
 	recent, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (sim.DemandObservation, error) {
 		var o sim.DemandObservation
-		return o, r.Scan(&o.StationID, &o.FuelType, &o.Tick, &o.DemandLiters)
+		return o, r.Scan(&o.StationID, &o.FuelType, &o.Tick, &o.DemandLiters, &o.ServedLiters, &o.UnmetLiters)
 	})
 	if err != nil {
 		return err
 	}
 
-	req := intel.PlanRequest{World: w, Demand: recent, JevThreshold: threshold}
+	pending, err := i.reservations(ctx)
+	if err != nil {
+		return fmt.Errorf("reservations: %w", err)
+	}
+	req := intel.PlanRequest{World: w, Demand: recent, JevThreshold: threshold, Policy: decisionPolicy,
+		Epoch: i.epochID, Reservations: pending}
 	resp, intelErr := i.callIntel(ctx, req)
 	i.fellBack, i.decidedAt = intelErr != nil, time.Now()
 	if intelErr != nil {
@@ -80,6 +88,11 @@ func (i *ingestor) decide(ctx context.Context, w sim.World) error {
 	// Proposals the operator never acted on expire after 8 ticks (2 simulated hours) or when superseded below.
 	if _, err := tx.Exec(ctx, `UPDATE recommendations SET status = 'EXPIRED'
 		WHERE status = 'PROPOSED' AND epoch_id = $1 AND tick < $2`, i.epochID, now-8); err != nil {
+		return err
+	}
+	// ...and as soon as the world no longer allows them (e.g. a disruption now blocks the route): an operator must
+	// never be shown a card that approval would refuse.
+	if err := i.expireInvalidProposals(ctx, tx, w); err != nil {
 		return err
 	}
 	for _, r := range resp.Recommendations {
@@ -236,3 +249,33 @@ func (i *ingestor) updateForecastError(ctx context.Context) {
 }
 
 func clamp01(v float64) float64 { return min(max(v, 0), 1) }
+
+// expireInvalidProposals expires PROPOSED recommendations that fail the live-world check (same rule as approval
+// and the outbox pre-flight: route disrupted at departure, overflow counting in-transit, depot stock/dispatch, ...).
+func (i *ingestor) expireInvalidProposals(ctx context.Context, tx pgx.Tx, w sim.World) error {
+	rows, err := tx.Query(ctx, `SELECT id, station_id, fuel_type, route_id, quantity::float8 FROM recommendations
+		WHERE status = 'PROPOSED' AND epoch_id = $1`, i.epochID)
+	if err != nil {
+		return err
+	}
+	type prop struct {
+		id int64
+		p  policy.Proposal
+	}
+	props, err := pgx.CollectRows(rows, func(r pgx.CollectableRow) (prop, error) {
+		var x prop
+		return x, r.Scan(&x.id, &x.p.StationID, &x.p.FuelType, &x.p.RouteID, &x.p.Quantity)
+	})
+	if err != nil {
+		return err
+	}
+	for _, x := range props {
+		if why := policy.Validate(w, x.p); len(why) > 0 {
+			if _, err := tx.Exec(ctx, `UPDATE recommendations SET status = 'EXPIRED' WHERE id = $1`, x.id); err != nil {
+				return err
+			}
+			slog.InfoContext(ctx, "proposal expired: no longer valid", "recommendation", x.id, "reason", why[0])
+		}
+	}
+	return nil
+}

@@ -36,9 +36,9 @@ spec:
             templates: [{ templateName: smoke }]
             args:
               - { name: url, value: "http://{{ $svc.name }}-canary:{{ $svc.port }}{{ $svc.smokePath }}" }
-        - pause: { duration: 60s }
+        - pause: { duration: 30s }
         - setWeight: 50
-        - pause: { duration: 60s }
+        - pause: { duration: 30s }
 {{- range $suffix := list "" "-canary" "-stable" }}
 ---
 apiVersion: v1

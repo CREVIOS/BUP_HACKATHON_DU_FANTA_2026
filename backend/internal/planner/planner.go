@@ -307,6 +307,7 @@ func Candidates(in Input) ([13]Plan, [13]bool, error) {
 		h := [3]int{8, 24, 48}[(action-1)/4]
 		mode := (action - 1) % 4
 		p := Plan{ActionID: action}
+		var planned [4][3]float64
 		avail := in.Available
 		dispatch := in.DispatchLeft
 		// The official API compares float sums strictly; reserve one milliliter
@@ -353,7 +354,7 @@ func Candidates(in Input) ([13]Plan, [13]bool, error) {
 				}
 				available := avail[d][f]
 				if (mode == 1 || mode == 3) && s != 1 && s != 3 {
-					available = math.Max(0, available-reserve(in, d, f, h))
+					available = math.Max(0, available-math.Max(0, reserve(in, d, f, h)-planned[2*d+1][f]))
 				}
 				q := math.Floor(math.Min(wanted, math.Min(room, math.Min(MaxShipment[r], math.Min(available, dispatch[d]))))*1000+1e-7) / 1000
 				if q <= 0 {
@@ -385,6 +386,7 @@ func Candidates(in Input) ([13]Plan, [13]bool, error) {
 				d := Source[best]
 				a := Shipment{d, s, best, f, quantity}
 				p.Shipments = append(p.Shipments, a)
+				planned[s][f] += quantity
 				avail[d][f] -= quantity
 				dispatch[d] -= quantity
 				p.Summary.Liters += quantity
@@ -539,7 +541,12 @@ func Baseline(in Input, plans [13]Plan, mask [13]bool, reorder float64) int {
 	for s := range 4 {
 		for f := range 3 {
 			if in.StationOpen[s] && cover(in, s, f) <= reorder {
-				need = true
+				for r := range 6 {
+					d := Source[r]
+					if Destination[r] == s && !in.Blocked[r] && in.DepotOpen[d] && in.Available[d][f] > .001 && in.DispatchLeft[d] > .001 {
+						need = true
+					}
+				}
 			}
 		}
 	}

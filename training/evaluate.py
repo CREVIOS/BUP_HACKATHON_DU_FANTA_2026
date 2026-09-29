@@ -4,6 +4,8 @@ import hashlib
 import json
 import random
 import statistics
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from training.world import scenario, load_manifest, baseline
 
@@ -35,6 +37,10 @@ def paired_summary(baseline_rows, policy_rows, samples=2000):
     mean=statistics.fmean(delta);base=statistics.fmean(r['unmet'] for r in a.values())
     return dict(cases=len(delta),unmet_improvement_mean=mean,unmet_improvement_percent=100*mean/base if base else None,unmet_improvement_ci95=[boot[int(samples*.025)],boot[int(samples*.975)]],service_change_pp=100*statistics.fmean(b[k]['service_level']-a[k]['service_level'] for k in a),request_change_mean=statistics.fmean(b[k]['requests']-a[k]['requests'] for k in a))
 
+def comparisons(results, baseline_name):
+    if baseline_name not in results:raise ValueError('selected baseline absent')
+    return {name:paired_summary(results[baseline_name],rows) for name,rows in results.items()}
+
 def rollout(cases, model=None, policy='greedy'):
     from training.env import FuelEnv
     from training.train import choose
@@ -57,19 +63,28 @@ def rollout(cases, model=None, policy='greedy'):
 def means(rows):
     return {k:statistics.fmean(r[k] for r in rows) for k in ('served','unmet','service_level','lost','requests','liter_transit','failures','stranded')}
 
-def main():
-    p=argparse.ArgumentParser();p.add_argument('--checkpoints',nargs='*',default=[]);p.add_argument('--policies',nargs='+',default=['noop','greedy','fixed:9','fixed:10','fixed:11','fixed:12']);p.add_argument('--count',type=int,default=200);p.add_argument('--split',choices=['validation','test','stress'],default='test');p.add_argument('--output',required=True);p.add_argument('--device',default='cpu');args=p.parse_args()
+def policy_job(job):
+    label,checkpoint,cases,device=job
     import torch
-    from sb3_contrib import MaskablePPO
     torch.set_num_threads(1)
+    model=None
+    if checkpoint:
+        from sb3_contrib import MaskablePPO
+        model=MaskablePPO.load(checkpoint,device=device)
+    return label,rollout(cases,model,label)
+
+def main():
+    p=argparse.ArgumentParser();p.add_argument('--checkpoints',nargs='*',default=[]);p.add_argument('--policies',nargs='+',default=['noop','greedy','fixed:9','fixed:10','fixed:11','fixed:12']);p.add_argument('--count',type=int,default=200);p.add_argument('--split',choices=['validation','test','stress'],default='test');p.add_argument('--output',required=True);p.add_argument('--device',default='cpu');p.add_argument('--workers',type=int,default=4);p.add_argument('--baseline',default='greedy');args=p.parse_args()
     cases=make_cases(args.count,args.split)
     for name in ('baseline','demand_spike','supply_disruption','final_combined'):
         cfg=load_manifest(name);cases.append(dict(id='exact-'+name,seed=cfg['seed'],config=cfg,horizon=576,reference_noise=True))
     output=Path(args.output);output.parent.mkdir(parents=True,exist_ok=True)
-    result=dict(split=args.split,cases=cases,results={},summaries={},paired_vs_greedy={},promotion=False)
-    for label,model in [(name,None) for name in args.policies]+[(str(path),MaskablePPO.load(path,device=args.device)) for path in args.checkpoints]:
-        rows=rollout(cases,model,label);result['results'][label]=rows;result['summaries'][label]=means(rows[:args.count])
-        if 'greedy' in result['results']:
-            result['paired_vs_greedy'][label]=paired_summary(result['results']['greedy'][:args.count],rows[:args.count])
-        output.write_text(json.dumps(result,indent=2));print(json.dumps({'policy':label,'summary':result['summaries'][label],'paired':result['paired_vs_greedy'].get(label)}),flush=True)
+    result=dict(split=args.split,cases=cases,results={},summaries={},paired_vs_selected={},selected_baseline=args.baseline,promotion=False)
+    output.write_text(json.dumps(result,indent=2))
+    jobs=[(name,None,cases,args.device) for name in args.policies]+[(str(path),str(path),cases,args.device) for path in args.checkpoints]
+    with ProcessPoolExecutor(max_workers=args.workers,mp_context=multiprocessing.get_context('spawn')) as pool:
+        for future in as_completed([pool.submit(policy_job,job) for job in jobs]):
+            label,rows=future.result();result['results'][label]=rows;result['summaries'][label]=means(rows[:args.count])
+            if args.baseline in result['results']:result['paired_vs_selected']=comparisons({k:v[:args.count] for k,v in result['results'].items()},args.baseline)
+            output.write_text(json.dumps(result,indent=2));print(json.dumps({'policy':label,'summary':result['summaries'][label],'paired':result['paired_vs_selected'].get(label)}),flush=True)
 if __name__=='__main__': main()

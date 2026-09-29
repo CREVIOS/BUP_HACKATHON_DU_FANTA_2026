@@ -1,5 +1,5 @@
 import unittest
-from training.evaluate import paired_summary, fixed_action, make_cases
+from training.evaluate import paired_summary, fixed_action, make_cases, comparisons
 
 class EvaluationTests(unittest.TestCase):
     def test_pair_by_seed_and_reject_missing(self):
@@ -24,4 +24,9 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(cases,make_cases(40,'validation'))
         self.assertEqual({len(c['config']['supplies']) for c in cases},{4,22})
         self.assertTrue(set(c['seed'] for c in cases).isdisjoint(c['seed'] for c in make_cases(40,'test')))
+
+    def test_compare_with_validation_selected_baseline(self):
+        rows=lambda unmet:[dict(seed=1,unmet=unmet,service_level=1-unmet/100,requests=1)]
+        result=comparisons({'greedy':rows(20),'fixed:9':rows(10),'rl':rows(15)},'fixed:9')
+        self.assertEqual(result['rl']['unmet_improvement_mean'],-5)
 if __name__=='__main__':unittest.main()

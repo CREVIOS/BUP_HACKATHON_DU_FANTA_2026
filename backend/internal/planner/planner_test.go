@@ -136,3 +136,54 @@ func TestBaselineBatchesAndPrepositions(t *testing.T) {
 		t.Fatal("baseline ignored imminent shortage")
 	}
 }
+
+func TestCaptiveReservationReleasedWithinPlan(t *testing.T) {
+	s := fixture()
+	for i := range 4 {
+		s.Stock[i] = s.Capacity[i]
+	}
+	s.Stock[0][0], s.Stock[1][0] = 0, 0
+	s.Depot = [2][3]float64{{5000, 0, 0}, {0, 0, 0}}
+	s.Dispatch = [2]float64{12000, 11000}
+	in, err := Prepare(s, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Forecast = [4][3][48]float64{}
+	for k := range 48 {
+		in.Forecast[0][0][k] = 4000 / 1.1 / 48
+		in.Forecast[1][0][k] = 2000 / 1.1 / 48
+	}
+	plans, _, err := Candidates(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var sent [4]float64
+	for _, a := range plans[10].Shipments {
+		sent[a.Station] += a.Quantity
+	}
+	if math.Abs(sent[1]-2000) > .001 || math.Abs(sent[0]-3000) > .001 {
+		t.Fatalf("double reserved captive shipment: %v", sent)
+	}
+}
+
+func TestBaselineDoesNotChurnForUnfundableShortage(t *testing.T) {
+	s := fixture()
+	for i := range 4 {
+		s.Stock[i] = s.Capacity[i]
+	}
+	s.Stock[0][0] = 0
+	s.Stock[0][1] = 1000
+	s.Depot[0][0], s.Depot[1][0] = 0, 0
+	in, err := Prepare(s, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, m, err := Candidates(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a := Baseline(in, p, m, 8); a != 0 {
+		t.Fatalf("unfundable diesel shortage triggered petrol churn: action %d", a)
+	}
+}

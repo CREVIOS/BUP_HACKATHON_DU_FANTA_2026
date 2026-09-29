@@ -1,10 +1,11 @@
 "use client";
 
 import { GasPump } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AskAssistant } from "@/components/ai/ask-assistant";
 import { DegradedBanner } from "@/components/degraded-banner";
 import { ICON } from "@/components/icon-props";
+import { NavigationProvider } from "@/components/navigation";
 import { StreamIndicator } from "@/components/stream-indicator";
 import { ControlTab } from "@/components/tabs/control-tab";
 import { DecisionsTab } from "@/components/tabs/decisions-tab";
@@ -13,12 +14,38 @@ import { NetworkTab } from "@/components/tabs/network-tab";
 import { OverviewTab } from "@/components/tabs/overview-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNetwork, useOverview, useStatus } from "@/lib/api/hooks";
+import type { Tab, Target } from "@/lib/targets";
 import { deriveNetworkView } from "@/lib/view";
-
-type Tab = "live" | "overview" | "decisions" | "network" | "control";
 
 export function Dashboard() {
   const [tab, setTab] = useState<Tab>("live");
+  // A navigation request: which recommendation to open in Decisions, which section to scroll to.
+  // `nonce` remounts Decisions so a new focus always applies.
+  const [focus, setFocus] = useState<{ seriesKey?: string; section?: string; nonce: number }>({ nonce: 0 });
+  const go = (target: Target) => {
+    setTab(target.tab);
+    setFocus((f) => ({ seriesKey: target.seriesKey, section: target.section, nonce: f.nonce + 1 }));
+  };
+
+  useEffect(() => {
+    if (focus.nonce === 0) return;
+    if (!focus.section) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    // The tab's panel (and its data) may render a moment later: retry briefly until the section exists.
+    let attempts = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const scroll = () => {
+      const element = document.getElementById(focus.section ?? "");
+      const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+      if (element) element.scrollIntoView({ behavior, block: "start" });
+      else if (++attempts < 20) timer = setTimeout(scroll, 50);
+    };
+    timer = setTimeout(scroll, 0);
+    return () => clearTimeout(timer);
+  }, [focus]);
+
   const overview = useOverview();
   const network = useNetwork();
   const status = useStatus();
@@ -28,6 +55,7 @@ export function Dashboard() {
   const critical = overview.data?.open_alerts.critical ?? 0;
 
   return (
+    <NavigationProvider value={go}>
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 sm:px-6">
       <header className="flex items-center justify-between gap-4 py-5">
         <h1 className="flex items-center gap-2 text-base font-medium tracking-tight">
@@ -68,7 +96,7 @@ export function Dashboard() {
           <OverviewTab names={names} />
         </TabsContent>
         <TabsContent value="decisions">
-          <DecisionsTab names={names} />
+          <DecisionsTab key={focus.nonce} names={names} focusKey={focus.seriesKey} />
         </TabsContent>
         <TabsContent value="network">
           <NetworkTab view={view} />
@@ -80,5 +108,6 @@ export function Dashboard() {
 
       <AskAssistant tick={overview.data?.tick} />
     </main>
+    </NavigationProvider>
   );
 }

@@ -17,17 +17,18 @@ interface Selection {
   id: number; // the proposal last shown for it
 }
 
-export function DecisionsTab({ names }: { names: ReadonlyMap<string, string> }) {
+export function DecisionsTab({ names, focusKey }: { names: ReadonlyMap<string, string>; focusKey?: string }) {
   const queue = useRecommendations({ status: "PROPOSED", limit: 100 });
   const items = useMemo(() => sortQueue(queue.data?.recommendations ?? [], names), [queue.data, names]);
-  const [selection, setSelection] = useState<Selection>();
+  // Opened from a map card or an alert: start on that station and fuel (id resolves from the queue).
+  const [selection, setSelection] = useState<Selection | undefined>(() => (focusKey ? { key: focusKey, id: 0 } : undefined));
   const detailsRef = useRef<HTMLHeadingElement>(null);
 
   // Nothing picked yet: show the most urgent. Picked: follow the newest proposal for that pair.
   const key = selection?.key ?? (items[0] ? seriesKey(items[0]) : undefined);
   const live = items.find((r) => seriesKey(r) === key);
   if (selection && live && live.id !== selection.id) setSelection({ key: selection.key, id: live.id });
-  const shownId = live?.id ?? selection?.id;
+  const shownId = live?.id ?? (selection?.id || undefined);
 
   const select = (rec: Recommendation) => {
     setSelection({ key: seriesKey(rec), id: rec.id });

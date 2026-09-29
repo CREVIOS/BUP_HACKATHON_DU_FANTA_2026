@@ -19,11 +19,12 @@ export function DecisionForm({ rec, onDecided }: { rec: Recommendation; onDecide
   const reject = useReject();
   const simulate = useSimulate();
   const [edited, setEdited] = useState<string | null>(null);
-  const quantity = edited ?? String(rec.quantity);
+  const proposed = Math.floor(rec.quantity); // the API floors to whole litres
+  const quantity = edited ?? String(proposed);
   const [reason, setReason] = useState("");
   const qty = Number(quantity);
   const qtyValid = Number.isFinite(qty) && qty > 0;
-  const changed = qtyValid && qty !== rec.quantity;
+  const changed = qtyValid && qty !== proposed;
   const busy = approve.isPending || reject.isPending;
 
   if (!access.can("approve")) {
@@ -50,7 +51,7 @@ export function DecisionForm({ rec, onDecided }: { rec: Recommendation; onDecide
             className={FIELD}
             inputMode="numeric"
             value={quantity}
-            onChange={(e) => setEdited(e.target.value.replace(/[^\d.]/g, ""))}
+            onChange={(e) => setEdited(e.target.value.replace(/\D/g, ""))}
             aria-invalid={!qtyValid}
           />
         </label>
@@ -78,7 +79,7 @@ export function DecisionForm({ rec, onDecided }: { rec: Recommendation; onDecide
           disabled={!qtyValid || simulate.isPending}
           onClick={() => simulate.mutate({ station_id: rec.station_id, fuel_type: rec.fuel_type, route_id: rec.route_id, quantity: qty })}
         >
-          What if?
+          Check quantity
         </Button>
       </div>
       {simulate.data ? (

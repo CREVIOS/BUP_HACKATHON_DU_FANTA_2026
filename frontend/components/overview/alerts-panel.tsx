@@ -2,8 +2,10 @@
 
 import { Info, Warning, WarningOctagon } from "@phosphor-icons/react";
 import { useState } from "react";
+import { ArrowRight } from "@phosphor-icons/react";
 import { ActionError } from "@/components/action-error";
-import { ICON } from "@/components/icon-props";
+import { useNavigate } from "@/components/navigation";
+import { ICON, ICON_SM } from "@/components/icon-props";
 import { QueryBlock } from "@/components/query-block";
 import { EmptyState } from "@/components/section";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,7 @@ import { useAckAlert, useAlerts } from "@/lib/api/hooks";
 import type { Alert, Severity } from "@/lib/api/schemas";
 import { formatNumber, formatProbability, humanize, stockoutLabel } from "@/lib/format";
 import { describeSubject } from "@/lib/names";
+import { alertTarget } from "@/lib/targets";
 
 const SEVERITY: Record<Severity, { Icon: typeof Info; className: string }> = {
   CRITICAL: { Icon: WarningOctagon, className: "text-bad-fg" },
@@ -45,6 +48,7 @@ export function AlertsPanel({ names }: { names: ReadonlyMap<string, string> }) {
   const ack = useAckAlert();
   const access = useAccess();
   const [expanded, setExpanded] = useState(false);
+  const go = useNavigate();
 
   return (
     <QueryBlock query={alerts}>
@@ -69,6 +73,10 @@ export function AlertsPanel({ names }: { names: ReadonlyMap<string, string> }) {
                         {alert.tick != null ? ` · since tick ${alert.tick}` : ""}
                       </p>
                     </div>
+                    <Button variant="ghost" size="xs" className="shrink-0 self-center" onClick={() => go(alertTarget(alert))} aria-label={`Open ${humanize(alert.kind)}`}>
+                      Open
+                      <ArrowRight {...ICON_SM} aria-hidden />
+                    </Button>
                     {alert.acked_by ? (
                       <span className="shrink-0 self-center text-xs text-muted-foreground">Acked by {alert.acked_by}</span>
                     ) : access.can("ack") ? (

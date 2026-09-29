@@ -1,14 +1,16 @@
 export function Section({
+  id,
   title,
   action,
   children,
 }: {
+  id?: string;
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-t py-8">
+    <section id={id} className="scroll-mt-4 border-t py-8">
       <div className="mb-4 flex items-center justify-between gap-4">
         <h2 className="text-sm font-medium">{title}</h2>
         {action}

@@ -19,7 +19,7 @@ export function NetworkTab({ view }: { view?: NetworkView }) {
   const names = view?.names ?? new Map<string, string>();
   return (
     <>
-      <Section title="Stations">
+      <Section id="stations" title="Stations">
         <QueryBlock query={network} rows={4}>
           {() => (
             <InventoryTable
@@ -30,23 +30,23 @@ export function NetworkTab({ view }: { view?: NetworkView }) {
           )}
         </QueryBlock>
       </Section>
-      <Section title="Depots">
+      <Section id="depots" title="Depots">
         <QueryBlock query={network} rows={2}>
           {() => <InventoryTable label="Depot" rows={view?.depots ?? []} />}
         </QueryBlock>
       </Section>
-      <Section title="Routes">
+      <Section id="routes" title="Routes">
         <QueryBlock query={network} rows={4}>
           {(data) => <NetworkTable routes={data.routes} names={names} tickMinutes={overview.data?.tick_minutes ?? 15} />}
         </QueryBlock>
       </Section>
-      <Section title="Demand and forecast">
+      <Section id="demand" title="Demand and forecast">
         <QueryBlock query={network}>{(data) => <DemandChart stations={data.stations} now={overview.data?.tick ?? data.tick} />}</QueryBlock>
       </Section>
-      <Section title="Regional demand, last 24 hours">
+      <Section id="regional" title="Regional demand, last 24 hours">
         <RegionalDemand />
       </Section>
-      <Section title="Activity">
+      <Section id="activity" title="Activity">
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3">
           <QueryBlock query={events}>{(data) => <Events events={data.events} />}</QueryBlock>
           <QueryBlock query={allocations}>{(data) => <Allocations allocations={data.allocations} names={names} />}</QueryBlock>

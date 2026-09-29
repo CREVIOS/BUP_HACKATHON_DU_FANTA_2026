@@ -6,6 +6,11 @@ output "cluster_name" {
   value = module.eks.cluster_name
 }
 
+output "application_enabled" {
+  description = "Whether Terraform declares the Argo CD Application; not a deployment health result."
+  value       = var.enable_application
+}
+
 output "kubeconfig_command" {
   value = "aws eks update-kubeconfig --region ${var.region} --name ${module.eks.cluster_name}"
 }

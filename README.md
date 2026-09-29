@@ -32,3 +32,11 @@ docker compose up --build
 ```bash
 cd backend && go test -race ./... && go vet ./...
 ```
+
+## Infrastructure
+
+See [infra/README.md](infra/README.md) for pinned dependencies, bootstrap ordering,
+application activation, existing-environment adoption, and validation commands.
+Application creation defaults to disabled; the Helm chart requires full commit SHA
+image tags before it can render. Remaining deployment fixes are tracked in
+[docs/INFRA_WORK_PLAN.md](docs/INFRA_WORK_PLAN.md).

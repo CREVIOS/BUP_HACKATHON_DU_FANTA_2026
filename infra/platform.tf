@@ -28,18 +28,29 @@ provider "helm" {
   }
 }
 
-# ALB IngressClass (Auto Mode), default gp3 StorageClass, shared ingresses for Argo CD + Grafana.
+# Helm must not race to create namespaces used by another release's resources.
+# Keep the existing fuelops namespace address below unchanged.
+resource "kubernetes_namespace_v1" "platform" {
+  for_each = toset(["argocd", "argo-rollouts", "monitoring"])
+  metadata { name = each.key }
+  depends_on = [module.eks]
+}
+
+# ALB IngressClass (Auto Mode), default gp3 StorageClass, ops ingresses.
+# The pinned controller releases use ephemeral storage, so they do not require this
+# StorageClass to start. Wait for their services before creating the ops ingresses.
 resource "helm_release" "platform" {
   name       = "platform"
   chart      = "${path.module}/../deploy/platform"
   namespace  = "kube-system"
-  depends_on = [module.eks]
+  depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring]
 }
 
 resource "helm_release" "metrics_server" {
   name       = "metrics-server"
   repository = "https://kubernetes-sigs.github.io/metrics-server/"
   chart      = "metrics-server"
+  version    = "3.14.0"
   namespace  = "kube-system"
   depends_on = [module.eks]
 }
@@ -50,12 +61,12 @@ resource "random_password" "grafana" {
 }
 
 resource "helm_release" "monitoring" {
-  name             = "kps"
-  repository       = "https://prometheus-community.github.io/helm-charts"
-  chart            = "kube-prometheus-stack"
-  namespace        = "monitoring"
-  create_namespace = true
-  timeout          = 900
+  name       = "kps"
+  repository = "https://prometheus-community.github.io/helm-charts"
+  chart      = "kube-prometheus-stack"
+  version    = "91.8.1"
+  namespace  = kubernetes_namespace_v1.platform["monitoring"].metadata[0].name
+  timeout    = 900
   values = [yamlencode({
     prometheus = {
       prometheusSpec = {
@@ -78,11 +89,11 @@ resource "helm_release" "monitoring" {
 }
 
 resource "helm_release" "argo_rollouts" {
-  name             = "argo-rollouts"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-rollouts"
-  namespace        = "argo-rollouts"
-  create_namespace = true
+  name       = "argo-rollouts"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-rollouts"
+  version    = "2.43.2"
+  namespace  = kubernetes_namespace_v1.platform["argo-rollouts"].metadata[0].name
   values = [yamlencode({
     dashboard = { enabled = true }
   })]
@@ -90,12 +101,12 @@ resource "helm_release" "argo_rollouts" {
 }
 
 resource "helm_release" "argocd" {
-  name             = "argocd"
-  repository       = "https://argoproj.github.io/argo-helm"
-  chart            = "argo-cd"
-  namespace        = "argocd"
-  create_namespace = true
-  timeout          = 900
+  name       = "argocd"
+  repository = "https://argoproj.github.io/argo-helm"
+  chart      = "argo-cd"
+  version    = "10.9.2"
+  namespace  = kubernetes_namespace_v1.platform["argocd"].metadata[0].name
+  timeout    = 900
   values = [yamlencode({
     configs = {
       params = {
@@ -139,14 +150,16 @@ resource "kubernetes_secret" "fuelops_env" {
   }
 }
 
-# Root Argo CD Application: syncs the fuelops chart from git (CI bumps image tags there).
+# Keep this release address stable. During bootstrap it contains no Applications;
+# enabling it lets Argo render the git chart, whose schema rejects placeholder tags.
 resource "helm_release" "argocd_apps" {
   name       = "argocd-apps"
   repository = "https://argoproj.github.io/argo-helm"
   chart      = "argocd-apps"
-  namespace  = "argocd"
+  version    = "2.0.5"
+  namespace  = kubernetes_namespace_v1.platform["argocd"].metadata[0].name
   values = [yamlencode({
-    applications = {
+    applications = var.enable_application ? {
       fuelops = {
         namespace = "argocd"
         project   = "default"
@@ -164,7 +177,7 @@ resource "helm_release" "argocd_apps" {
         # Argo Rollouts rewrites canary/stable Service selectors mid-rollout; don't let selfHeal fight it.
         ignoreDifferences = [{ group = "", kind = "Service", jsonPointers = ["/spec/selector"] }]
       }
-    }
+    } : {}
   })]
-  depends_on = [helm_release.argocd, helm_release.argo_rollouts, helm_release.monitoring, kubernetes_secret.fuelops_env]
+  depends_on = [helm_release.platform, helm_release.metrics_server, kubernetes_secret.fuelops_env]
 }

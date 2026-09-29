@@ -1,4 +1,6 @@
 # CI rewrites the two image tags below on every main build (GitOps); Argo CD syncs them.
+# Placeholder tags deliberately fail chart schema validation. For local lint/render,
+# supply full SHA tags; enable_application stays false until CI commits real releases.
 image:
   repository: 373220260649.dkr.ecr.ap-southeast-1.amazonaws.com/fuelops
   tag: bootstrap
@@ -23,7 +25,8 @@ intel:
 ingestor:
   env: {}
 
-prometheusURL: http://kps-kube-prometheus-prometheus.monitoring.svc:9090
+# Service name verified against the pinned kube-prometheus-stack chart in infra/.
+prometheusURL: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
 rollback:
   maxErrorRate: 0.02   # canary 5xx ratio that aborts the rollout
   maxP95Seconds: 0.8

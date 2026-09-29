@@ -1,6 +1,12 @@
 # Fuel Supply Intelligence Platform: Infrastructure & Stack Decisions
 
 Status: v2.1 · 2026-09-29 · includes the independent review (fact-check with sources in §12)
+
+> Implementation status: the dependency/bootstrap increment is documented in
+> [infra/README.md](../infra/README.md). The ECS-era sections below remain historical
+> until the full reconciliation in [INFRA_WORK_PLAN.md](INFRA_WORK_PLAN.md). Use the
+> bootstrap guide for current pins, namespace ordering, and the application-enable switch.
+
 Runtime on AWS: **≤ 8 hours** (spin up before the demo, destroy after).
 Fixed by the team: Go backend · AWS · RDS for the database · Terraform · CI/CD · automated rollback.
 

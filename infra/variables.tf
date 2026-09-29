@@ -35,6 +35,12 @@ variable "git_revision" {
   default     = "main"
 }
 
+variable "enable_application" {
+  description = "Create the Argo CD application after CI has published both images and committed full SHA tags to the tracked chart. Keep false during platform bootstrap."
+  type        = bool
+  default     = false
+}
+
 variable "typesafe_api_key" {
   description = "Jev API key (TF_VAR_typesafe_api_key). Empty = rule-based review fallback only."
   type        = string

@@ -17,7 +17,7 @@ locals {
 # ---------------------------------------------------------------- network
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
+  version = "6.7.3"
 
   name            = local.name
   cidr            = var.vpc_cidr
@@ -36,7 +36,7 @@ module "vpc" {
 # ---------------------------------------------------------------- EKS (Auto Mode: managed nodes, ALB, EBS, pod identity)
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 21.0"
+  version = "21.26.0"
 
   name                   = local.name
   kubernetes_version     = var.kubernetes_version

@@ -1,5 +1,6 @@
 # Local stack — what judges run: `docker compose up --build`
-# Frontend service is added by the frontend track (frontend/Dockerfile, nginx: / -> SPA, /api -> api:8000).
+# Operator UI: http://localhost:3000 (Next.js; proxies /api/* to api:8000).
+# Operator API + Swagger /docs + ReDoc /redoc: http://localhost:8000.
 name: fuelops
 
 x-backend: &backend
@@ -68,6 +69,16 @@ services:
     environment: { <<: *backend-env, HTTP_ADDR: ":8000" }   # operator API + Swagger /docs + ReDoc /redoc at http://localhost:8000
     ports: ["8000:8000"]
     depends_on: { migrate: { condition: service_completed_successfully } }
+
+  frontend:                                     # Next.js operator UI (standalone build); proxies /api/* to the api service
+    build:
+      context: ./frontend
+    image: fuelops-frontend:local
+    restart: unless-stopped
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
 
 volumes:
   pgdata:

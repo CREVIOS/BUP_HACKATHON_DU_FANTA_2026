@@ -2,6 +2,7 @@ package rl
 
 import (
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/planner"
@@ -57,7 +58,23 @@ type Decision struct {
 	Logits            [actions]float32 `json:"logits"`
 	Liters            float64          `json:"liters"`
 	LatencyMicros     int64            `json:"latency_us"`
+	// Options is every action the policy could take this tick: its probability (masked softmax of the logits,
+	// the policy's own distribution) and the plan it stands for. Invalid actions have probability 0.
+	Options [actions]Option `json:"options"`
 }
+
+// Option is one of the 13 candidate plans as the policy saw it.
+type Option struct {
+	Action      int     `json:"action"`
+	Strategy    string  `json:"strategy"`
+	Valid       bool    `json:"valid"`
+	Probability float64 `json:"probability"`
+	Liters      float64 `json:"liters"`
+	Shipments   int     `json:"shipments"`
+}
+
+// Confidence is the policy's probability for the action it chose.
+func (d Decision) Confidence() float64 { return d.Options[d.Action].Probability }
 
 // Decide builds the planner input from the live world and chooses a plan. epoch must be > 0 (the planner refuses
 // untrusted snapshots: stale data, unsupported clock). history is recent demand; the planner uses the last 8 ticks.
@@ -87,8 +104,35 @@ func (a *Actor) Decide(w sim.World, epoch int64, history []sim.DemandObservation
 	d := Decision{Tick: w.Instance.Tick, Action: action, Strategy: Strategy(action), Shipments: named(plans[action]),
 		BaselineAction: base, BaselineStrategy: Strategy(base), BaselineShipments: named(plans[base]),
 		Mask: mask, Logits: logits, Liters: plans[action].Summary.Liters}
+	probs := softmax(logits, mask)
+	for i := range d.Options {
+		d.Options[i] = Option{Action: i, Strategy: Strategy(i), Valid: mask[i], Probability: probs[i],
+			Liters: plans[i].Summary.Liters, Shipments: len(plans[i].Shipments)}
+	}
 	d.LatencyMicros = time.Since(start).Microseconds()
 	return d, nil
+}
+
+// softmax over the valid actions only (the masked distribution MaskablePPO samples from).
+func softmax(logits [actions]float32, mask [actions]bool) [actions]float64 {
+	var p [actions]float64
+	best := math.Inf(-1)
+	for i, ok := range mask {
+		if ok {
+			best = math.Max(best, float64(logits[i]))
+		}
+	}
+	sum := 0.0
+	for i, ok := range mask {
+		if ok {
+			p[i] = math.Exp(float64(logits[i]) - best)
+			sum += p[i]
+		}
+	}
+	for i := range p {
+		p[i] /= sum
+	}
+	return p
 }
 
 func named(p planner.Plan) []Shipment {

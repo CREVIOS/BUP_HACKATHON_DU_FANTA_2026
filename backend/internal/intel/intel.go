@@ -17,6 +17,7 @@ import (
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/obs"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/policy"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/rl"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/sim"
 )
 
@@ -44,8 +45,11 @@ func Run(ctx context.Context, cfg config.Config) error {
 
 type PlanRequest struct {
 	World        sim.World               `json:"world"`
-	Demand       []sim.DemandObservation `json:"demand"`        // recent observations, for anomaly detection
+	Demand       []sim.DemandObservation `json:"demand"`        // last 8 ticks: anomaly detection + the RL observation
 	JevThreshold float64                 `json:"jev_threshold"` // p_auto needed to auto-execute; 0 = default
+	Policy       string                  `json:"policy"`        // rl (default) | greedy
+	Epoch        int64                   `json:"epoch"`         // simulator world id (the RL planner rejects epoch <= 0)
+	Reservations []rl.Reservation        `json:"reservations"`  // approved, not yet submitted (outbox PENDING)
 }
 
 // Triaged is a recommendation plus the auto/review decision and the evidence behind it.
@@ -53,9 +57,10 @@ type Triaged struct {
 	policy.Recommendation
 	RuleVerdict string            `json:"rule_verdict"` // what the fixed rule says: auto | review
 	RuleReasons []string          `json:"rule_reasons"`
-	JevPAuto    *float64          `json:"jev_p_auto"` // nil: not asked (hard veto) or Jev unavailable
-	Verdict     string            `json:"verdict"`    // final: auto | review
-	Features    map[string]string `json:"features"`   // the qualitative state Jev saw
+	JevPAuto    *float64          `json:"jev_p_auto"`   // nil: not asked (hard veto) or Jev unavailable
+	Verdict     string            `json:"verdict"`      // final: auto | review
+	Features    map[string]string `json:"features"`     // the qualitative state Jev saw
+	RL          *RLInfo           `json:"rl,omitempty"` // set when the trained RL policy proposed this shipment
 }
 
 type JevStatus struct {
@@ -67,14 +72,18 @@ type JevStatus struct {
 }
 
 type PlanResponse struct {
-	Tick            int                 `json:"tick"`
-	PolicyVersion   string              `json:"policy_version"`
-	Source          string              `json:"source"` // intel | fallback
-	Recommendations []Triaged           `json:"recommendations"`
-	Risks           []policy.Projection `json:"risks"`
-	Cancel          []sim.Allocation    `json:"cancel"`
-	Anomalies       []policy.Anomaly    `json:"anomalies"`
-	Jev             JevStatus           `json:"jev"`
+	Tick            int                     `json:"tick"`
+	PolicyVersion   string                  `json:"policy_version"`
+	Source          string                  `json:"source"`                    // intel | fallback
+	Policy          string                  `json:"policy"`                    // the policy that produced the recommendations: rl | greedy
+	PolicyFallback  string                  `json:"policy_fallback,omitempty"` // why rl was requested but greedy decided
+	RL              *RLInfo                 `json:"rl,omitempty"`
+	Recommendations []Triaged               `json:"recommendations"`
+	Greedy          []policy.Recommendation `json:"greedy"` // greedy's plan, always computed: the heuristic baseline (§8)
+	Risks           []policy.Projection     `json:"risks"`
+	Cancel          []sim.Allocation        `json:"cancel"`
+	Anomalies       []policy.Anomaly        `json:"anomalies"`
+	Jev             JevStatus               `json:"jev"`
 }
 
 const (
@@ -88,12 +97,23 @@ const (
 // disabled or fails, the fixed rule decides (brief §11: "prediction confidence too low -> human review").
 func Evaluate(ctx context.Context, req PlanRequest, jev *Jev, source string) PlanResponse {
 	w := req.World
-	plan := policy.MakePlan(w, policy.DefaultOptions)
+	plan := policy.MakePlan(w, policy.DefaultOptions) // greedy: always computed for risks, doomed cancels and comparison
 	anomalies := policy.Detect(w, req.Demand)
 	resp := PlanResponse{
-		Tick: plan.Tick, PolicyVersion: plan.PolicyVersion, Source: source,
+		Tick: plan.Tick, PolicyVersion: plan.PolicyVersion, Source: source, Policy: "greedy",
 		Risks: plan.Risks, Cancel: plan.Cancel, Anomalies: anomalies, Jev: JevStatus{Enabled: jev != nil},
-		Recommendations: []Triaged{},
+		Recommendations: []Triaged{}, Greedy: plan.Recommendations,
+	}
+	recs := plan.Recommendations
+	if req.Policy != "greedy" { // the trained RL policy decides; greedy takes over if it cannot (brief §11)
+		r, info, err := rlRecommendations(req)
+		if err != nil {
+			resp.PolicyFallback = err.Error()
+			obs.RecordFallback(ctx, "rl")
+			slog.WarnContext(ctx, "rl policy unavailable; greedy decided", "tick", w.Instance.Tick, "err", err)
+		} else {
+			recs, resp.RL, resp.Policy, resp.PolicyVersion = r, info, "rl", RLVersion
+		}
 	}
 	threshold := req.JevThreshold
 	if threshold <= 0 || threshold > 1 {
@@ -102,8 +122,8 @@ func Evaluate(ctx context.Context, req PlanRequest, jev *Jev, source string) Pla
 	crises := activeEvents(w)
 	ask := map[string]int{}
 	shipments := map[string]map[string]string{}
-	for i, r := range plan.Recommendations {
-		t := Triaged{Recommendation: r, Features: features(w, r, anomalies, crises)}
+	for i, r := range recs {
+		t := Triaged{Recommendation: r, Features: features(w, r, anomalies, crises), RL: resp.RL}
 		t.RuleReasons = append([]string{}, r.ReviewReasons...)
 		if len(crises) > 0 {
 			t.RuleReasons = append(t.RuleReasons, "crisis active: "+strings.Join(crises, ", "))

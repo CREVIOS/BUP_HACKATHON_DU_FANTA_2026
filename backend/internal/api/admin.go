@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/httpx"
+	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/intel"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/policy"
 	"github.com/CREVIOS/BUP_HACKATHON_DU_FANTA_2026/internal/sim"
 	"github.com/jackc/pgx/v5"
@@ -296,21 +297,24 @@ func (s *server) getCommand(w http.ResponseWriter, r *http.Request) {
 func (s *server) getPolicy(w http.ResponseWriter, r *http.Request) {
 	var auto bool
 	var th float64
-	var by string
+	var by, decision string
 	var at time.Time
-	if err := s.db.QueryRow(r.Context(), `SELECT auto_execute, jev_threshold, updated_by, updated_at FROM settings WHERE id = 1`).
-		Scan(&auto, &th, &by, &at); err != nil {
+	if err := s.db.QueryRow(r.Context(), `SELECT auto_execute, jev_threshold, updated_by, updated_at, decision_policy FROM settings WHERE id = 1`).
+		Scan(&auto, &th, &by, &at, &decision); err != nil {
 		internalErr(w, err)
 		return
 	}
 	o := policy.DefaultOptions
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"policy_version": policy.Version, "auto_execute": auto, "jev_threshold": th, "jev_configured": s.jevConfigured,
+		"decision_policy":   decision, // rl = the trained Maskable PPO policy proposes; greedy = the heuristic proposes
+		"policy_versions":   map[string]string{"rl": intel.RLVersion, "greedy": policy.Version},
+		"rl_low_confidence": intel.LowConfidence,
+		"policy_version":    policy.Version, "auto_execute": auto, "jev_threshold": th, "jev_configured": s.jevConfigured,
 		"updated_by": by, "updated_at": at,
 		"options": map[string]any{"horizon_ticks": o.Horizon, "monte_carlo_runs": o.Runs, "safety_ticks": o.SafetyTicks,
 			"min_lot_liters": o.MinLot, "review_above_liters": o.ReviewQty},
 		"review_rule": []string{
-			"hard veto (always review): stale data, shipment > review_above_liters, an event touching the route/station/depot, rerouted around a disruption",
+			"hard veto (always review): stale data, shipment > review_above_liters, an event touching the route/station/depot/region, rerouted around a disruption, RL confidence below rl_low_confidence",
 			"otherwise Jev decides: auto if p_auto >= jev_threshold",
 			"if Jev is off or fails, the fixed rule decides: review if any crisis is active, residual risk after the shipment > 25%, or unexplained demand anomaly",
 		},
@@ -319,10 +323,15 @@ func (s *server) getPolicy(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) putPolicy(w http.ResponseWriter, r *http.Request) {
 	var b struct {
-		AutoExecute  *bool    `json:"auto_execute"`
-		JevThreshold *float64 `json:"jev_threshold"`
+		AutoExecute    *bool    `json:"auto_execute"`
+		JevThreshold   *float64 `json:"jev_threshold"`
+		DecisionPolicy *string  `json:"decision_policy"`
 	}
 	if !decode(w, r, &b) {
+		return
+	}
+	if b.DecisionPolicy != nil && *b.DecisionPolicy != "rl" && *b.DecisionPolicy != "greedy" {
+		writeErr(w, http.StatusBadRequest, "INVALID_BODY", "decision_policy must be rl or greedy")
 		return
 	}
 	if b.JevThreshold != nil && (*b.JevThreshold <= 0 || *b.JevThreshold > 1) {
@@ -330,8 +339,9 @@ func (s *server) putPolicy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := s.db.Exec(r.Context(), `UPDATE settings SET auto_execute = COALESCE($1, auto_execute),
-		jev_threshold = COALESCE($2, jev_threshold), updated_by = $3, updated_at = now() WHERE id = 1`,
-		b.AutoExecute, b.JevThreshold, s.auth.actor(r)); err != nil {
+		jev_threshold = COALESCE($2, jev_threshold), decision_policy = COALESCE($4, decision_policy),
+		updated_by = $3, updated_at = now() WHERE id = 1`,
+		b.AutoExecute, b.JevThreshold, s.auth.actor(r), b.DecisionPolicy); err != nil {
 		internalErr(w, err)
 		return
 	}

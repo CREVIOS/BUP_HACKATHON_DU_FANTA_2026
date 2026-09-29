@@ -319,6 +319,8 @@ resource "helm_release" "argocd" {
         "server.insecure" = false
         "server.basehref" = "/"
         "server.rootpath" = ""
+        # Resolve main's latest commit every 30 s (default 3 min), matching timeout.reconciliation above.
+        "reposerver.revision.cache.expiration" = "30s"
       }
       # Argo CD reads the private repo with a read-only deploy key.
       repositories = {

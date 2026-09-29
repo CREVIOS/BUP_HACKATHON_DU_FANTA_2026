@@ -1,0 +1,52 @@
+{
+ "repo": "crevious/fuelops-maskable-ppo-20260929",
+ "revision": "7be470b48653017e2d79195c848c2e89fdfe035b",
+ "checkpoint": "model.zip",
+ "seed": 11,
+ "promotion": false,
+ "source_sha256": "e947b922c2f4f4c8339f41f15bde53ed33e25b857c48440e552799414647c307",
+ "actor_sha256": "8b3b3084820f63fd7e11bbe4e3f900835417a4421c6c963cf5f45c04d3718190",
+ "layers": [
+  {
+   "name": "mlp_extractor.policy_net.0.weight",
+   "shape": [
+    128,
+    600
+   ]
+  },
+  {
+   "name": "mlp_extractor.policy_net.0.bias",
+   "shape": [
+    128
+   ]
+  },
+  {
+   "name": "mlp_extractor.policy_net.2.weight",
+   "shape": [
+    128,
+    128
+   ]
+  },
+  {
+   "name": "mlp_extractor.policy_net.2.bias",
+   "shape": [
+    128
+   ]
+  },
+  {
+   "name": "action_net.weight",
+   "shape": [
+    13,
+    128
+   ]
+  },
+  {
+   "name": "action_net.bias",
+   "shape": [
+    13
+   ]
+  }
+ ],
+ "activation": "tanh",
+ "tie_break": "lowest valid action whose masked logit is within 1e-4 of the maximum"
+}

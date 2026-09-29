@@ -6,13 +6,26 @@ import { Button } from "@/components/ui/button";
 import { useAccess } from "@/hooks/use-access";
 import { useCancelAllocation } from "@/lib/api/hooks";
 import { StatusBadge } from "@/components/status-badge";
-import { CELL, CELL_NUM, HEAD, HEAD_NUM } from "@/components/table-styles";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Allocation, SimEvent, SupplyArrival } from "@/lib/api/schemas";
 import { formatNumber, humanize } from "@/lib/format";
 import { statusTone } from "@/lib/tone";
 
 const LIST_LIMIT = 8;
+
+// One line of activity: what (wraps freely, so a narrow column never scrolls sideways) and, on the
+// right, its state and amount.
+function Item({ title, detail, aside, children }: { title: React.ReactNode; detail: React.ReactNode; aside: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <li className="flex items-start justify-between gap-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-sm">{title}</p>
+        <p className="text-xs text-muted-foreground">{detail}</p>
+        {children}
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-1 text-right">{aside}</div>
+    </li>
+  );
+}
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -58,42 +71,33 @@ export function Allocations({ allocations, names }: { allocations: Allocation[];
       {latest.length === 0 ? (
         <EmptyState>No shipments yet</EmptyState>
       ) : (
-        <Table>
-          <TableCaption className="sr-only">Most recent shipments</TableCaption>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className={HEAD}>Route</TableHead>
-              <TableHead className={HEAD}>Status</TableHead>
-              <TableHead className={HEAD_NUM}>L</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {latest.map((a) => (
-              <TableRow key={a.id}>
-                <TableCell className={CELL}>
-                  <div>
-                    {names.get(a.source_depot_id) ?? a.source_depot_id} to {names.get(a.destination_station_id) ?? a.destination_station_id}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {humanize(a.fuel_type)}
-                    {a.expected_arrival_tick != null ? `, arrives tick ${a.expected_arrival_tick}` : ""}
-                    {a.origin === "external" ? ", external" : ""}
-                  </div>
-                  {a.failure_reason ? <div className="text-xs text-bad-fg">{a.failure_reason}</div> : null}
-                </TableCell>
-                <TableCell className={CELL}>
+        <ul className="divide-y" aria-label="Most recent shipments">
+          {latest.map((a) => (
+            <Item
+              key={a.id}
+              title={`${names.get(a.source_depot_id) ?? a.source_depot_id} → ${names.get(a.destination_station_id) ?? a.destination_station_id}`}
+              detail={
+                <>
+                  <span className="tabular-nums">{formatNumber(a.quantity)} L</span> {humanize(a.fuel_type).toLowerCase()}
+                  {a.expected_arrival_tick != null ? `, arrives tick ${a.expected_arrival_tick}` : ""}
+                  {a.origin === "external" ? ", external" : ""}
+                </>
+              }
+              aside={
+                <>
                   <StatusBadge tone={statusTone(a.status)}>{humanize(a.status)}</StatusBadge>
                   {a.status === "PENDING" && access.can("cancel") ? (
-                    <Button variant="ghost" size="xs" className="ml-1" disabled={cancel.isPending} onClick={() => cancel.mutate(a.id)}>
+                    <Button variant="ghost" size="xs" disabled={cancel.isPending} onClick={() => cancel.mutate(a.id)}>
                       Cancel
                     </Button>
                   ) : null}
-                </TableCell>
-                <TableCell className={CELL_NUM}>{formatNumber(a.quantity)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                </>
+              }
+            >
+              {a.failure_reason ? <p className="text-xs text-bad-fg">{a.failure_reason}</p> : null}
+            </Item>
+          ))}
+        </ul>
       )}
       <ActionError error={cancel.error} />
     </Group>
@@ -110,35 +114,29 @@ export function IncomingSupply({ arrivals, names }: { arrivals: SupplyArrival[];
       {upcoming.length === 0 ? (
         <EmptyState>No supply scheduled</EmptyState>
       ) : (
-        <Table>
-          <TableCaption className="sr-only">Next scheduled supply arrivals</TableCaption>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className={HEAD}>Depot</TableHead>
-              <TableHead className={HEAD_NUM}>ETA</TableHead>
-              <TableHead className={HEAD_NUM}>L</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {upcoming.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell className={CELL}>
-                  <div>{names.get(s.depot_id) ?? s.depot_id}</div>
-                  <div className="text-xs text-muted-foreground">{humanize(s.fuel_type)}</div>
-                  {s.delay_ticks > 0 || s.shortfall_liters > 0 ? (
-                    <div className="text-xs text-warn-fg">
-                      {s.delay_ticks > 0 ? `Delayed ${s.delay_ticks} ticks` : ""}
-                      {s.delay_ticks > 0 && s.shortfall_liters > 0 ? ", " : ""}
-                      {s.shortfall_liters > 0 ? `${formatNumber(s.shortfall_liters)} L short` : ""}
-                    </div>
-                  ) : null}
-                </TableCell>
-                <TableCell className={CELL_NUM}>{s.eta_ticks != null ? `${s.eta_ticks} ticks` : `tick ${s.planned_tick}`}</TableCell>
-                <TableCell className={CELL_NUM}>{formatNumber(s.quantity)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ul className="divide-y" aria-label="Next scheduled supply arrivals">
+          {upcoming.map((s) => (
+            <Item
+              key={s.id}
+              title={names.get(s.depot_id) ?? s.depot_id}
+              detail={humanize(s.fuel_type)}
+              aside={
+                <>
+                  <span className="text-sm tabular-nums">{formatNumber(s.quantity)} L</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{s.eta_ticks != null ? `in ${s.eta_ticks} ticks` : `tick ${s.planned_tick}`}</span>
+                </>
+              }
+            >
+              {s.delay_ticks > 0 || s.shortfall_liters > 0 ? (
+                <p className="text-xs text-warn-fg">
+                  {s.delay_ticks > 0 ? `Delayed ${s.delay_ticks} ticks` : ""}
+                  {s.delay_ticks > 0 && s.shortfall_liters > 0 ? ", " : ""}
+                  {s.shortfall_liters > 0 ? `${formatNumber(s.shortfall_liters)} L short` : ""}
+                </p>
+              ) : null}
+            </Item>
+          ))}
+        </ul>
       )}
     </Group>
   );

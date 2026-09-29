@@ -1,179 +1,26 @@
 "use client";
 
-import { Popover } from "@base-ui/react/popover";
 import { useMemo, useState } from "react";
-import { RouteCard } from "@/components/map/route-card";
-import { SiteCard } from "@/components/map/site-card";
+import { RouteMarker, ShipmentMarker, SiteMarker, TankBars, pct } from "@/components/map/markers";
+import { RouteLines, touches } from "@/components/map/route-lines";
 import { useNavigate } from "@/components/navigation";
 import { QueryBlock } from "@/components/query-block";
 import { useAlerts, useAllocations, useNetwork, useOverview, useRecommendations } from "@/lib/api/hooks";
-import type { Allocation } from "@/lib/api/schemas";
-import { formatHours, formatNumber, humanize } from "@/lib/format";
 import { COUNTRY_PATH, DIVISIONS, MAP_HEIGHT, MAP_WIDTH } from "@/lib/map/bangladesh";
-import { buildMapModel, pointOnRoute, routeCurve, shipmentProgress, type MapFuel, type MapRoute, type MapSite, type SiteLevel } from "@/lib/map/model";
+import { buildMapModel, type MapFuel, type MapModel } from "@/lib/map/model";
 import { divisionOf } from "@/lib/map/sites";
 import type { Target } from "@/lib/targets";
-import { cn } from "@/lib/utils";
 
-const DOT: Record<SiteLevel, string> = {
-  normal: "bg-foreground",
-  elevated: "bg-warn-fg",
-  critical: "bg-bad-fg",
-  empty: "bg-bad-fg",
-  outage: "bg-bad-fg",
-};
-const DEPOT: Record<SiteLevel, string> = {
-  normal: "border-foreground",
-  elevated: "border-warn-fg",
-  critical: "border-bad-fg",
-  empty: "border-bad-fg",
-  outage: "border-bad-fg",
-};
-const ROUTE: Record<MapRoute["state"], string> = {
-  ok: "stroke-foreground/30",
-  scheduled: "stroke-warn-fg",
-  disrupted: "stroke-bad-fg",
-};
-const TANK: Partial<Record<string, string>> = { elevated: "bg-warn-fg", high: "bg-bad-fg", critical: "bg-bad-fg" };
-const POPUP =
-  "w-72 rounded-lg border bg-popover p-3 text-popover-foreground shadow-[0_12px_32px_-12px_rgb(17_17_17/0.25)] outline-none transition-[opacity,transform] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 motion-reduce:transition-none dark:shadow-none";
-
-const pct = (x: number, y: number) => ({ left: `${(x / MAP_WIDTH) * 100}%`, top: `${(y / MAP_HEIGHT) * 100}%` });
-
-function shortName(site: MapSite): string {
-  const base = site.name.replace(/ (Fuel|Industrial|Highway|Regional) Station$| Station$| Depot$/, "");
-  return site.kind === "depot" ? `${base} depot` : base;
-}
-
-function summary(site: MapSite): string {
-  if (site.kind === "depot") return `lowest ${Math.round(Math.min(...site.fuels.map((f) => f.fill)) * 100)}%`;
-  if (site.level === "outage") return "outage";
-  const empty = site.fuels.filter((f) => f.inventory <= 0).length;
-  if (empty > 0) return `${empty} ${empty === 1 ? "fuel" : "fuels"} empty`;
-  const soonest = Math.min(...site.fuels.map((f) => (typeof f.hours === "number" && f.hours >= 0 ? f.hours : Infinity)));
-  if (site.level === "critical" && Number.isFinite(soonest)) return `out in ${formatHours(soonest)}`;
-  if (site.spike) return `demand ×${site.spike.toFixed(2)}`;
-  return site.level === "elevated" ? "at risk" : "OK";
-}
-
-function routePath(route: MapRoute): string {
-  const { from, control, to } = routeCurve(route);
-  return `M${from.x},${from.y} Q${control.x},${control.y} ${to.x},${to.y}`;
-}
-
-// Diesel, petrol, octane: each bar fills and drains with the tank, coloured by stockout risk.
-function TankBars({ fuels }: { fuels: MapFuel[] }) {
-  return (
-    <span className="flex h-3 items-end gap-px" aria-hidden>
-      {fuels.map((f) => (
-        <span key={f.fuel} className="relative h-full w-1 overflow-hidden rounded-[1px] bg-foreground/15">
-          <span
-            className={cn("absolute inset-x-0 bottom-0 transition-[height] duration-700 motion-reduce:transition-none", TANK[f.risk ?? ""] ?? "bg-foreground/70")}
-            style={{ height: `${Math.round(Math.min(Math.max(f.fill, 0), 1) * 100)}%` }}
-          />
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function SiteMarker({ site, open, onOpenChange, onGo }: { site: MapSite; open: boolean; onOpenChange: (open: boolean) => void; onGo: (t: Target) => void }) {
-  const left = site.pos.side === "left";
-  const critical = site.alerts.some((a) => a.severity === "CRITICAL");
-  const urgent = site.kind === "station" && (site.level === "empty" || site.level === "critical" || site.level === "outage");
-  return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger
-        aria-label={`${site.name}: ${summary(site)}${site.alerts.length ? `, ${site.alerts.length} open ${site.alerts.length === 1 ? "alert" : "alerts"}` : ""}`}
-        style={pct(site.pos.x, site.pos.y)}
-        className={cn(
-          "absolute z-10 flex -translate-y-1/2 items-center gap-1.5 rounded-md px-1 py-0.5 text-left outline-none transition-colors hover:bg-background/80 focus-visible:ring-2 focus-visible:ring-ring/60 data-[popup-open]:bg-background/80",
-          left ? "-translate-x-[calc(100%-11px)] flex-row-reverse text-right" : "-translate-x-[11px]",
-        )}
-      >
-        <span className="relative grid size-3.5 shrink-0 place-items-center" aria-hidden>
-          {urgent ? <span className="absolute inset-0 rounded-full bg-bad-fg/50 motion-safe:animate-ping" /> : null}
-          {site.spike ? <span className="live-glow absolute -inset-1 rounded-full ring-2 ring-warn-fg" /> : null}
-          {site.kind === "station" ? (
-            <span className={cn("relative size-3.5 rounded-full ring-2 ring-background", DOT[site.level])} />
-          ) : (
-            <span className={cn("relative size-3 rounded-[2px] border-2 bg-background", DEPOT[site.level])} />
-          )}
-        </span>
-        <span className={cn("flex flex-col leading-tight whitespace-nowrap", left && "items-end")}>
-          <span className={cn("flex items-center gap-1.5", left && "flex-row-reverse")}>
-            <span className="text-xs font-medium">{shortName(site)}</span>
-            {site.alerts.length > 0 ? (
-              <span className={cn("rounded-full px-1.5 text-[0.625rem] font-medium", critical ? "bg-bad-bg text-bad-fg" : "bg-warn-bg text-warn-fg")}>
-                {site.alerts.length} {site.alerts.length === 1 ? "alert" : "alerts"}
-              </span>
-            ) : null}
-          </span>
-          <span className={cn("flex items-center gap-1.5 text-[0.6875rem]", left && "flex-row-reverse", urgent ? "text-bad-fg" : site.spike ? "text-warn-fg" : "text-muted-foreground")}>
-            <TankBars fuels={site.fuels} />
-            {summary(site)}
-          </span>
-        </span>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side={left ? "left" : "right"} sideOffset={10} collisionPadding={12} className="z-50">
-          <Popover.Popup className={POPUP}>
-            <SiteCard site={site} onGo={onGo} />
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-function RouteMarker({ route, names, open, onOpenChange, onGo }: { route: MapRoute; names: ReadonlyMap<string, string>; open: boolean; onOpenChange: (open: boolean) => void; onGo: (t: Target) => void }) {
-  const mid = pointOnRoute(route, 0.5);
-  const label = route.state === "disrupted" ? "Disrupted route" : "Disruption planned";
-  return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger
-        aria-label={`${label}: ${route.route.id}`}
-        style={pct(mid.x, mid.y)}
-        className={cn(
-          "absolute z-0 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] ring-2 ring-background outline-none focus-visible:ring-ring/60",
-          route.state === "disrupted" ? "bg-bad-fg" : "bg-warn-fg",
-        )}
-      />
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={8} collisionPadding={12} className="z-50">
-          <Popover.Popup className={POPUP}>
-            <RouteCard route={route} names={names} onGo={onGo} />
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
-// A truck at its place along the route, moving each tick. Filled: a FuelOps shipment; hollow: the simulator's own.
-function ShipmentMarker({ shipment, route, tick, names, open, onOpenChange, onGo }: { shipment: Allocation; route: MapRoute; tick: number; names: ReadonlyMap<string, string>; open: boolean; onOpenChange: (open: boolean) => void; onGo: (t: Target) => void }) {
-  const at = pointOnRoute(route, shipmentProgress(shipment, tick));
-  const waiting = shipment.status === "PENDING";
-  const ours = shipment.origin === "fuelops";
-  return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger
-        aria-label={`${formatNumber(Math.round(shipment.quantity))} L ${humanize(shipment.fuel_type).toLowerCase()} to ${names.get(shipment.destination_station_id) ?? shipment.destination_station_id}, ${waiting ? "waiting to depart" : "on the road"}`}
-        style={pct(at.x, at.y)}
-        className="absolute z-[5] grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full outline-none transition-[left,top] duration-[900ms] ease-linear focus-visible:ring-2 focus-visible:ring-ring/60 motion-reduce:transition-none"
-      >
-        {waiting ? <span className="live-ring absolute inset-0.5 rounded-full border border-foreground" aria-hidden /> : null}
-        <span className={cn("size-2.5 rounded-full border-2 border-foreground ring-2 ring-background", ours ? "bg-foreground" : "bg-background")} aria-hidden />
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner sideOffset={8} collisionPadding={12} className="z-50">
-          <Popover.Popup className={POPUP}>
-            <RouteCard route={route} names={names} onGo={onGo} />
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
+// The sites at either end of every route touching the focus (plus the focus itself); null when nothing is focused.
+function litSites(model: MapModel, focus: string | null): ReadonlySet<string> | null {
+  if (focus === null) return null;
+  const lit = new Set([focus]);
+  for (const route of model.routes) {
+    if (!touches(route, focus)) continue;
+    lit.add(route.route.source_depot_id);
+    lit.add(route.route.destination_station_id);
+  }
+  return lit;
 }
 
 const LEGEND_TANKS: MapFuel[] = [
@@ -198,8 +45,9 @@ function Legend() {
 }
 
 // Black-and-white Bangladesh with the live network on top: tanks fill and drain, trucks move along their
-// routes each tick, demand spikes glow. Colour is only used for state that needs attention. Each site
-// opens a card whose alerts and pending decisions link to where they are handled.
+// routes each tick, demand spikes glow, and pointing at anything traces its routes. Colour is only used for
+// state that needs attention. Each site opens a card whose alerts and pending decisions link to where they
+// are handled.
 export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
   const network = useNetwork();
   const alerts = useAlerts({ state: "open" });
@@ -209,6 +57,8 @@ export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
   const tick = overview.data?.tick ?? network.data?.tick ?? 0;
   const go = useNavigate();
   const [openId, setOpenId] = useState<string | null>(null);
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const focus = hoverId ?? openId; // what the pointer is on, else the open card
 
   const model = useMemo(
     () =>
@@ -222,6 +72,9 @@ export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
     go(target);
   };
   const toggle = (id: string) => (open: boolean) => setOpenId(open ? id : null);
+  const hover = (id: string) => (on: boolean) => setHoverId((current) => (on ? id : current === id ? null : current));
+  const lit = model ? litSites(model, focus) : null;
+  const marker = (id: string, dimmed: boolean) => ({ open: openId === id, onOpenChange: toggle(id), onGo, onHover: hover(id), dimmed });
 
   return (
     <QueryBlock query={network} rows={6}>
@@ -244,18 +97,7 @@ export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
                   );
                 })}
                 <path d={COUNTRY_PATH} fill="none" className="stroke-foreground/35" strokeWidth={1} vectorEffect="non-scaling-stroke" />
-                {model.routes.map((route) => (
-                  <path
-                    key={route.route.id}
-                    d={routePath(route)}
-                    fill="none"
-                    className={cn(ROUTE[route.state], route.inTransit.length > 0 && route.state === "ok" && "stroke-foreground/70")}
-                    strokeWidth={route.inTransit.length > 0 ? 2 : 1.5}
-                    strokeDasharray={route.state === "ok" ? undefined : "4 3"}
-                    strokeLinecap="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
+                <RouteLines routes={model.routes} focus={focus} names={names} tickMinutes={overview.data?.tick_minutes ?? 15} onHover={setHoverId} />
               </svg>
               {DIVISIONS.filter((d) => ![...model.stations, ...model.depots].some((s) => divisionOf(s.regionId) === d.id)).map((d) => (
                 <span
@@ -269,7 +111,7 @@ export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
               {model.routes
                 .filter((r) => r.state !== "ok")
                 .map((route) => (
-                  <RouteMarker key={route.route.id} route={route} names={names} open={openId === route.route.id} onOpenChange={toggle(route.route.id)} onGo={onGo} />
+                  <RouteMarker key={route.route.id} route={route} names={names} {...marker(route.route.id, focus !== null && !touches(route, focus))} />
                 ))}
               {model.routes.flatMap((route) =>
                 route.inTransit.map((shipment) => (
@@ -279,19 +121,17 @@ export function NetworkMap({ names }: { names: ReadonlyMap<string, string> }) {
                     route={route}
                     tick={tick}
                     names={names}
-                    open={openId === `ship-${shipment.id}`}
-                    onOpenChange={toggle(`ship-${shipment.id}`)}
-                    onGo={onGo}
+                    {...marker(`ship-${shipment.id}`, focus !== null && !touches(route, focus))}
                   />
                 )),
               )}
               {[...model.depots, ...model.stations].map((site) => (
-                <SiteMarker key={site.id} site={site} open={openId === site.id} onOpenChange={toggle(site.id)} onGo={onGo} />
+                <SiteMarker key={site.id} site={site} {...marker(site.id, lit !== null && !lit.has(site.id))} />
               ))}
             </div>
             <Legend />
             <p className="text-center text-[0.6875rem] text-muted-foreground">
-              Sites at approximate real locations. Boundaries: geoBoundaries (public domain).
+              Point at a site, truck or route to trace its connections. Sites at approximate real locations. Boundaries: geoBoundaries (public domain).
             </p>
           </div>
         ) : null

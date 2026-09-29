@@ -9,8 +9,8 @@ import { useOverview, useRecommendations } from "@/lib/api/hooks";
 import { formatNumber, formatSimTime } from "@/lib/format";
 import { statusTone } from "@/lib/tone";
 
-// The live picture: the decision pipeline as a bus, the network map with moving shipments, and the RL policy
-// deciding, all refreshed by the stream every tick.
+// The live picture: the network map with moving shipments, the decision pipeline in one line above it, and the
+// RL policy deciding, all refreshed by the stream every tick.
 export function LiveTab({ names }: { names: ReadonlyMap<string, string> }) {
   const overview = useOverview();
   const recs = useRecommendations({ limit: 12 });
@@ -18,27 +18,25 @@ export function LiveTab({ names }: { names: ReadonlyMap<string, string> }) {
   const rl = (recs.data?.recommendations ?? []).filter((r) => r.policy_version.startsWith("ppo-")).slice(0, 6);
   return (
     <>
-      <Section
-        title="Decision pipeline"
-        action={
-          o ? (
+      <section className="space-y-5 border-t py-8">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <h2 className="text-sm font-medium">Network, live</h2>
+          {o ? (
             <span className="flex items-center gap-2 text-xs text-muted-foreground">
               <StatusBadge tone={statusTone(o.sim_status)}>{o.sim_status.toLowerCase()}</StatusBadge>
               <span className="tabular-nums">
                 tick {o.tick} · {formatSimTime(o.sim_time)}
               </span>
             </span>
-          ) : null
-        }
-      >
-        <PipelineBus />
-      </Section>
-      <section className="grid gap-8 border-t py-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="min-w-0">
-          <h2 className="mb-4 text-sm font-medium">Network, live</h2>
-          <NetworkMap names={names} />
+          ) : null}
         </div>
-        <RLPanel />
+        <PipelineBus />
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="min-w-0">
+            <NetworkMap names={names} />
+          </div>
+          <RLPanel />
+        </div>
       </section>
       <Section title="Latest RL recommendations">
         {rl.length === 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { CaretRight } from "@phosphor-icons/react";
 import { useAllocations, useOverview, useRecommendations, useRLShadow, useStatus } from "@/lib/api/hooks";
 import { formatNumber } from "@/lib/format";
 import { parseHealth, type Health } from "@/lib/health";
@@ -26,9 +27,17 @@ const DOT: Record<Health, string> = {
   unknown: "bg-muted-foreground",
 };
 
-// The whole decision loop as one bus, left to right, refreshed by the live stream: every tick a packet
-// travels from the simulator through the RL policy, triage, human review and the outbox back into the
-// simulator. Each stage shows what is in it now.
+const VALUE_TONE: Record<Health, string> = {
+  ok: "",
+  degraded: "text-warn-fg",
+  down: "text-bad-fg",
+  off: "text-muted-foreground",
+  unknown: "text-muted-foreground",
+};
+
+// The decision loop in one line, left to right, refreshed by the live stream: each tick's snapshot goes
+// through the RL policy, triage, human review and the outbox, and the shipments move on the map below.
+// Each stage shows what is in it now; hovering explains the stage.
 export function PipelineBus() {
   const overview = useOverview();
   const status = useStatus();
@@ -58,15 +67,6 @@ export function PipelineBus() {
 
   const stages: Stage[] = [
     {
-      key: "sim",
-      help: "The organizer simulator: advances one tick (15 simulated minutes) at a time. Only the ingestor talks to it, at most 4 requests at once.",
-      label: "Simulator",
-      value: tick === undefined ? "–" : `tick ${tick}`,
-      sub: o ? o.sim_status.toLowerCase() : "connecting",
-      health: parseHealth(status.data?.fuel_simulator).health,
-      active: o?.sim_status === "RUNNING",
-    },
-    {
       key: "ingest",
       help: "Reads the whole world between two identical tick reads (a consistent snapshot) and is the single writer. Age = time since the last successful read.",
       label: "Ingestor",
@@ -78,7 +78,7 @@ export function PipelineBus() {
     {
       key: "rl",
       help: "The trained Maskable PPO policy picks one of 13 plans (wait, or 2h/6h/12h cover in 4 modes); the shared planner turns it into feasible shipments. Confidence = its own probability for the chosen plan.",
-      label: policy === "rl" ? "RL policy" : "RL (comparing)",
+      label: policy === "rl" ? "RL" : "RL (comparing)",
       value: decision?.error ? "refused" : decision?.strategy ?? "–",
       sub: decision?.error
         ? "greedy stands in"
@@ -91,10 +91,11 @@ export function PipelineBus() {
     {
       key: "triage",
       help: "Every shipment the RL policy proposes is judged here. Hard vetoes (stale data, >5,000 L, an event touching it, RL confidence under 50%) send it straight to review; every other one is judged by Jev (TypeSafe System One): auto-execute if its probability is at least the threshold, else review. If Jev is unavailable the fixed rule judges.",
-      label: "Triage (Jev)",
+      // Name whoever actually judges: Jev only when it is configured, else the fixed review rule.
+      label: jevStatus === "off" ? "Rule" : jevStatus === "unknown" ? "Triage" : "Jev",
       value: latest.length ? `${auto} auto · ${review} review` : "nothing to ship",
       sub: latest.length
-        ? `${rlCards ? `RL proposed ${rlCards}` : `${latest.length} proposed`} · Jev judged ${jevJudged} · ${vetoed} vetoed`
+        ? `${rlCards ? `RL proposed ${rlCards}` : `${latest.length} proposed`} · ${jevStatus === "off" ? "fixed rule judged (Jev off)" : `Jev judged ${jevJudged}`} · ${vetoed} vetoed`
         : jevStatus === "off"
           ? "Jev off: fixed rule judges"
           : "Jev judges auto vs review",
@@ -104,7 +105,7 @@ export function PipelineBus() {
     {
       key: "review",
       help: "Shipments waiting for an operator to approve or reject (Decisions tab). Approval is re-checked against the live world.",
-      label: "Human review",
+      label: "Review",
       value: o ? `${o.review_queue} waiting` : "–",
       sub: o?.auto_execute ? "auto-execute on" : "every shipment reviewed",
       health: (o?.review_queue ?? 0) > 0 ? "degraded" : "ok",
@@ -131,48 +132,22 @@ export function PipelineBus() {
   ];
 
   return (
-    <div className="relative">
-      {/* the bus: a flowing line behind the stages, and one packet per tick */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-6 top-1/2 hidden h-px -translate-y-1/2 lg:block">
-        <svg className="absolute inset-0 h-px w-full overflow-visible" preserveAspectRatio="none">
-          <line x1="0" y1="0" x2="100%" y2="0" className={cn("stroke-border", o?.sim_status === "RUNNING" && "live-flow stroke-chart-3")} strokeWidth="1.5" />
-        </svg>
-        {tick !== undefined ? <span key={tick} className="live-packet absolute top-1/2 size-2 -translate-y-1/2 rounded-full bg-foreground" /> : null}
-      </div>
-      <ol className="relative grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {stages.map((s, i) => (
-          <li
-            key={s.key}
-            title={`${s.label}: ${s.help}\n\nNow: ${s.value} (${s.sub})`}
-            className={cn(
-              "min-w-0 rounded-lg border bg-card px-3 py-2.5 transition-colors duration-500",
-              s.active && "border-chart-3",
-              s.health === "down" && "border-bad-fg",
-              s.health === "degraded" && "border-warn-fg",
-            )}
-          >
-            <div className="flex items-center gap-1.5 text-[0.6875rem] font-medium tracking-wider text-muted-foreground uppercase">
-              <span className="relative inline-flex size-1.5">
-                {s.active ? <span className={cn("live-ring absolute inline-flex size-full rounded-full", DOT[s.health])} /> : null}
-                <span className={cn("relative inline-flex size-1.5 rounded-full", DOT[s.health])} />
-              </span>
-              <span className="truncate">
-                {i + 1}. {s.label}
-              </span>
-            </div>
-            <p key={s.value} className="mt-1 truncate text-sm font-medium tabular-nums animate-in fade-in duration-500" title={s.value}>
+    <ol className="flex flex-wrap items-center gap-x-1 gap-y-1.5 text-sm" aria-label="Decision pipeline">
+      {stages.map((s, i) => (
+        <li key={s.key} className="flex items-center gap-1">
+          {i > 0 ? <CaretRight size={12} weight="bold" className="text-muted-foreground/50" aria-hidden /> : null}
+          <span title={`${s.help}\n\nNow: ${s.value} (${s.sub})`} className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 hover:bg-muted">
+            <span className="relative inline-flex size-1.5" aria-hidden>
+              {s.active ? <span className={cn("live-ring absolute inline-flex size-full rounded-full", DOT[s.health])} /> : null}
+              <span className={cn("relative inline-flex size-1.5 rounded-full", DOT[s.health])} />
+            </span>
+            <span className="text-muted-foreground">{s.label}</span>
+            <span key={s.value} className={cn("font-medium tabular-nums animate-in fade-in duration-500", VALUE_TONE[s.health])}>
               {s.value}
-            </p>
-            <p className="truncate text-xs text-muted-foreground" title={s.sub}>
-              {s.sub}
-            </p>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-xs text-muted-foreground">
-        Every tick: the simulator is read, the {policy === "rl" ? "trained RL policy proposes" : "greedy heuristic proposes (RL compared)"} shipments,
-        triage sends each to auto-execute or a human, approved ones leave through the outbox, and the fuel moves on the map below.
-      </p>
-    </div>
+            </span>
+          </span>
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -200,9 +200,12 @@ function Inspector({ rec, extras, waiting, names, formKey, onDecided }: Shared &
         <div className="mt-3 space-y-5">
           <dl className="divide-y">
             <Row label="Rule verdict">{rec.rule_verdict ?? "n/a"}</Row>
-            <Row label="Jev confidence">
-              {rec.jev_p_auto == null ? "not asked" : `${formatProbability(rec.jev_p_auto)}${rec.jev_model ? ` (${rec.jev_model})` : ""}`}
-            </Row>
+            {rec.jev_p_auto != null ? (
+              <Row label="Jev confidence">
+                {formatProbability(rec.jev_p_auto)}
+                {rec.jev_model ? ` (${rec.jev_model})` : ""}
+              </Row>
+            ) : null}
             <Row label="Final verdict">{rec.verdict}</Row>
             {s.in_transit !== undefined ? <Row label="Already on the way">{formatNumber(s.in_transit)} L</Row> : null}
             {s.demand_multiplier !== undefined && s.demand_multiplier !== 1 ? <Row label="Demand multiplier">×{s.demand_multiplier}</Row> : null}

@@ -14,10 +14,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// NewMux returns a mux with the standard endpoints. healthy reports readiness; nil means always healthy.
-func NewMux(service string, healthy func(context.Context) error) *http.ServeMux {
+// NewMux returns a mux with the standard endpoints. /healthz means "ready to serve" (readiness probe;
+// liveness is TCP). healthy reports readiness; nil means always ready. failHealth forces 503 (rollback demo).
+func NewMux(service string, healthy func(context.Context) error, failHealth bool) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		if failHealth {
+			WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy", "error": "FAIL_HEALTH set"})
+			return
+		}
 		if healthy != nil {
 			if err := healthy(r.Context()); err != nil {
 				WriteJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unhealthy", "error": err.Error()})

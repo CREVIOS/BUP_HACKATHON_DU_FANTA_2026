@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -25,10 +26,11 @@ func Run(ctx context.Context, cfg config.Config) error {
 	defer db.Close()
 
 	s := &server{db: db, intelURL: cfg.IntelURL, http: &http.Client{Timeout: time.Second}}
-	mux := httpx.NewMux("api", func(ctx context.Context) error { return db.Ping(ctx) })
+	mux := httpx.NewMux("api", func(ctx context.Context) error { return db.Ping(ctx) }, cfg.FailHealth)
 	mux.HandleFunc("GET /api/state", s.state)
 	mux.HandleFunc("GET /api/status", s.status)
-	return httpx.Serve(ctx, cfg.HTTPAddr, mux)
+	logChaos(cfg)
+	return httpx.Serve(ctx, cfg.HTTPAddr, httpx.Instrument(mux, cfg.Chaos500Pct))
 }
 
 type server struct {
@@ -96,4 +98,10 @@ func health(err error) string {
 		return "unhealthy: " + err.Error()
 	}
 	return "healthy"
+}
+
+func logChaos(cfg config.Config) {
+	if c := httpx.ChaosEnabled(cfg.Chaos500Pct, cfg.FailHealth); c != "" {
+		slog.Warn("chaos flags enabled", "flags", c)
+	}
 }

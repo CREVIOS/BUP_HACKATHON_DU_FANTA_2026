@@ -34,8 +34,8 @@ func Run(ctx context.Context, cfg config.Config) error {
 	ing := &ingestor{db: db, sim: sim.New(cfg.SimBaseURL, cfg.SimMaxInflight, cfg.SimTimeout)}
 	go ing.loop(ctx, cfg.PollInterval)
 
-	mux := httpx.NewMux("ingestor", ing.healthy)
-	return httpx.Serve(ctx, cfg.HTTPAddr, mux)
+	mux := httpx.NewMux("ingestor", ing.healthy, false)
+	return httpx.Serve(ctx, cfg.HTTPAddr, httpx.Instrument(mux, 0))
 }
 
 type ingestor struct {

@@ -163,7 +163,7 @@ func (c *Client) once(ctx context.Context, method, path string, body []byte, out
 //	{"detail":[...]}                            FastAPI/Pydantic 422
 func parseError(status int, raw []byte) *APIError {
 	var body struct {
-		Detail json.RawMessage `json:"detail"`
+		Detail json.RawMessage                 `json:"detail"`
 		Error  *struct{ Code, Message string } `json:"error"`
 	}
 	e := &APIError{Status: status, Code: "HTTP_" + strconv.Itoa(status), Message: string(raw)}

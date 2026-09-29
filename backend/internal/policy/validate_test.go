@@ -100,3 +100,25 @@ func TestDetectFlagsUnexplainedSpikeOnly(t *testing.T) {
 		t.Fatalf("visible demand_multiplier should explain it: %+v", got)
 	}
 }
+
+func TestActiveSpikeExpiresInForecast(t *testing.T) {
+	w := baselineWorld()
+	station(&w, "station-mirpur").DemandMultiplier = 2
+	w.Events = []sim.Event{{ID: 1, Type: "demand_spike", StartTick: 0, EndTick: 3, Status: "ACTIVE",
+		Parameters: map[string]any{"multiplier": 2.0, "station_ids": []any{"station-mirpur"}}}}
+	f := NewForecaster(w)
+	s := *station(&w, "station-mirpur")
+	if during, after := f.Expected(s, "DIESEL", 3), f.Expected(s, "DIESEL", 4); during != 2*f.Baseline(s, "DIESEL", 3) || after != f.Baseline(s, "DIESEL", 4) {
+		t.Fatalf("spike must cover its end tick and then expire: during=%v after=%v", during, after)
+	}
+}
+
+func TestRegionalSpikeForcesReview(t *testing.T) {
+	w := baselineWorld()
+	w.Events = []sim.Event{{ID: 7, Type: "demand_spike", StartTick: 0, EndTick: 9, Status: "ACTIVE",
+		Parameters: map[string]any{"multiplier": 1.8, "region_ids": []any{"region-dhaka"}}}}
+	why := ReviewReasons(w, Recommendation{StationID: "station-mirpur", RouteID: "route-gazipur-mirpur", DepotID: "depot-gazipur", Quantity: 1000}, DefaultOptions)
+	if len(why) == 0 {
+		t.Fatal("a regional crisis touching the station must force review")
+	}
+}

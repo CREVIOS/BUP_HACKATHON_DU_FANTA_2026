@@ -10,8 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// rlModel is the RL policy card plus how it behaves live (shadow mode: it decides every tick, nothing it proposes
-// is submitted). Offline numbers are the package's frozen held-out evaluation (docs/RL_HUGGINGFACE_HANDOFF.md §9).
+// rlModel is the RL policy card plus how it behaves live. With decision_policy=rl it proposes the recommendations
+// (through validation, review and the outbox); either way every tick is also logged next to the planner baseline
+// and greedy. Offline numbers are the package's frozen held-out evaluation (docs/RL_HUGGINGFACE_HANDOFF.md §9).
 func (s *server) rlModel(w http.ResponseWriter, r *http.Request) {
 	a, err := rl.LoadActor()
 	if err != nil {
@@ -25,6 +26,11 @@ func (s *server) rlModel(w http.ResponseWriter, r *http.Request) {
 	}
 	var n, errs, ship, agree, baseShip int
 	var avgUs *float64
+	var decision string
+	if err := s.db.QueryRow(r.Context(), `SELECT decision_policy FROM settings WHERE id = 1`).Scan(&decision); err != nil {
+		internalErr(w, err)
+		return
+	}
 	if err := s.db.QueryRow(r.Context(), `SELECT count(*), count(*) FILTER (WHERE error IS NOT NULL),
 			count(*) FILTER (WHERE action > 0), count(*) FILTER (WHERE action = baseline_action),
 			count(*) FILTER (WHERE baseline_action > 0), avg(latency_us)
@@ -35,8 +41,9 @@ func (s *server) rlModel(w http.ResponseWriter, r *http.Request) {
 	live = map[string]any{"epoch_id": snap.EpochID, "ticks_decided": n, "errors": errs, "ticks_rl_ships": ship,
 		"ticks_baseline_ships": baseShip, "agrees_with_planner_baseline": agree, "avg_latency_us": avgUs}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
-		"mode":  "shadow", // decides every tick against the live world; never submits
-		"model": a.Meta,
+		"mode":            map[bool]string{true: "active", false: "comparison-only"}[decision == "rl"],
+		"decision_policy": decision,
+		"model":           a.Meta,
 		"architecture": map[string]any{"algorithm": "Maskable PPO (sb3-contrib)", "actor": "600 → 128 tanh → 128 tanh → 13 (masked)",
 			"parameters": 95117, "actions": "0 = wait; 1–12 = coverage target (2h/6h/12h) × mode (urgency, captive-priority, depot-headroom, scarcity-aware)",
 			"planner": "shared Go planner (internal/planner, identical to the training commit a81e90c) builds candidates, mask and features"},

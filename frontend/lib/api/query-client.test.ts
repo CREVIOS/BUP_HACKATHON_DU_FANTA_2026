@@ -14,6 +14,5 @@ describe("shouldRetry", () => {
     expect(shouldRetry(0, new ApiError(422, "UNSAFE", "x"))).toBe(false);
     expect(shouldRetry(0, new ApiError(401, "UNAUTHORIZED", "x"))).toBe(false);
     expect(shouldRetry(0, new ApiError(200, "INVALID_RESPONSE", "x"))).toBe(false);
-    expect(shouldRetry(0, new ApiError(409, "MOCK_READONLY", "x"))).toBe(false);
   });
 });

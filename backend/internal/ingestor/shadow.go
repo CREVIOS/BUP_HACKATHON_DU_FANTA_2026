@@ -27,8 +27,8 @@ var (
 	})
 )
 
-// shadowRL records what the RL policy would do this tick. It is advisory only: nothing it proposes is submitted
-// (the model's promotion status is false; handoff §13 requires shadow comparison before any dispatch).
+// shadowRL records, every decided tick, the RL policy's plan next to the planner's rule baseline and greedy's
+// plan. This log is the side-by-side comparison (brief §8), whichever policy is active; it submits nothing.
 func (i *ingestor) shadowRL(ctx context.Context, w sim.World, resp intel.PlanResponse) {
 	if i.actor == nil {
 		return
@@ -53,9 +53,9 @@ func (i *ingestor) shadowRL(ctx context.Context, w sim.World, resp intel.PlanRes
 		return
 	}
 	greedy := []map[string]any{}
-	for _, r := range resp.Recommendations {
+	for _, r := range resp.Greedy { // the heuristic's plan this tick, whichever policy is active
 		greedy = append(greedy, map[string]any{"station_id": r.StationID, "fuel_type": r.FuelType, "route_id": r.RouteID,
-			"depot_id": r.DepotID, "quantity": r.Quantity, "verdict": r.Verdict})
+			"depot_id": r.DepotID, "quantity": r.Quantity, "review_required": r.ReviewRequired})
 	}
 	g, _ := json.Marshal(greedy)
 	d, derr := i.actor.Decide(w, i.epochID, history, pending)

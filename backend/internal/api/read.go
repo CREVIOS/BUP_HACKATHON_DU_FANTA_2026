@@ -22,13 +22,14 @@ func (s *server) overview(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, wd := r.Context(), snap.World
 	var crit, warn, info, queue int
-	var autoExec, fallback bool
+	var autoExec, fallback, rlFallback bool
+	var decisionPolicy string
 	err := s.db.QueryRow(ctx, `SELECT
 		count(*) FILTER (WHERE severity = 'CRITICAL'), count(*) FILTER (WHERE severity = 'WARN'), count(*) FILTER (WHERE severity = 'INFO'),
-		COALESCE(bool_or(kind = 'decision_engine_fallback'), false),
+		COALESCE(bool_or(kind = 'decision_engine_fallback'), false), COALESCE(bool_or(kind = 'rl_fallback'), false),
 		(SELECT count(*) FROM recommendations WHERE status = 'PROPOSED' AND epoch_id = $1),
-		(SELECT auto_execute FROM settings WHERE id = 1)
-		FROM alerts WHERE resolved_at IS NULL AND epoch_id = $1`, snap.EpochID).Scan(&crit, &warn, &info, &fallback, &queue, &autoExec)
+		(SELECT auto_execute FROM settings WHERE id = 1), (SELECT decision_policy FROM settings WHERE id = 1)
+		FROM alerts WHERE resolved_at IS NULL AND epoch_id = $1`, snap.EpochID).Scan(&crit, &warn, &info, &fallback, &rlFallback, &queue, &autoExec, &decisionPolicy)
 	if err != nil {
 		internalErr(w, err)
 		return
@@ -78,6 +79,8 @@ func (s *server) overview(w http.ResponseWriter, r *http.Request) {
 		"review_queue":    queue,
 		"disruptions":     map[string]int{"active": active, "scheduled": upcoming},
 		"decision_source": source, "auto_execute": autoExec,
+		"decision_policy":  decisionPolicy, // configured: rl | greedy
+		"rl_fallback":      rlFallback,     // true while greedy is standing in for the RL policy
 		"inventory_liters": totals,
 	})
 }

@@ -40,9 +40,9 @@ export async function POST(req: Request): Promise<Response> {
     instructions: CHAT_INSTRUCTIONS,
     messages: await convertToModelMessages(parsed.messages),
     tools: createTools({
-      load: () => loadContext(parsed.scenario),
-      listRecommendations: (opts) => listRecommendations(parsed.scenario, opts),
-      explainRecommendation: (id) => explainRecommendation(parsed.scenario, id),
+      load: () => loadContext(),
+      listRecommendations: (opts) => listRecommendations(opts),
+      explainRecommendation: (id) => explainRecommendation(id),
     }),
     stopWhen: isStepCount(MAX_TOOL_STEPS),
     timeout: CHAT_TIMEOUT_MS,

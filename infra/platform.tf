@@ -312,6 +312,8 @@ resource "helm_release" "argocd" {
         url                       = var.argocd_ingress_enabled ? "https://${var.argocd_hostname}" : "https://localhost:8443"
         "admin.enabled"           = true
         "users.anonymous.enabled" = false
+        # Poll git every 30 s (default 120 s): a deploy's tag bump reaches the cluster within half a minute.
+        "timeout.reconciliation" = "30s"
       }
       params = {
         "server.insecure" = false

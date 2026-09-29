@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { isApiError } from "@/lib/api/http";
 
-const NO_RETRY_CODES = new Set(["INVALID_RESPONSE", "INVALID_REQUEST", "MOCK_READONLY"]);
+const NO_RETRY_CODES = new Set(["INVALID_RESPONSE", "INVALID_REQUEST"]);
 
 // Retrying cannot fix a client error or a malformed response; it can fix a blip, a 5xx or a timeout.
 export function shouldRetry(failureCount: number, error: unknown): boolean {

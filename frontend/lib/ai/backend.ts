@@ -1,5 +1,4 @@
-import { assessQuality, HEALTHY_DATA, type LoadedState } from "@/lib/ai/quality";
-import { isScenario, mockSnapshot, type Scenario } from "@/lib/mock/scenarios";
+import { assessQuality, type LoadedState } from "@/lib/ai/quality";
 import type { StateResponse, StatusResponse } from "@/lib/types";
 
 // Server-side base URL of the Go API. Same variable next.config.ts uses for the /api proxy.
@@ -18,14 +17,9 @@ async function getJSON<T>(fetchImpl: FetchLike, path: string, timeoutMs = TIMEOU
 }
 
 // The single source of facts for every AI feature: the latest stored snapshot plus how far to trust
-// it, or a mock world. The state call must succeed; the health call may fail, which is reported as
-// "could not confirm" rather than assumed healthy.
-export async function loadContext(
-  scenario: Scenario | undefined,
-  fetchImpl: FetchLike = fetch,
-): Promise<LoadedState> {
-  if (isScenario(scenario)) return { snapshot: mockSnapshot(scenario), quality: HEALTHY_DATA };
-
+// it. The state call must succeed; the health call may fail, which is reported as "could not
+// confirm" rather than assumed healthy.
+export async function loadContext(fetchImpl: FetchLike = fetch): Promise<LoadedState> {
   const [state, status] = await Promise.allSettled([
     getJSON<StateResponse>(fetchImpl, "/api/state"),
     getJSON<StatusResponse>(fetchImpl, "/api/status"),
@@ -67,14 +61,11 @@ interface RecListResponse {
   recommendations: RecommendationSummary[];
 }
 
-// listRecommendations reads the current recommendations from the Go API. In a
-// scenario preview there is no live decision pipeline, so it returns [].
+// listRecommendations reads the current recommendations from the Go API.
 export async function listRecommendations(
-  scenario: Scenario | undefined,
   opts: { status?: string; limit?: number } = {},
   fetchImpl: FetchLike = fetch,
 ): Promise<RecommendationSummary[]> {
-  if (isScenario(scenario)) return [];
   const q = new URLSearchParams();
   if (opts.status) q.set("status", opts.status);
   q.set("limit", String(opts.limit ?? 20));
@@ -94,13 +85,9 @@ export async function listRecommendations(
 // explainRecommendation asks the Go API for the guarded explanation of one
 // recommendation. The narrative/numbers come from the backend, not this route.
 export async function explainRecommendation(
-  scenario: Scenario | undefined,
   id: number,
   fetchImpl: FetchLike = fetch,
 ): Promise<DecisionExplanation> {
-  if (isScenario(scenario)) {
-    throw new Error("Explanations are only available on live data, not in a scenario preview.");
-  }
   const res = await getJSON<{ explanation: DecisionExplanation }>(
     fetchImpl,
     `/api/recommendations/${encodeURIComponent(String(id))}/explain`,

@@ -29,7 +29,7 @@ export function AccessPanel() {
     <div className="space-y-4">
       <p className="text-sm">
         Signed in as <span className="font-medium">{access.role ?? "unknown"}</span>
-        {access.actor ? <span className="text-muted-foreground"> ({access.actor})</span> : null}.{" "}
+        {access.actor && access.actor !== access.role ? <span className="text-muted-foreground"> ({access.actor})</span> : null}.{" "}
         {access.authEnabled ? null : (
           <span className="text-warn-fg">Auth is off on this server, so everyone is admin (local development).</span>
         )}

@@ -6,12 +6,12 @@ const userMessage = (text: string, id = "m1") => ({ id, role: "user", parts: [{ 
 describe("parseChatRequest", () => {
   it("accepts a normal conversation", async () => {
     const result = await parseChatRequest({ messages: [userMessage("Which stations are low?")] });
-    expect(result).toMatchObject({ ok: true, scenario: undefined });
+    expect(result).toMatchObject({ ok: true });
   });
 
-  it("passes a known mock scenario through and drops an unknown one", async () => {
-    expect(await parseChatRequest({ messages: [userMessage("hi")], scenario: "crisis" })).toMatchObject({ ok: true, scenario: "crisis" });
-    expect(await parseChatRequest({ messages: [userMessage("hi")], scenario: "bogus" })).toMatchObject({ ok: true, scenario: undefined });
+  it("ignores fields other than messages", async () => {
+    const result = await parseChatRequest({ messages: [userMessage("hi")], scenario: "crisis" });
+    expect(result).toEqual({ ok: true, messages: expect.any(Array) });
   });
 
   it.each([

@@ -1,7 +1,6 @@
 "use client";
 
-import { Flask, GasPump } from "@phosphor-icons/react";
-import Link from "next/link";
+import { GasPump } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { AskAssistant } from "@/components/ai/ask-assistant";
 import { DegradedBanner } from "@/components/degraded-banner";
@@ -13,12 +12,11 @@ import { NetworkTab } from "@/components/tabs/network-tab";
 import { OverviewTab } from "@/components/tabs/overview-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNetwork, useOverview, useStatus } from "@/lib/api/hooks";
-import type { Scenario } from "@/lib/mock/scenarios";
 import { deriveNetworkView } from "@/lib/view";
 
 type Tab = "overview" | "decisions" | "network" | "control";
 
-export function Dashboard({ scenario }: { scenario?: Scenario }) {
+export function Dashboard() {
   const [tab, setTab] = useState<Tab>("overview");
   const overview = useOverview();
   const network = useNetwork();
@@ -34,22 +32,9 @@ export function Dashboard({ scenario }: { scenario?: Scenario }) {
         <h1 className="flex items-center gap-2 text-base font-medium tracking-tight">
           <GasPump {...ICON} weight="fill" aria-hidden />
           FuelOps
-          {scenario ? (
-            <span className="rounded-full bg-info-bg px-2 py-0.5 text-[0.6875rem] font-medium uppercase tracking-wider text-info-fg">
-              Mock data
-            </span>
-          ) : null}
         </h1>
         <div className="flex items-center gap-3">
           <StreamIndicator updatedAt={overview.dataUpdatedAt} />
-          <Link
-            href={scenario ? "/" : "/?mock=demo"}
-            title={scenario ? "Back to live data" : "Preview with mock data"}
-            aria-label={scenario ? "Back to live data" : "Preview with mock data"}
-            className="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <Flask {...ICON} weight={scenario ? "fill" : "bold"} />
-          </Link>
         </div>
       </header>
 
@@ -73,7 +58,7 @@ export function Dashboard({ scenario }: { scenario?: Scenario }) {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <OverviewTab scenario={scenario} names={names} />
+          <OverviewTab names={names} />
         </TabsContent>
         <TabsContent value="decisions">
           <DecisionsTab names={names} />
@@ -86,7 +71,7 @@ export function Dashboard({ scenario }: { scenario?: Scenario }) {
         </TabsContent>
       </Tabs>
 
-      <AskAssistant key={scenario ?? "live"} scenario={scenario} tick={overview.data?.tick} />
+      <AskAssistant tick={overview.data?.tick} />
     </main>
   );
 }

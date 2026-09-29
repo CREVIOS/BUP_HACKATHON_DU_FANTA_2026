@@ -111,6 +111,10 @@ func Alerts(w sim.World, resp intel.PlanResponse, first map[string]sim.SupplyArr
 		out = append(out, Alert{"decision_engine_fallback", "intel", "WARN", map[string]any{
 			"error": intelErr.Error(), "message": "intel unavailable: fallback policy with the fixed review rule is deciding"}})
 	}
+	if resp.PolicyFallback != "" {
+		out = append(out, Alert{"rl_fallback", "rl", "WARN", map[string]any{
+			"error": resp.PolicyFallback, "message": "the RL policy could not decide this tick: the greedy heuristic decided instead"}})
+	}
 	if resp.Jev.Error != "" {
 		out = append(out, Alert{"jev_unavailable", "jev", "INFO", map[string]any{
 			"error": resp.Jev.Error, "message": "Jev unavailable: the fixed review rule decides auto vs review"}})

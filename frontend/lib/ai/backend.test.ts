@@ -12,18 +12,9 @@ const api = (routes: Record<string, { body?: unknown; status?: number; throws?: 
 };
 
 describe("loadContext", () => {
-  it("returns a mock world with healthy data quality and no network", async () => {
-    const fetchImpl = async () => {
-      throw new Error("must not be called");
-    };
-    const { snapshot, quality } = await loadContext("crisis", fetchImpl);
-    expect(snapshot.instance.tick).toBe(148);
-    expect(quality).toEqual({ stale: false, sourceHealthy: true });
-  });
-
   it("reads the snapshot and the source health from the API", async () => {
     const fetchImpl = api({ "/api/state": { body: { tick: 0, stale: false, snapshot: BASELINE } }, "/api/status": { body: HEALTHY } });
-    const { snapshot, quality } = await loadContext(undefined, fetchImpl);
+    const { snapshot, quality } = await loadContext(fetchImpl);
     expect(snapshot.instance.scenario_id).toBe("baseline");
     expect(quality.sourceHealthy).toBe(true);
   });
@@ -33,27 +24,27 @@ describe("loadContext", () => {
       "/api/state": { body: { tick: 9, stale: false, snapshot: BASELINE } },
       "/api/status": { body: { ...HEALTHY, fuel_simulator: "unhealthy: no successful simulator poll for 42s" } },
     });
-    const { quality } = await loadContext(undefined, fetchImpl);
+    const { quality } = await loadContext(fetchImpl);
     expect(quality.sourceHealthy).toBe(false);
     expect(quality.reason).toContain("42s");
   });
 
   it("carries the simulator's stale flag", async () => {
     const fetchImpl = api({ "/api/state": { body: { tick: 9, stale: true, snapshot: BASELINE } }, "/api/status": { body: HEALTHY } });
-    expect((await loadContext(undefined, fetchImpl)).quality.stale).toBe(true);
+    expect((await loadContext(fetchImpl)).quality.stale).toBe(true);
   });
 
   it("still returns the snapshot, but unconfirmed, when only the status call fails", async () => {
     const fetchImpl = api({ "/api/state": { body: { tick: 0, snapshot: BASELINE } }, "/api/status": { throws: true } });
-    const { quality } = await loadContext(undefined, fetchImpl);
+    const { quality } = await loadContext(fetchImpl);
     expect(quality.sourceHealthy).toBe(false);
     expect(quality.reason).toMatch(/could not confirm/i);
   });
 
   it("throws when the state call fails or has no snapshot yet", async () => {
-    await expect(loadContext(undefined, api({ "/api/state": { status: 500 }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/500/);
-    await expect(loadContext(undefined, api({ "/api/state": { body: { tick: null } }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/snapshot/i);
-    await expect(loadContext(undefined, api({ "/api/state": { throws: true } }))).rejects.toThrow(/fetch failed/);
+    await expect(loadContext(api({ "/api/state": { status: 500 }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/500/);
+    await expect(loadContext(api({ "/api/state": { body: { tick: null } }, "/api/status": { body: HEALTHY } }))).rejects.toThrow(/snapshot/i);
+    await expect(loadContext(api({ "/api/state": { throws: true } }))).rejects.toThrow(/fetch failed/);
   });
 });
 
@@ -68,16 +59,9 @@ describe("listRecommendations", () => {
         },
       },
     });
-    const out = await listRecommendations(undefined, { status: "PROPOSED", limit: 5 }, fetchImpl);
+    const out = await listRecommendations({ status: "PROPOSED", limit: 5 }, fetchImpl);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({ id: 12, station_id: "station-mirpur", verdict: "review", risk_after: 0.31 });
-  });
-
-  it("returns [] in a scenario preview without any network call", async () => {
-    const fetchImpl = async () => {
-      throw new Error("must not be called");
-    };
-    expect(await listRecommendations("crisis", {}, fetchImpl)).toEqual([]);
   });
 });
 
@@ -91,21 +75,14 @@ describe("explainRecommendation", () => {
         },
       },
     });
-    const ex = await explainRecommendation(undefined, 12, fetchImpl);
+    const ex = await explainRecommendation(12, fetchImpl);
     expect(ex.source).toBe("llm");
     expect(ex.headline).toContain("5,000");
     expect(ex.action).toMatch(/human operator/);
   });
 
-  it("refuses in a scenario preview", async () => {
-    const fetchImpl = async () => {
-      throw new Error("must not be called");
-    };
-    await expect(explainRecommendation("crisis", 1, fetchImpl)).rejects.toThrow(/scenario preview/i);
-  });
-
   it("propagates a backend error", async () => {
     const fetchImpl = api({ "/api/recommendations/99/explain": { status: 404 } });
-    await expect(explainRecommendation(undefined, 99, fetchImpl)).rejects.toThrow(/404/);
+    await expect(explainRecommendation(99, fetchImpl)).rejects.toThrow(/404/);
   });
 });

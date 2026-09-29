@@ -7,17 +7,15 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { ChatPanel } from "@/components/ai/chat-panel";
 import { LauncherGlyph } from "@/components/ai/launcher-glyph";
 import { useSlashShortcut } from "@/hooks/use-slash-shortcut";
-import type { Scenario } from "@/lib/mock/scenarios";
 
 // A round launcher in the lower right that opens a floating chat box. Both are position: fixed, so
 // scrolling the page never moves them. The launcher is the only close control (plus Esc). The chat
-// state lives here, above the popup, so closing the box keeps the conversation. Remount with a new
-// `key` when the scenario changes: useChat fixes its transport at creation.
-export function AskAssistant({ scenario, tick }: { scenario?: Scenario; tick?: number }) {
+// state lives here, above the popup, so closing the box keeps the conversation.
+export function AskAssistant({ tick }: { tick?: number }) {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const transport = useMemo(() => new DefaultChatTransport({ api: "/ai/chat", body: { scenario } }), [scenario]);
+  const transport = useMemo(() => new DefaultChatTransport({ api: "/ai/chat" }), []);
   const { messages, setMessages, sendMessage, status, stop, error, regenerate, clearError } = useChat({ transport });
   const busy = status === "submitted" || status === "streaming";
 
@@ -38,7 +36,7 @@ export function AskAssistant({ scenario, tick }: { scenario?: Scenario; tick?: n
     inputRef.current?.focus();
   }
 
-  const context = scenario ? `Mock ${scenario}` : tick === undefined ? "Live" : `Live, tick ${tick}`;
+  const context = tick === undefined ? "Live data" : `Live data, tick ${tick}`;
 
   return (
     <Popover.Root

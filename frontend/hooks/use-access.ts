@@ -21,6 +21,6 @@ export function useAccess() {
     authEnabled: me.data?.auth_enabled ?? true,
     loading: me.isPending,
     can: (action: Action) => can(role, action),
-    needs: (action: Action) => `Needs ${requiredRole(action)} access. Add a token in the Control tab.`,
+    needs: (action: Action) => `Needs ${requiredRole(action)} access: sign in on the Control tab.`,
   };
 }

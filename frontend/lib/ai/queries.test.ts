@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { allocationSummaries, eventSummaries, routeSummaries, stockFor } from "@/lib/ai/queries";
 import { BASELINE } from "@/lib/mock/baseline";
-import { mockSnapshot } from "@/lib/mock/scenarios";
+import { crisisSnapshot } from "@/lib/mock/scenarios";
 
-const crisis = mockSnapshot("crisis");
+const crisis = crisisSnapshot();
 
 describe("routeSummaries", () => {
   it("resolves names and converts ticks to minutes", () => {

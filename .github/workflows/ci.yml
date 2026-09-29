@@ -11,7 +11,9 @@ jobs:
         with: { go-version-file: backend/go.mod, cache-dependency-path: backend/go.sum }
       - run: go vet ./...
       - run: go test -race ./...
-      - run: docker build --build-arg VERSION=${GITHUB_SHA::7} -t fuelops-backend:ci .
+      # PRs validate the Dockerfile; on deploys the release job builds (and scans) the real image in parallel.
+      - if: github.event_name == 'pull_request'
+        run: docker build --build-arg VERSION=${GITHUB_SHA::7} -t fuelops-backend:ci .
 
   frontend:
     runs-on: ubuntu-latest

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createMockModel } from "@/lib/ai/mock-model";
 import { HEALTHY_DATA, type LoadedState } from "@/lib/ai/quality";
 import { type ChatContext, createTools } from "@/lib/ai/tools";
-import { mockSnapshot } from "@/lib/mock/scenarios";
+import { crisisSnapshot } from "@/lib/mock/scenarios";
 
 // These tests exercise the snapshot-backed tools only; the recommendation tools
 // are stubbed since the mock model never calls them here.
@@ -24,7 +24,7 @@ const ask = (question: string, load: () => Promise<LoadedState>) =>
   });
 
 describe("mock model", () => {
-  const crisis = async () => ({ snapshot: mockSnapshot("crisis"), quality: HEALTHY_DATA });
+  const crisis = async () => ({ snapshot: crisisSnapshot(), quality: HEALTHY_DATA });
 
   it.each([
     ["Any disrupted routes?", "getRoutes", "disrupted"],

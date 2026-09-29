@@ -20,6 +20,7 @@ export function RegionalDemand() {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className={HEAD}>Region</TableHead>
+              <TableHead className={HEAD}>Fuel</TableHead>
               <TableHead className={HEAD_NUM}>Demand L</TableHead>
               <TableHead className={HEAD_NUM}>Unmet L</TableHead>
               <TableHead className={HEAD_NUM}>Served</TableHead>
@@ -27,18 +28,16 @@ export function RegionalDemand() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.regions.flatMap((region) =>
-              FUELS.filter((fuel) => region.fuels[fuel]).map((fuel, i) => {
+            {data.regions.flatMap((region) => {
+              const fuels = FUELS.filter((fuel) => region.fuels[fuel]);
+              return fuels.map((fuel, i) => {
                 const f = region.fuels[fuel];
-                const spiking = f.max_demand_multiplier > 1;
                 return (
-                  <TableRow key={`${region.region_id}:${fuel}`}>
+                  <TableRow key={`${region.region_id}:${fuel}`} className={i === fuels.length - 1 ? "" : "border-b-0"}>
+                    <TableCell className={`${CELL} font-medium`}>{i === 0 ? region.name : null}</TableCell>
                     <TableCell className={CELL}>
-                      {i === 0 ? <div className="font-medium">{region.name}</div> : null}
-                      <div className="text-xs text-muted-foreground">
-                        {humanize(fuel)}
-                        {spiking ? <span className="text-warn-fg">, demand ×{f.max_demand_multiplier}</span> : null}
-                      </div>
+                      {humanize(fuel)}
+                      {f.max_demand_multiplier > 1 ? <span className="ml-1.5 text-xs text-warn-fg">demand ×{f.max_demand_multiplier}</span> : null}
                     </TableCell>
                     <TableCell className={CELL_NUM}>{formatNumber(f.demand)}</TableCell>
                     <TableCell className={`${CELL_NUM} ${f.unmet > 0 ? "text-bad-fg" : ""}`}>{formatNumber(f.unmet)}</TableCell>
@@ -46,8 +45,8 @@ export function RegionalDemand() {
                     <TableCell className={CELL_NUM}>{formatNumber(f.forecast_next_12h)}</TableCell>
                   </TableRow>
                 );
-              }),
-            )}
+              });
+            })}
           </TableBody>
         </Table>
       )}

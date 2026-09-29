@@ -38,9 +38,9 @@ export function SimulationPanel({ overview }: { overview: Overview }) {
         <span className="font-mono">{overview.review_queue}</span>
       </Stat>
       <Stat label="Open alerts">
-        <span className="font-mono">
-          <span className={overview.open_alerts.critical > 0 ? "text-bad-fg" : ""}>{overview.open_alerts.critical}</span>
-          <span className="text-sm text-muted-foreground"> critical, {overview.open_alerts.warn} warn</span>
+        <span>
+          <span className={`font-mono ${overview.open_alerts.critical > 0 ? "text-bad-fg" : ""}`}>{overview.open_alerts.critical}</span>
+          <span className="text-sm font-normal text-muted-foreground"> critical, {overview.open_alerts.warn} warning</span>
         </span>
       </Stat>
     </dl>

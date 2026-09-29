@@ -1,25 +1,30 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useFuelopsContext } from "@/components/providers/fuelops-provider";
 import type { Api } from "@/lib/api/client";
 import { keys } from "@/lib/api/keys";
 
 const STATUS_POLL_MS = 10_000; // /api/status is not on the stream (latency, error rate change continuously)
 
-function useRead<T>(queryKey: QueryKey, read: (api: Api, signal: AbortSignal) => Promise<T>, options: { enabled?: boolean; pollMs?: number } = {}) {
+function useRead<T>(
+  queryKey: QueryKey,
+  read: (api: Api, signal: AbortSignal) => Promise<T>,
+  options: { enabled?: boolean; pollMs?: number; keepPrevious?: boolean } = {},
+) {
   const { api, pollMs } = useFuelopsContext();
   return useQuery({
     queryKey,
     queryFn: ({ signal }) => read(api, signal),
     refetchInterval: options.pollMs ?? pollMs,
     enabled: options.enabled ?? true,
+    // Keep showing the previous result while a new key loads (e.g. the next tick's proposal).
+    placeholderData: options.keepPrevious ? keepPreviousData : undefined,
   });
 }
 
 export const useApi = () => useFuelopsContext().api;
 export const useStreamState = () => useFuelopsContext().stream;
-export const useMockMode = () => useFuelopsContext().mock;
 
 export const useOverview = () => useRead(keys.overview, (api, signal) => api.overview(signal));
 export const useStatus = () => useRead(keys.status, (api, signal) => api.status(signal), { pollMs: STATUS_POLL_MS });
@@ -42,10 +47,13 @@ export const useRecommendations = (params: { status?: string; limit?: number } =
   useRead(keys.recommendations(params), (api, signal) => api.recommendations(params, signal));
 
 export const useRecommendation = (id: number | undefined) =>
-  useRead(keys.recommendation(id ?? 0), (api, signal) => api.recommendation(id ?? 0, signal), { enabled: id !== undefined });
+  useRead(keys.recommendation(id ?? 0), (api, signal) => api.recommendation(id ?? 0, signal), {
+    enabled: id !== undefined,
+    keepPrevious: true,
+  });
 
 export const useDemand = (params: { station_id?: string; fuel_type?: string; ticks?: number; horizon?: number }) =>
-  useRead(keys.demand(params), (api, signal) => api.demand(params, signal));
+  useRead(keys.demand(params), (api, signal) => api.demand(params, signal), { keepPrevious: true });
 
 export const useDemandRegions = (params: { ticks?: number } = {}) =>
   useRead(keys.demandRegions(params), (api, signal) => api.demandRegions(params, signal));

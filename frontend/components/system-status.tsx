@@ -10,7 +10,6 @@ const COMPONENTS: readonly { key: string; label: string }[] = [
   { key: "fuel_simulator", label: "Fuel simulator" },
   { key: "prediction_service", label: "Prediction service" },
   { key: "decision_engine", label: "Decision engine" },
-  { key: "jev", label: "Review triage" },
 ];
 
 const STATE: Record<Health, { Icon: typeof CheckCircle; className: string; label: string }> = {

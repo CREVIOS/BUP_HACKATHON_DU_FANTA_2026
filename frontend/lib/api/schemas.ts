@@ -294,8 +294,6 @@ export const recommendationSchema = z.object({
   risk_before: maybe(z.number()),
   risk_after: maybe(z.number()),
   rule_verdict: maybe(z.string()),
-  jev_p_auto: maybe(z.number()),
-  jev_model: maybe(z.string()),
   verdict: z.string(),
   status: recommendationStatusSchema,
   created_at: z.string(),
@@ -461,20 +459,12 @@ export const intelQualitySchema = z.object({
     by_status: z.record(z.string(), z.number()),
   }),
   outbox: z.record(z.string(), z.number()),
-  jev: z.object({
-    asked: z.number(),
-    avg_p_auto: maybe(z.number()),
-    agreed_with_rule: z.number(),
-    overrode_rule: z.number(),
-  }),
   alerts_by_kind: z.record(z.string(), z.number()),
 });
 
 export const policySchema = z.object({
   policy_version: z.string(),
   auto_execute: z.boolean(),
-  jev_threshold: z.number(),
-  jev_configured: z.boolean(),
   updated_by: maybe(z.string()),
   updated_at: maybe(z.string()),
   options: z.record(z.string(), z.number()),
@@ -555,7 +545,6 @@ export const faultBodySchema = z.strictObject({
 
 export const policyBodySchema = z.strictObject({
   auto_execute: z.optional(z.boolean()),
-  jev_threshold: z.optional(z.number().check(z.positive(), z.maximum(1))),
 });
 
 // ---------- types ----------

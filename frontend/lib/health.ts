@@ -1,4 +1,4 @@
-// /api/status values: "healthy" | "degraded: <why>" | "unhealthy: <why>", and for Jev also
+// /api/status values: "healthy" | "degraded: <why>" | "unhealthy: <why>", and for optional services also
 // "configured" | "disabled: <why>". Parse once so every view reads them the same way.
 export type Health = "ok" | "degraded" | "down" | "off" | "unknown";
 

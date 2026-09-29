@@ -24,11 +24,9 @@ export function IntelQuality() {
     <QueryBlock query={quality}>
       {(q) => (
         <div className="space-y-5">
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-5">
             <Figure label="Forecast error (MAPE)" value={pct(q.forecast.mape)} note={`naive baseline ${pct(q.forecast.naive_mape)}`} />
             <Figure label="Observations" value={formatNumber(q.forecast.observations)} note={`last ${q.window_ticks} ticks`} />
-            <Figure label="Jev asked" value={formatNumber(q.jev.asked)} note={q.jev.avg_p_auto == null ? "not configured or not asked" : `avg confidence ${pct(q.jev.avg_p_auto)}`} />
-            <Figure label="Jev vs rule" value={`${q.jev.agreed_with_rule} agree`} note={`${q.jev.overrode_rule} overrode the rule`} />
           </dl>
           <p className="text-xs text-muted-foreground">
             Recommendations:{" "}

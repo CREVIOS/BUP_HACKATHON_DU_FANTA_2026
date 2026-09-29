@@ -54,9 +54,7 @@ export function PipelineBus() {
   const auto = latest.filter((r) => r.verdict === "auto").length;
   const review = latest.length - auto;
   const rlCards = latest.filter((r) => r.policy_version.startsWith(RL_VERSION_PREFIX)).length;
-  const jevJudged = latest.filter((r) => r.jev_p_auto != null).length; // Jev decided auto vs review
   const vetoed = latest.filter((r) => (r.explanation.review_reasons ?? []).length > 0).length; // hard veto: straight to review
-  const jevStatus = parseHealth(status.data?.jev).health;
   const moving = allocations.data?.allocations.filter((a) => a.status === "PENDING" || a.status === "IN_TRANSIT") ?? [];
   const movingLiters = moving.reduce((s, a) => s + a.quantity, 0);
   const queued = allocations.data?.queued.filter((q) => q.status === "PENDING").length ?? 0;
@@ -90,16 +88,13 @@ export function PipelineBus() {
     },
     {
       key: "triage",
-      help: "Every shipment the RL policy proposes is judged here. Hard vetoes (stale data, >5,000 L, an event touching it, RL confidence under 50%) send it straight to review; every other one is judged by Jev (TypeSafe System One): auto-execute if its probability is at least the threshold, else review. If Jev is unavailable the fixed rule judges.",
-      // Name whoever actually judges: Jev only when it is configured, else the fixed review rule.
-      label: jevStatus === "off" ? "Rule" : jevStatus === "unknown" ? "Triage" : "Jev",
+      help: "Every shipment the RL policy proposes is checked here. Hard vetoes (stale data, >5,000 L, an event touching it, RL confidence under 50%) send it straight to review; otherwise the fixed review rule decides: review if a crisis is active, stockout risk stays above 25% after the shipment, or demand is unexplained, else it executes automatically.",
+      label: "Triage",
       value: latest.length ? `${auto} auto · ${review} review` : "nothing to ship",
       sub: latest.length
-        ? `${rlCards ? `RL proposed ${rlCards}` : `${latest.length} proposed`} · ${jevStatus === "off" ? "fixed rule judged (Jev off)" : `Jev judged ${jevJudged}`} · ${vetoed} vetoed`
-        : jevStatus === "off"
-          ? "Jev off: fixed rule judges"
-          : "Jev judges auto vs review",
-      health: jevStatus === "down" ? "down" : jevStatus === "degraded" ? "degraded" : "ok",
+        ? `${rlCards ? `RL proposed ${rlCards}` : `${latest.length} proposed`} · ${vetoed} vetoed`
+        : "the review rule decides auto vs review",
+      health: "ok",
       active: latest.length > 0 && latestTick === tick,
     },
     {

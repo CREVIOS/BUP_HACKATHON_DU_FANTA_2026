@@ -72,13 +72,23 @@ def check_https(platform, app, certificates, argocd_hostname=None):
     fuelops_rule = app_ingresses[0]["spec"]["rules"][0]
     require(fuelops_rule["host"] == "fuelops.hemal.me", "FuelOps must use its configured hostname")
     require({path["path"]: path["backend"]["service"] for path in fuelops_rule["http"]["paths"]} == {
-        "/api": {"name": "api", "port": {"number": "8080"}},
+        "/api": {"name": "api", "port": {"number": "8000"}},
         "/": {"name": "web", "port": {"number": "80"}},
     }, "Preserve API and frontend host routing")
     web = next(doc for doc in app if doc["kind"] == "Deployment" and doc["metadata"]["name"] == "web")
     web_env = {item["name"]: item.get("value") for item in web["spec"]["template"]["spec"]["containers"][0]["env"]}
-    require(web_env.get("API_PROXY_TARGET") == "http://api:8080",
+    require(web_env.get("API_PROXY_TARGET") == "http://api:8000",
             "Server-side frontend routes must reach the Kubernetes API Service port")
+    for name in ("api", "api-canary", "api-stable"):
+        service = next(doc for doc in app if doc["kind"] == "Service" and doc["metadata"]["name"] == name)
+        require(service["spec"]["ports"] == [{"name": "http", "port": "8000", "targetPort": "http"}],
+                f"{name} must route port 8000 to the API's named HTTP port")
+    api = next(doc for doc in app if doc["kind"] == "Rollout" and doc["metadata"]["name"] == "api")
+    api_container = api["spec"]["template"]["spec"]["containers"][0]
+    api_env = {item["name"]: item.get("value") for item in api_container["env"]}
+    require(api_container["ports"] == [{"name": "http", "containerPort": "8000"}] and
+            api_env.get("HTTP_ADDR") == ":8000",
+            "The API must listen on the port selected by its Services")
     if argocd_hostname:
         ingress = platform_ingresses[0]
         annotations = ingress["metadata"]["annotations"]
